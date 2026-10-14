@@ -20,13 +20,13 @@ export class Home {
   panel: Panel | null = null;
   opener: HTMLElement | null = null;
   modal = false;
-  layoutFrame = 0;
+  layoutTask = 0;
   readonly compact = matchMedia('(max-width: 959px), (max-height: 440px)');
   readonly stageObserver = new ResizeObserver(() => this.layout());
   readonly compactChanged = () => this.layout();
   readonly blocked = new Map<HTMLElement, { aria: string | null; inert: boolean; tabs: [HTMLElement, string | null][] }>();
   readonly labels = Array.from(document.querySelectorAll<HTMLElement>('.survivor-label'));
-  constructor(readonly state: ScreenState, readonly world: WorldView | null, readonly announce: (s: string) => void) {
+  constructor(readonly state: ScreenState, readonly world: WorldView | null, readonly announce: (s: string) => void, readonly invalidateRender: () => void) {
     try { this.saved = parseHome(localStorage.getItem(HOME_KEY)); } catch { this.saved = defaults(); }
     el('nav-items').innerHTML = features.map(([id, name, , icon], i) => `<button type="button" class="nav-button" data-panel="${id}" aria-controls="home-panel" aria-expanded="false">${svg(icon)}<span>${name}</span><small aria-hidden="true">0${i + 1}</small></button>`).join('');
     el('nav-items').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.addEventListener('click', () => this.open(b.dataset.panel as Panel, b)));
@@ -110,16 +110,19 @@ export class Home {
     document.body.style.setProperty('--home-height', `${view?.height ?? innerHeight}px`);
     document.body.style.setProperty('--home-offset-top', `${view?.offsetTop ?? 0}px`);
     this.panelMode(); this.formationNote();
-    if (this.layoutFrame) cancelAnimationFrame(this.layoutFrame);
-    this.layoutFrame = requestAnimationFrame(() => {
-      this.layoutFrame = 0;
+    if (this.layoutTask) clearTimeout(this.layoutTask);
+    // UI layout must settle even when the compositor delays animation frames.
+    this.layoutTask = window.setTimeout(() => {
+      this.layoutTask = 0;
+      if(this.state.screen!=='home')return;
       const rect = el('lobby-stage').getBoundingClientRect();
       const nameLimit = innerWidth >= 960 && innerWidth < 1200 && !this.panel ? 160 : 250;
       document.body.style.setProperty('--preview-label-width', `${Math.max(80, Math.min(nameLimit, rect.width - 16))}px`);
       this.labels.forEach((label,i) => { label.hidden = i > 0 && (!this.state.squadPreview || Boolean(this.panel)); });
       const obstacles = ['.home-footnote', '.launch-area', '.lobby-heading', '.squad-tools'].map(s => document.querySelector<HTMLElement>(s)!).filter(n => n.getClientRects().length).map(n => n.getBoundingClientRect());
       this.world?.setStage(rect, this.labels, Boolean(this.panel), obstacles);
-    });
+      this.invalidateRender();
+    },0);
   }
   screenChanged() {
     this.close(false); this.drawer(false);
@@ -161,7 +164,7 @@ export class Home {
     }
   }
   footer(html = '') { el('panel-footer').innerHTML = html; el('panel-footer').hidden = !html; }
-  dispose() { cancelAnimationFrame(this.layoutFrame); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); }
+  dispose() { clearTimeout(this.layoutTask); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); }
   character() {
     this.draft = { ...this.saved.appearance };
     el('panel-content').innerHTML = `<p class="panel-intro">旅に出る、自分の姿を。</p>

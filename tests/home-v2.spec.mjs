@@ -66,3 +66,16 @@ test('HOME V2 title revisits refit the shared camera instead of reusing stale HO
  }
  await page.locator('#squad-button').click();await fourFits(page);await page.screenshot({path:info.outputPath('four-after-title-revisit.png')});
 });
+
+test('HOME V2 delayed compositor callbacks still draw UI changes and restore normal rendering',async({page},info)=>{
+ await page.addInitScript(()=>{const request=window.requestAnimationFrame.bind(window);window.__DELAYED_FRAMES__=[];window.requestAnimationFrame=callback=>request(time=>{if(window.__PAUSE_COMPOSITOR__)window.__DELAYED_FRAMES__.push(()=>callback(time));else callback(time);});});
+ await page.setViewportSize({width:1280,height:600});await home(page);await page.locator('#squad-button').click();await fourFits(page);
+ const before=(await snapshot(page)).renderClock;await page.evaluate(()=>{window.__PAUSE_COMPOSITOR__=true;});
+ await page.getByRole('button',{name:'マップ',exact:true}).click();await expect.poll(async()=>(await snapshot(page)).render.bounds.length).toBe(1);
+ await page.locator('#panel-close').click();await fourFits(page);
+ await page.locator('#back-title').click();await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(false);
+ await page.locator('#home-button').click();await fourFits(page);
+ const stalled=(await snapshot(page)).renderClock;expect(stalled.fallbackFrames).toBeGreaterThan(before.fallbackFrames);expect(stalled.frames).toBeGreaterThan(before.frames);
+ await page.evaluate(()=>{window.__PAUSE_COMPOSITOR__=false;const pending=window.__DELAYED_FRAMES__.splice(0);pending.forEach(callback=>callback());});await expect.poll(async()=>(await snapshot(page)).renderClock.rafTime).toBeGreaterThan(stalled.rafTime);
+ await fourFits(page);await page.screenshot({path:info.outputPath('four-after-compositor-resumes.png')});
+});

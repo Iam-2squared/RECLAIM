@@ -31,7 +31,20 @@ try{
 }catch{enableFallback();}
 // Entry always starts at the title. No previous session is ever resumed straight into a mission.
 document.body.dataset.screen='title';document.body.dataset.reveal='false';
-let frameId=0,lastFrame=0,frameCount=0,lastRafTime=0,wasVisible=false,disposed=false;
+let frameId=0,lastFrame=0,frameCount=0,lastRafTime=0,fallbackFrames=0,frameTicket=0,watchdogTimer=0,frameDirty=true,wasVisible=false,disposed=false;
+function invalidateRender(){frameDirty=true;}
+function scheduleFrame(){
+ const ticket=++frameTicket;
+ frameId=requestAnimationFrame(time=>{if(ticket===frameTicket)frame(time);});
+ const check=()=>{
+  if(ticket!==frameTicket||disposed||document.hidden)return;
+  // A compositor can delay RAF while input/timers still work. Submit one
+  // pending UI change, never an idle animation stream, after that delay.
+  if(frameDirty){cancelAnimationFrame(frameId);frame(performance.now(),true);}
+  else watchdogTimer=window.setTimeout(check,100);
+ };
+ watchdogTimer=window.setTimeout(check,100);
+}
 let revealTimer:ReturnType<typeof setTimeout>|null=null;
 /** A brief reveal must end even when the GPU stops delivering animation frames. */
 function endReveal(){
@@ -39,28 +52,31 @@ function endReveal(){
  state.revealStarted=null;document.body.dataset.reveal='false';wasVisible=false;
  if(world){world.title.boss.visible=false;world.title.bossMat.opacity=0;}
  fallback?.bossOpacity(0);
+ invalidateRender();
 }
-function frame(time:number){
+function frame(time:number,fromWatchdog=false){
+ clearTimeout(watchdogTimer);
   if(disposed||document.hidden)return;
-  frameId=requestAnimationFrame(frame);
-  lastRafTime=time;
+  scheduleFrame();
+  if(!fromWatchdog)lastRafTime=time;
   // A delayed compositor timestamp must not gate new UI/camera work. Use the
   // same current monotonic clock for the 30fps cap, animation and reveal expiry.
   const now=performance.now();
   if(now-lastFrame<1000/30)return;
-  lastFrame=now;frameCount++;
+  lastFrame=now;frameCount++;if(fromWatchdog)fallbackFrames++;frameDirty=false;
   const opacity=state.bossOpacity(now,prefs.reducedMotion);
   const visible=opacity>0;
   if(visible!==wasVisible){document.body.dataset.reveal=String(visible);wasVisible=visible;}
   if(world&&!world.lost)world.render(now,state,opacity);else fallback?.bossOpacity(opacity);
 }
-frameId=requestAnimationFrame(frame);
+scheduleFrame();
 function announce(message:string){live.textContent=message;}
-const home=new Home(state,world,announce);
+const home=new Home(state,world,announce,invalidateRender);
 titleButton.addEventListener('click',()=>{
  if(!state.reveal(performance.now()))return;
  if(revealTimer!==null)clearTimeout(revealTimer);
  revealTimer=setTimeout(endReveal,REVEAL_MS);
+ invalidateRender();
  atmosphere.hint();announce('東京の廃墟の向こうに、巨大な機械の影が一瞬現れます。');
 });
 function switchScreen(target:'title'|'home'){
@@ -68,6 +84,7 @@ function switchScreen(target:'title'|'home'){
  if(target==='home')state.goHome();else state.goTitle();
  titleScreen.hidden=target!=='title';homeScreen.hidden=target!=='home';document.body.dataset.screen=target;document.body.dataset.reveal='false';wasVisible=false;
  home.screenChanged();
+ invalidateRender();
  if(target==='home'){element<HTMLButtonElement>('start-button').focus({preventScroll:true});announce('ホーム。キャラクターとメニューのプレビューです。戦闘とマルチプレイは未実装です。');}
  else{homeButton.focus({preventScroll:true});announce('タイトル画面に戻りました。');}
 }
@@ -76,23 +93,23 @@ element('back-title').addEventListener('click',()=>switchScreen('title'));
 element('settings-button').addEventListener('click',()=>settings.showModal());
 settings.addEventListener('close',()=>{if(home.modal&&home.panel)element('panel-title').focus({preventScroll:true});});
 const quality=element<HTMLSelectElement>('quality-select'),motion=element<HTMLInputElement>('motion-toggle');quality.value=prefs.quality;motion.checked=prefs.reducedMotion;
-function savePrefs(){world?.preferences(prefs);try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));}catch{/* Storage is optional; browsing in private mode still works. */}}
+function savePrefs(){world?.preferences(prefs);invalidateRender();try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));}catch{/* Storage is optional; browsing in private mode still works. */}}
 quality.addEventListener('change',()=>{prefs.quality=quality.value==='low'?'low':'balanced';savePrefs();});
 motion.addEventListener('change',()=>{prefs.reducedMotion=motion.checked;savePrefs();});
 const off=icon('<path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/>');
 const on=icon('<path d="M4 9h4l5-4v14l-5-4H4zM17 8a6 6 0 010 8M20 5a10 10 0 010 14"/>');
 element('sound-icon').innerHTML=off;
 soundButton.addEventListener('click',async()=>{const enabled=await atmosphere.setEnabled(!atmosphere.enabled);soundButton.setAttribute('aria-pressed',String(enabled));soundButton.setAttribute('aria-label',enabled?'環境音をオフにする':'環境音をオンにする');element('sound-icon').innerHTML=enabled?on:off;announce(enabled?'環境音をオンにしました。':'環境音はオフです。');});
-function resize(){world?.resize();home.layout();}
-function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;}}
-function visibility(){cancelAnimationFrame(frameId);if(document.hidden){endReveal();}else{lastFrame=0;frameId=requestAnimationFrame(frame);}void atmosphere.visibility(document.hidden);}
+function resize(){world?.resize();home.layout();invalidateRender();}
+function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;if(state.screen==='title'&&!prefs.reducedMotion)invalidateRender();}}
+function visibility(){frameTicket++;cancelAnimationFrame(frameId);clearTimeout(watchdogTimer);if(document.hidden){endReveal();}else{lastFrame=0;invalidateRender();scheduleFrame();}void atmosphere.visibility(document.hidden);}
 const viewportScroll=()=>home.layout();
 addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
-function dispose(){if(disposed)return;disposed=true;endReveal();cancelAnimationFrame(frameId);home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);}
+function dispose(){if(disposed)return;disposed=true;endReveal();frameTicket++;cancelAnimationFrame(frameId);clearTimeout(watchdogTimer);home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);}
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.
-Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount},home:home.snapshot(),render:world?.stats()??null})}),writable:false});
+Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount,fallbackFrames},home:home.snapshot(),render:world?.stats()??null})}),writable:false});
 document.body.dataset.ready='true';
 for(const button of [titleButton,homeButton,soundButton,element<HTMLButtonElement>('settings-button')])button.disabled=false;
 element('boot-notice').hidden=true;
