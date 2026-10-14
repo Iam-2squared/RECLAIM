@@ -7,6 +7,17 @@ const input={forward:1,right:0,sprint:false,jump:false};
 const player=colliders=>new CharacterController(terrain,()=>colliders??[],bounds,{x:0,z:0,yaw:0});
 test('WASD displacement, normalized diagonals, sprint and immediate stop',()=>{const p=player();p.step(input,.1);assert.equal(p.position.z,-PLAYER_TUNING.walkSpeed*.1);const before={...p.position};p.step({...input,forward:0},.1);assert.deepEqual(p.position,before);const d=player();d.step({...input,right:1},.1);assert(Math.abs(Math.hypot(d.position.x,d.position.z)-PLAYER_TUNING.walkSpeed*.1)<1e-8);const s=player();s.step({...input,sprint:true},.1);assert(Math.abs(s.position.z)>Math.abs(p.position.z));});
 test('jump needs grounded press, falls to shared terrain and cannot auto repeat while held',()=>{const p=player();p.step({...input,forward:0,jump:true},1/60);assert(p.position.y>0);assert.equal(p.grounded,false);for(let i=0;i<100;i++)p.step({...input,forward:0,jump:true},1/60);assert.equal(p.position.y,0);assert.equal(p.grounded,true);p.step({...input,forward:0,jump:false},1/60);p.step({...input,forward:0,jump:true},1/60);assert(p.position.y>0);});
+test('pause or key release clears held Space even without physics, so the first fresh jump works',()=>{
+ const p=player(),held={...input,forward:0,jump:true};
+ for(let i=0;i<100;i++)p.step(held,1/60);
+ assert.equal(p.grounded,true);assert.equal(p.jumpHeld,true);
+ const before={position:{...p.position},velocity:p.verticalVelocity,grounded:p.grounded};
+ p.clearInput(); // A pause/release does not execute any physics step.
+ assert.deepEqual({position:p.position,velocity:p.verticalVelocity,grounded:p.grounded},before);
+ p.step(held,1/60);assert.equal(p.grounded,false);assert(p.position.y>0);
+ const airborneVelocity=p.verticalVelocity;p.clearInput();p.step(held,1/60);
+ assert(Math.abs(p.verticalVelocity-(airborneVelocity-PLAYER_TUNING.gravity/60))<1e-9); // No second impulse in midair.
+});
 test('cabin wall and trunk prevent tunnelling and allow sliding',()=>{const wall={type:'aabb',minX:-5,maxX:5,minY:-1,maxY:4,minZ:-2,maxZ:-1,tag:'wall'},p=player([wall]);for(let i=0;i<90;i++)p.step({...input,right:.3,sprint:true},1/60);assert(p.position.z>-.7);assert(p.position.x>1);assert.equal(p.blocked(0,-1.2),true);const tree={type:'cylinder',x:0,z:-1,radius:.4,minY:0,maxY:8,tag:'tree'},t=player([tree]);for(let i=0;i<30;i++)t.step(input,1/60);assert(t.position.z>-.29);});
 test('steep slope blocked; walkable grade shares terrain elevation',()=>{const steep=new CharacterController({heightAt:(x,z)=>-z*2},()=>[],bounds,{x:0,z:0,yaw:0});steep.step(input,.1);assert.equal(steep.position.z,0);const gentle=new CharacterController({heightAt:(x,z)=>-z*.2},()=>[],bounds,{x:0,z:0,yaw:0});for(let i=0;i<60;i++)gentle.step(input,1/60);assert(gentle.position.z<-2);assert(Math.abs(gentle.position.y-gentle.terrain.heightAt(gentle.position.x,gentle.position.z))<1e-8);});
 test('out of bounds recovery and unsafe checkpoint rejection',()=>{const p=player();p.position.x=90;p.step(input,.1);assert.equal(p.recoveries,1);assert.equal(p.position.x,0);assert.equal(p.restore({x:900,y:0,z:0,yaw:0,pitch:0}),false);assert.equal(p.restore({x:1,y:0,z:1,yaw:1,pitch:1}),true);const b=player([{type:'cylinder',x:1,z:1,radius:1,minY:0,maxY:8,tag:'tree'}]);assert.equal(b.restore({x:1,y:0,z:1,yaw:0,pitch:0}),false);});

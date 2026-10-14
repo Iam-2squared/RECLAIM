@@ -454,7 +454,7 @@
   "missionAssets": {
     "origin": "Original procedural shapes in src/mission/runtime.ts; no external model/texture/audio file",
     "source": "src/mission/runtime.ts",
-    "sourceSha256": "34eaa9c3b6aab51d57062774e00719024e25d87decbc011a2d75236152c669fb",
+    "sourceSha256": "c959d3a80cc247c5780ac90a883b7a9c64583e9448e1b21f491431bac6969ed7",
     "scoutDrone": {
       "triangles": 292,
       "meshObjects": 12,
@@ -474,6 +474,11 @@
       "maxFrameSeconds": 0.25,
       "maxStepsPerRender": 15,
       "longDelayPolicy": "Bounded catch-up; discard remaining time immediately on pause or death"
+    },
+    "inputController": {
+      "source": "src/mission/controller.ts",
+      "sourceSha256": "64b248c14cf3209c88b36a864db284cb8a00157dc5e326b733870312347de97a",
+      "releasePolicy": "Clear held Space latch on pause and real keyup without changing position, gravity or vertical velocity"
     }
   },
   "legacyProceduralTextures": [

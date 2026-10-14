@@ -11,6 +11,7 @@ export class CharacterController {
     this.position={x:spawn.x,y:terrain.heightAt(spawn.x,spawn.z),z:spawn.z};this.yaw=spawn.yaw;
   }
   look(dx:number,dy:number) { if(!Number.isFinite(dx)||!Number.isFinite(dy))return;this.yaw-=dx*.0022;this.yaw=((this.yaw+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;this.pitch=Math.max(-1.35,Math.min(1.35,this.pitch-dy*.0022)); }
+  clearInput() { this.jumpHeld=false; }
   blocked(x:number,z:number,y=this.position.y):boolean {
     const p=PLAYER_TUNING;
     return this.colliders().some(c=>{

@@ -12,6 +12,7 @@
 | `createLandmarks` | 家の床/壁/窓/開いた扉/寝床/ラジオ、遊歩道、トンネル、雪渓、道路/廃車/都市入口 | 外部素材、車の運転、オンライン状態 |
 | `AreaLoader` | アクティブAREAのscene・近傍chunkの生成/LOD更新/破棄・計測 | renderer、入力listener、timer、RAF、保存 |
 | `CharacterController` / mission | WASD、視点、重力、接地、簡易衝突、FPSカメラ、敵・射撃 | HOME外観の所有権、地形の独立した高さコピー |
+| `SimulationClock` | 1/60秒の固定更新、最大0.25秒/15stepの遅延追従、pause/死亡で残時間破棄 | RAF/render、地形、入力、進行付与 |
 | campaign | 実際の位置/接地/順序/敵停止を根拠にした段階公開、別保存キー | マップを開くだけの解放、未制作地域のクリア |
 
 AreaLoaderは既存WorldViewのWebGLRendererを共有して描画します。地域ごとにrenderer/contextを増やしません。世界モジュールにはfetch、CDN、API、DB、フォント、写真、TTS、外部物理エンジンを追加していません。
@@ -74,6 +75,8 @@ AreaLoaderは既存WorldViewのWebGLRendererを共有して描画します。地
 `update(x,z)`は同一chunk内では再生成しません。chunkの関心/LODが変化した際だけ生成・破棄します。除外chunkは固有のterrain geometryをdisposeし、InstancedMeshのGPU属性もdisposeします。共有素材・基礎geometryはAREA内で再利用し、AREA終了時に一度ずつ破棄します。
 
 `setQuality()`は現在位置を保持してchunkを再構築し、近傍のheightAtは変わりません。`dispose()`は冪等で、その後のupdate/quality変更は無効です。scene、collider、height cacheを空にし、入力/音/RAF/timerはmission側の寿命とともに解除します。Pointer Lockはブラウザのユーザー操作でのみ取得し、HOME/hidden/pauseで解除する契約です。
+
+Pauseと実Space keyupはControllerの入力ラッチも解除します。非表示中にkeyupが届かなかった場合も、復帰時の新しい押下を妨げません。位置・重力・空中の速度を初期化せず、再開時は新しい固定時間だけを進めます。
 
 各独立AREAは局所原点を持ち、約±300m以内の座標で生成します。世界の緯度経度や旅行の累積距離を直接GPUのfloat座標へ入れません。2km級では局所原点を維持し、その先のシームレス連結は区域originまたはfloating originを別工程で導入します。今は必要のない大規模浮動原点処理を実装済みと主張しません。
 

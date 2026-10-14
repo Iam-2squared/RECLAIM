@@ -54,7 +54,7 @@ export class Mission {
   if(e.code.startsWith('Arrow')&&!this.paused){const dx=e.code==='ArrowLeft'?-22:e.code==='ArrowRight'?22:0,dy=e.code==='ArrowUp'?-22:e.code==='ArrowDown'?22:0;this.controller.look(dx,dy);}
   if(!this.paused){this.keys.add(e.code);if(e.code==='Space'&&!e.repeat)this.jumpBuffered=true;}
  };
- keyUp=(e:KeyboardEvent)=>{this.keys.delete(e.code);};
+ keyUp=(e:KeyboardEvent)=>{this.keys.delete(e.code);if(e.code==='Space')this.controller.clearInput();};
  mouseMove=(e:MouseEvent)=>{if(!this.locked||this.paused)return;if(this.ignoreFirstMouseMove){this.ignoreFirstMouseMove=false;return;}if(performance.now()<this.lockSettledAt||Math.abs(e.movementX)>180||Math.abs(e.movementY)>180)return;this.controller.look(e.movementX,e.movementY);};
  mouseDown=(e:MouseEvent)=>{if(e.button!==0||this.paused||!this.locked)return;this.shoot();};
  lockChange=()=>{if(this.disposed)return;this.locked=document.pointerLockElement===this.canvas;if(this.locked){this.lockSettledAt=performance.now()+100;this.ignoreFirstMouseMove=true;}if(this.locked&&!this.storyShowing&&!this.endShowing&&!document.hidden){this.paused=false;this.clock.reset();node('mission-overlay').hidden=true;node('mission-pause').hidden=true;this.canvas.focus();}else this.pause(false);this.updateHUD(true);this.hooks.invalidate();};
@@ -62,7 +62,7 @@ export class Mission {
  visibility=()=>{if(document.hidden)this.pause();};blur=()=>this.pause();
  lockClick=()=>this.requestLock();homeClick=()=>{this.save();this.hooks.returnHome();};interactClick=()=>this.interact();skipClick=()=>this.skipOpening();continueClick=()=>this.continueStory();retryClick=()=>this.retry();nextClick=()=>{this.endShowing=false;this.hooks.returnHome();};pauseClick=()=>this.pause();
  requestLock(){if(this.disposed||this.storyShowing||this.endShowing||this.hp<=0)return;try{const promise=this.canvas.requestPointerLock();promise?.then(()=>{if(this.disposed&&document.pointerLockElement===this.canvas)document.exitPointerLock();}).catch(()=>{if(!this.disposed)this.lockError();});}catch{this.lockError();}}
- pause(release=true){this.paused=true;this.keys.clear();this.jumpBuffered=false;this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
+ pause(release=true){this.paused=true;this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
  showInitial(){node('mission-area').textContent=getAreaDefinition(this.areaId).displayName;node('mission-prototype').textContent=this.areaId==='shiretoko'?'導入プレイ / 仮バランス':'環境プロトタイプ / 正式任務は開発中';if(this.areaId==='shiretoko'&&this.store.value.introStep===0&&!this.debug)this.showStory('WAKE / 01','北の家で、目を覚ます。','朝の薄明かり。木造の家には、いつもと違う静けさがある。まず、ラジオの報道を確かめよう。','起き上がる');else if(this.areaId==='shiretoko'&&this.store.value.introStep===2&&!this.debug)this.showStory('RADIO / 02','日本各地で、AIが暴走。','日本各地に危機が広がっている。東京の親友から連絡が届いた。','届いた連絡を読む');else this.pause(false);}
  showStory(kicker:string,title:string,text:string,action:string){this.pause();this.storyShowing=true;node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-story').hidden=false;node('mission-story-kicker').textContent=kicker;node('mission-story-title').textContent=title;node('mission-story-text').textContent=text;node('mission-continue').textContent=action;node('mission-continue').focus();}
  continueStory(){
@@ -121,7 +121,7 @@ export class Mission {
  render(){const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
  updateHUD(force=false){
   const step=this.store.value.introStep;
-  let text=this.areaId!=='shiretoko'?'道標をたどり、歩ける環境を確かめる。正式任務は開発中。':step===0?'木造の家で目覚める。':step===1?'家のラジオへ近づき、Eで報道を聞く。':step===2?'親友から届いた連絡を読む。':step===3?'玄関を抜け、森へ出発する。':this.drone&&this.drone.hp>0?'林道の小型ドローンを停止させ、道標へ向かう。':'林道をたどり、次の区間の道標へ。';
+  let text=this.areaId==='sapporo'?'都市入口を徒歩で探索。廃車は装飾・運転不可。正式任務は開発中。':this.areaId!=='shiretoko'?'道標をたどり、歩ける環境を確かめる。正式任務は開発中。':step===0?'木造の家で目覚める。':step===1?'家のラジオへ近づき、Eで報道を聞く。':step===2?'親友から届いた連絡を読む。':step===3?'玄関を抜け、森へ出発する。':this.drone&&this.drone.hp>0?'林道の小型ドローンを停止させ、道標へ向かう。':'林道をたどり、次の区間の道標へ。';
   if(this.debug)text='開発用の環境確認 / 進行は保存されません。';
   const exit=getAreaDefinition(this.areaId).exitTriggers[0],distance=exit?Math.round(Math.hypot(this.controller.position.x-exit.position.x,this.controller.position.z-exit.position.z)):0;
   const data=JSON.stringify([text,Math.ceil(this.hp),this.drone?.hp,this.drone?.state,this.paused,distance,this.hitFlash>0,this.store.saveStatus]);if(!force&&data===this.lastUI)return;this.lastUI=data;

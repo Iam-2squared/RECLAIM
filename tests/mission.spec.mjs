@@ -1,6 +1,6 @@
 import {test,expect} from './browser-fixtures.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {enter,lock,snapshot,walkTo,turnToward,holdForward} from './mission-helpers.mjs';
+import {enter,lock,snapshot,walkTo,turnToward,holdForward,observedJump} from './mission-helpers.mjs';
 const evidence='test-results/world-evidence';
 async function capture(page,name){await mkdir(evidence,{recursive:true});await page.screenshot({path:`${evidence}/${name}.png`});await writeFile(`${evidence}/${name}.json`,JSON.stringify(await snapshot(page),null,2));}
 
@@ -30,7 +30,18 @@ for(const[width,height]of[[1920,1080],[1366,768],[1280,720],[1024,576]])test(`mi
  if(!changed){await page.mouse.move(35,0);changed=await page.evaluate(yaw=>window.__LOOK_SAMPLES.some(v=>typeof v==='number'&&Math.abs(Math.atan2(Math.sin(v-yaw),Math.cos(v-yaw)))>.02),before.yaw);}
  expect(changed).toBe(true);await turnToward(page,{x:0,z:5,y:1.62});
  const moved=(await holdForward(page,.35)).player;expect(moved.distance).toBeGreaterThan(before.distance);expect(Math.abs(moved.y)).toBeLessThan(.2);
- await page.keyboard.press('Space');await expect.poll(async()=>(await snapshot(page)).mission.player.grounded).toBe(false);await expect.poll(async()=>(await snapshot(page)).mission.player.grounded).toBe(true);
+ // The original1366 scalar-poll failure was not reproduced in three diagnostic
+ // attempts. Observe actual frames before the same Space tap as a measurement
+ // improvement, retaining both five-second air/y-rise and later-ground checks.
+ const jump=await observedJump(page);await writeFile(`${evidence}/jump-${width}x${height}-initial.json`,JSON.stringify(jump,null,2));
+ if(width===1366){
+  try{
+   const heldJump=await observedJump(page,{held:true});await writeFile(`${evidence}/jump-${width}x${height}-held-before-pause.json`,JSON.stringify(heldJump,null,2));
+   await page.keyboard.press('Escape');await expect.poll(async()=>(await snapshot(page)).mission.locked).toBe(false);
+   await page.keyboard.up('Space');await lock(page);
+   const resumedJump=await observedJump(page);await writeFile(`${evidence}/jump-${width}x${height}-fresh-after-pause.json`,JSON.stringify(resumedJump,null,2));
+  }finally{await page.keyboard.up('Space');}
+ }
  await page.keyboard.press('Escape');await expect.poll(async()=>(await snapshot(page)).mission.locked).toBe(false);await expect(page.locator('#mission-home')).toBeInViewport({ratio:1});const stopped=(await snapshot(page)).mission.player;await page.waitForTimeout(220);expect((await snapshot(page)).mission.player).toEqual(stopped);await page.locator('#mission-home').click();await expect(page.locator('#home-screen')).toBeVisible();expect((await snapshot(page)).mission).toBeNull();
 });
 
@@ -39,8 +50,11 @@ test('real wake-radio-contact-leave, moving drone, ray hits/stop, trail exit and
  // seconds per 108 wall seconds. Budget the added real walks and captures, while
  // every UI/HP/lock predicate and each 50s geometric walk deadline stays unchanged.
  test.setTimeout(600000);const errors=[],requests=[],sockets=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));page.on('websocket',s=>sockets.push(s.url()));await page.setViewportSize({width:1366,height:768});await enter(page);
- await page.locator('#mission-continue').click();await lock(page);await walkTo(page,{x:-1.4,z:-2.8},{radius:.5,sprint:false});await turnToward(page,{x:-3,y:1.2,z:-3});await capture(page,'cabin-radio');await page.keyboard.press('KeyE');await expect(page.locator('#mission-story-title')).toContainText('AIが暴走');await capture(page,'radio-report');await page.locator('#mission-continue').click();await expect(page.locator('#mission-story-title')).toContainText('東京の親友');await capture(page,'friend-contact');await page.locator('#mission-continue').click();await lock(page);
- await walkTo(page,{x:0,z:3.8},{radius:.6});const enemyBefore=(await snapshot(page)).mission.enemy.position;
+ await page.locator('#mission-continue').click();await lock(page);await walkTo(page,{x:-1.4,z:-2.8},{radius:.5,sprint:false});await turnToward(page,{x:-3,y:1.2,z:-3});await capture(page,'cabin-radio');await page.keyboard.press('KeyE');await expect(page.locator('#mission-story-title')).toContainText('AIが暴走');await capture(page,'radio-report');await page.locator('#mission-continue').click();await expect(page.locator('#mission-story-title')).toContainText('東京の親友');
+ // Sample the scout's actual initial position while story playback is paused,
+ // before any movement/capture latency can already let it follow the player.
+ const enemyBefore=(await snapshot(page)).mission.enemy.position;await capture(page,'friend-contact');await page.locator('#mission-continue').click();await lock(page);
+ await walkTo(page,{x:0,z:3.8},{radius:.6});
  await walkTo(page,{x:0,z:10},{radius:1});expect((await snapshot(page)).campaign.introStep).toBe(4);
  // Observe actual pursuit before slow screenshots/turning let the scout reach
  // its eight-metre attack standoff. The displacement assertion is unchanged.
