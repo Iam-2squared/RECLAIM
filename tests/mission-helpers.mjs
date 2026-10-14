@@ -39,7 +39,7 @@ export async function holdForward(page,metres,{sprint=false,maxMs=5000,keepHeld=
 }
 
 export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,stopOnDeath=false}={}){
- const deadline=Date.now()+maxMs,nearRange=8;let unchanged=0,forwardHeld=false,sprintHeld=false,state=null;
+ const deadline=Date.now()+maxMs,nearRange=8,precisionRange=Math.min(nearRange,radius+2);let unchanged=0,forwardHeld=false,sprintHeld=false,state=null;
  const reached=state=>Math.hypot(target.x-state.player.x,target.z-state.player.z)<=radius;
  const terminal=state=>stopOnDeath&&state.paused&&state.player.hp===0;
  const inspect=state=>{
@@ -60,26 +60,31 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
   state=stopped;
   return inspect(stopped)?stopped:null;
  };
- const probe=async(simSeconds,stopAtNear)=>{
+ const probe=async(simSeconds,mode)=>{
   const remaining=deadline-Date.now();if(remaining<=0)return;
+  const stopRange=mode==='far'?nearRange:mode==='walk'?precisionRange:null;
   let handle,keepForward=false;
   try{
    // Read-only RAF observation runs in the browser, avoiding repeated round
    // trips while keys are held. Arrival, pause and real elapsed time are observed.
    handle=await page.waitForFunction(observation=>{
-    const {target,radius,nearRange,stopAtNear,simSeconds}=observation;
+    const {target,radius,stopRange,simSeconds}=observation;
     const m=window.__RECLAIM__.snapshot().mission;if(!m||m.paused)return'paused';
     const distance=Math.hypot(target.x-m.player.x,target.z-m.player.z);
     if(distance<=radius)return'reached';
-    if(stopAtNear&&distance<=nearRange)return'near';
+    if(stopRange!==null&&distance<=stopRange)return'near';
     // Anchor this test-owned observation after genuine keydown, so idle time
     // between the prior snapshot and keydown cannot consume the walk pulse.
     if(observation.firstElapsed===null)observation.firstElapsed=m.elapsed;
     return m.elapsed-observation.firstElapsed>=simSeconds?'elapsed':false;
-   },{target,radius,nearRange,stopAtNear,firstElapsed:null,simSeconds},{polling:'raf',timeout:Math.min(5000,remaining)});
-   // Only elapsed-only far probes continue holding W. A real boundary crossing
-   // stops movement before disposal, then arrival is checked on the stopped pose.
-   if(stopAtNear)keepForward=await handle.jsonValue()==='elapsed';
+   },{target,radius,stopRange,firstElapsed:null,simSeconds},{polling:'raf',timeout:Math.min(5000,remaining)});
+   // Release sprint at eight metres but keep genuine walking continuous until
+   // the final precision zone. Arrival still requires the fresh stopped pose.
+   if(mode!=='precision'){
+    const reason=await handle.jsonValue();
+    if(mode==='far'&&reason==='near')await setSprint(false);
+    keepForward=reason==='elapsed'||(mode==='far'&&reason==='near');
+   }
   }finally{
    // Release a short near-target pulse before the handle-disposal round trip.
    try{if(!keepForward)await stopForward();}finally{await handle?.dispose();}
@@ -98,12 +103,13 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
    // Test the unchanged exact radius before the unchanged wall deadline.
    if(Date.now()>=deadline)throw new Error(`actual walking timed out at ${JSON.stringify(state)}`);
    let distance=Math.hypot(target.x-state.player.x,target.z-state.player.z);
-   const near=distance<nearRange;
-   if(near){
-    // Near a small target, walk in short real-input pulses. Stopping before
-    // re-aim avoids overshoot/large arcs when software GPU replies are delayed.
+   let precision=distance<=precisionRange;
+   if(precision){
+    // Only the final two metres beyond the exact radius use short pulses.
+    // Stationary re-aim here controls overshoot under delayed GPU replies.
     await stopForward();await setSprint(false);await turnToward(page,target);
    }else{
+    await setSprint(sprint&&distance>nearRange);
     const desired=Math.atan2(-(target.x-state.player.x),-(target.z-state.player.z));
     const delta=Math.atan2(Math.sin(desired-state.player.yaw),Math.cos(desired-state.player.yaw));
     if(Math.abs(delta)>Math.PI/3){await stopForward();await turnToward(page,target);}
@@ -112,18 +118,26 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
      state=(await snapshot(page)).mission;
      const corrected=await settle(state);if(corrected)return corrected;
     }
-    await setSprint(sprint);
    }
    state=(await snapshot(page)).mission;
    const aimedNow=await settle(state);if(aimedNow)return aimedNow;
    if(Date.now()>=deadline)continue;
    distance=Math.hypot(target.x-state.player.x,target.z-state.player.z);
+   if(!precision&&distance<=precisionRange){
+    await stopForward();await setSprint(false);await turnToward(page,target);
+    state=(await snapshot(page)).mission;
+    const aligned=await settle(state);if(aligned)return aligned;
+    if(Date.now()>=deadline)continue;
+    distance=Math.hypot(target.x-state.player.x,target.z-state.player.z);precision=true;
+   }
+   const mode=precision?'precision':distance<=nearRange?'walk':'far';
+   if(mode!=='far')await setSprint(false);
    const before=state;
    // Test action durations do not alter gameplay speed or fixed physics steps.
-   const simSeconds=near?Math.max(1/60,Math.min(.12,(distance-radius)/(3.1*2))):.4;
+   const simSeconds=precision?Math.max(1/60,Math.min(.12,(distance-radius)/(3.1*2))):.4;
    await startForward();
    try{
-    await probe(simSeconds,!near);
+    await probe(simSeconds,mode);
    }catch(error){
     await stopForward();
     const final=(await snapshot(page)).mission;
@@ -131,7 +145,7 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
     if(Date.now()>=deadline)throw new Error(`actual walking timed out at ${JSON.stringify(final)}`,{cause:error});
     throw error;
    }
-   if(near)await stopForward();
+   if(precision)await stopForward();
    const after=(await snapshot(page)).mission;
    const arrived=await settle(after);if(arrived)return arrived;
    const simulated=after.elapsed-before.elapsed;
