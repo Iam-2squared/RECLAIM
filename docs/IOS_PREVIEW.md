@@ -24,7 +24,7 @@ Safari機能の根拠: [Apple Safari 15.4 Release Notes](https://developer.apple
 
 - タイトルをタップしてボス影が消えること、HOMEへの遷移、タイトルへ戻ること、再読込の初期画面。
 - 表示設定、背景の動きの抑制、軽量描画。
-- 縦375×667、390×664、390×844、430×932で4人全員のモデルと武器の投影境界が表示領域に収まること。高さを80px減らした状態と武器パネル表示中にも検証する。
+- 縦375×667、390×664、390×844、430×932で4人全員のモデルと武器の投影境界が表示領域に収まること。高さを80px減らした状態と武器パネル表示中はV2の大きなシートと操作領域を検証し、閉じた後に再び4人全員を検証する。
 - メニュー5項目、名前/色の適用と再読込、主副武器と持つ銃の切替、出撃前確認。
 - WebGLと保存機能が使えない場合の操作継続、アプリモジュール未起動時の案内。
 
@@ -51,3 +51,14 @@ RECLAIM_PREVIEW_URL=https://<verified-preview-host>.vercel.app npx playwright te
 `vercel.json`はViteの配信設定を明示し、Gitからの自動デプロイを無効化する。検証時は手動のPreview作成を使う。mainへのmerge、productionターゲット、promote、独自ドメイン設定はこの工程に含めない。
 
 実機ではSafariでURLを開き、タイトル→HOME→4人編成→メニュー→キャラ設定→適用→武器変更→パネルを閉じる、の順で確認できる。最終URLとCIの結果はDraft PRに記録する。接続権限不足でURLが未作成の場合は、その事実を明記し、生成済みURLとして扱わない。
+
+
+## HOME V2の確認経路
+
+現在は **HTTPS Preview URL未用意**。既存Vercel接続の403と、前工程で停止した2つのRECLAIMプロジェクトはSTATUSに記録済み。今回、新規接続・権限追加・有料枠・デプロイを行わない。先にPCの単体HTMLと実WebGLレビューZIPを確認できる。
+
+PCは `RECLAIM_Home_V2_Preview.html` をChrome等で直接開く。iPhoneの「ファイル」内プレビューの結果と、通常SafariのHTTPSページの結果を同一視しない。モジュール未実行の案内/disabled HOMEとnoscriptを保持する。物理iPhoneのSafari・キーボード・FPSは未検証。
+
+V2は縦390×844/375×667、横844×390で全5パネル、固定操作、スクロール末尾、フォーカス復元、背景入力遮断を追加検証する。入力時の高さ縮小は自動テストの代替条件であり、実機キーボードの測定ではない。`visualViewport`のresize/scrollで利用可能高さと上端を追従する。名前入力の16pxは維持し、意図しない入力時ズームを避ける。
+
+[WebKit Safari 15.4](https://webkit.org/blog/12445/new-webkit-features-in-safari-15-4/)で動的viewport単位が入り、[native inertはSafari 15.5](https://webkit.org/blog/12578/non-interactive-elements-with-the-inert-attribute/)から。V2はvh/svh fallbackと、tabindex/aria-hidden/pointer/focusの代替処理を持つ。出力のSafari 15.4基準と、その版の実機試験済みという主張は別である。

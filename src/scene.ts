@@ -175,10 +175,23 @@ export class WorldView {
   previewSettings:HomePreview=defaults();
   stage={left:250,top:150,width:800,height:500};
   labels:HTMLElement[]=[];
+  focusOwn=false;
+  labelSizes:{width:number;height:number}[]=[];
+  labelSignature='';
+  obstacleSignature='';
+  homeCamera=false;
+  obstacles:{left:number;right:number;top:number;bottom:number}[]=[];
+  layoutFits=0;
+  fittedStage={...this.stage};
   layoutKey='';
   bounds:{left:number;right:number;top:number;bottom:number}[]=[];
   preview(value:HomePreview){this.previewSettings=value;this.lobby?.preview(value);}
-  setStage(rect:DOMRect,labels:HTMLElement[]){this.stage={left:rect.left,top:rect.top,width:Math.max(1,rect.width),height:Math.max(1,rect.height)};this.labels=labels;this.layoutKey='';}
+  setStage(rect:DOMRect,labels:HTMLElement[],focusOwn=false,obstacles:DOMRect[]=[]){
+    this.stage={left:rect.left,top:rect.top,width:Math.max(1,rect.width),height:Math.max(1,rect.height)};this.labels=labels;this.focusOwn=focusOwn;
+    this.labelSizes=labels.map(label=>{const r=label.getBoundingClientRect();return{width:r.width,height:r.height};});this.labelSignature=JSON.stringify(this.labelSizes);
+    this.obstacles=obstacles.map(r=>({left:r.left,right:r.right,top:r.top,bottom:r.bottom}));
+    this.obstacleSignature=JSON.stringify(this.obstacles);
+  }
   reducedMotion=false;
   quality:'balanced'|'low'='balanced';
   width=1;height=1;
@@ -198,6 +211,8 @@ export class WorldView {
   render(time:number,state:ScreenState,opacity:number){
     if(this.lost)return;
     if(state.screen==='title'){
+      // Tokyo overwrites the shared camera; fit HOME again on return.
+      this.layoutKey='';this.homeCamera=false;
       const drift=this.reducedMotion?0:Math.sin(time*.00007)*.4;
       const px=this.reducedMotion?0:this.pointer.x*.4,py=this.reducedMotion?0:this.pointer.y*.2;
       this.camera.clearViewOffset();
@@ -208,39 +223,85 @@ export class WorldView {
     }else{
       if(!this.lobby){this.lobby=createLobby();this.lobby.preview(this.previewSettings);}
       const portrait=this.width/this.height<.85;
-      const key=`${this.width}:${this.height}:${state.squadPreview}:${this.stage.left}:${this.stage.top}:${this.stage.width}:${this.stage.height}`;
+      const squad=state.squadPreview&&!this.focusOwn;
+      const key=`${this.width}:${this.height}:${squad}:${this.labelSignature}:${this.obstacleSignature}:${this.previewSettings[this.previewSettings.held]}:${this.previewSettings.appearance.name}:${this.stage.left}:${this.stage.top}:${this.stage.width}:${this.stage.height}`;
       if(key!==this.layoutKey){
-        this.layoutKey=key;this.lobby.formation(state.squadPreview,portrait);
-        const s=this.stage, centerX=s.left+s.width/2,centerY=s.top+s.height/2;
+        this.layoutKey=key;this.layoutFits++;this.lobby.formation(squad,portrait);
+        const s=this.stage, centerX=s.left+s.width/2,centerY=s.top+(s.height-56)/2;
         this.camera.fov=34;
         const tan=Math.tan(this.camera.fov*Math.PI/360);
-        const span=state.squadPreview?(portrait?4.45:6.8):2.45;
-        let distance=Math.max(3.65/(2*tan*s.height/this.height),span/(2*tan*this.camera.aspect*s.width/this.width));
-        this.camera.setViewOffset(this.width,this.height,this.width/2-centerX,this.height/2-centerY,this.width,this.height);
-        const corners=this.lobby.survivors.map(({group})=>{
+        const span=squad?(portrait?4.4:7.7):2.2;
+        let distance=Math.max(3.15/(2*tan*s.height/this.height*.65),span/(2*tan*this.camera.aspect*s.width/this.width));
+        let offsetX=this.width/2-centerX,offsetY=this.height/2-centerY;
+        this.camera.setViewOffset(this.width,this.height,offsetX,offsetY,this.width,this.height);
+        const visible=this.lobby.survivors.filter(survivor=>survivor.group.visible);
+        const corners=visible.map(({group})=>{
           group.updateMatrixWorld(true);const box=new T.Box3().setFromObject(group),points:T.Vector3[]=[];
           for(const x of [box.min.x,box.max.x])for(const y of [box.min.y,box.max.y])for(const z of [box.min.z,box.max.z])points.push(new T.Vector3(x,y,z));
           return points;
         });
-        // Fit actual model and weapon bounds into the unobstructed stage, including portrait.
-        for(let pass=0;pass<4;pass++){
-          this.camera.position.set(state.squadPreview?.20:0,1.52+distance*.065,distance+1);this.camera.lookAt(state.squadPreview?.20:0,1.48,0);
+        // HOME fit reserves a label row below whole models and long weapons.
+        // This event-driven block never reads DOM sizes on steady render frames.
+        const labelSizes=visible.map((_,i)=>this.labelSizes[i]?.width?this.labelSizes[i]:{width:i===0?150:70,height:i===0?44:28});
+        const project=(p:T.Vector3)=>{p.project(this.camera);return{x:(p.x+1)*this.width/2,y:(1-p.y)*this.height/2};};
+        let labelPositions:{x:number;y:number}[]=[];
+        for(let pass=0;pass<8;pass++){
+          this.camera.position.set(squad?.25:0,1.45+distance*(portrait?.28:.16),distance);this.camera.lookAt(squad?.25:0,1.45,0);
           this.camera.updateProjectionMatrix();this.camera.updateMatrixWorld();
-          this.bounds=corners.map(points=>{const projected=points.map(p=>p.clone().project(this.camera));return{left:Math.min(...projected.map(p=>(p.x+1)*this.width/2)),right:Math.max(...projected.map(p=>(p.x+1)*this.width/2)),top:Math.min(...projected.map(p=>(1-p.y)*this.height/2)),bottom:Math.max(...projected.map(p=>(1-p.y)*this.height/2))};});
-          const ratio=Math.max(...this.bounds.filter((_,i)=>i===0||state.squadPreview).map(b=>Math.max(Math.abs(b.left-centerX)/(s.width/2),Math.abs(b.right-centerX)/(s.width/2),Math.abs(b.top-centerY)/(s.height/2),Math.abs(b.bottom-centerY)/(s.height/2))));
-          if(ratio<.96)break;distance*=ratio*1.06;
+          this.bounds=corners.map(points=>{const p=points.map(p=>project(p.clone()));return{left:Math.min(...p.map(p=>p.x)),right:Math.max(...p.map(p=>p.x)),top:Math.min(...p.map(p=>p.y)),bottom:Math.max(...p.map(p=>p.y))};});
+          const deltaX=(Math.min(...this.bounds.map(b=>b.left))+Math.max(...this.bounds.map(b=>b.right)))/2-centerX;
+          const deltaY=(Math.min(...this.bounds.map(b=>b.top))+Math.max(...this.bounds.map(b=>b.bottom)))/2-centerY;
+          offsetX+=deltaX;offsetY+=deltaY;
+          this.camera.setViewOffset(this.width,this.height,offsetX,offsetY,this.width,this.height);this.camera.updateProjectionMatrix();
+          this.bounds=this.bounds.map(b=>({left:b.left-deltaX,right:b.right-deltaX,top:b.top-deltaY,bottom:b.bottom-deltaY}));
+          let ratio=Math.max((this.bounds[0].bottom-this.bounds[0].top)/(s.height*.65),...this.bounds.map(b=>Math.max((centerX-b.left)/(s.width/2-12),(b.right-centerX)/(s.width/2-12),(centerY-b.top)/Math.max(1,(s.height-76)/2),(b.bottom-centerY)/Math.max(1,(s.height-76)/2))));
+          // The central stage can extend between bottom cards, but no model may
+          // occupy those cards or the header controls. Use their real rectangles.
+          for(const b of this.bounds)for(const o of this.obstacles){
+            if(b.right<=o.left||b.left>=o.right||b.bottom<=o.top||b.top>=o.bottom)continue;
+            if(o.top>centerY)ratio=Math.max(ratio,(b.bottom-centerY)/Math.max(1,o.top-centerY-12));
+            else if(o.bottom<centerY)ratio=Math.max(ratio,(centerY-b.top)/Math.max(1,centerY-o.bottom-12));
+          }
+          if(ratio<=1.001)break;distance*=ratio;
+        }
+        // A distant fitted camera must not put the local preview inside full fog.
+        const fog=this.lobby.scene.fog as T.Fog;fog.near=Math.max(18,distance+7);fog.far=fog.near+31;
+        labelPositions=visible.map((survivor,i)=>{
+          const p=project(new T.Vector3(survivor.group.position.x,-.10,survivor.group.position.z)),size=labelSizes[i];
+          return{x:T.MathUtils.clamp(p.x,s.left+size.width/2+2,s.left+s.width-size.width/2-2),y:Math.min(p.y,s.top+s.height-size.height-2)};
+        });
+        const overlaps=(a:number,b:number)=>{
+          const p=labelPositions[a],q=labelPositions[b],s=labelSizes[a],t=labelSizes[b];
+          return Math.abs(p.x-q.x)<(s.width+t.width)/2+5&&p.y<q.y+t.height+5&&p.y+s.height+5>q.y;
+        };
+        // Keep the deep rear label above the two nearer rear labels on short views.
+        if(squad){
+          for(const i of [1,3])if(overlaps(2,i))labelPositions[2].y=labelPositions[i].y-labelSizes[2].height-6;
+          for(const i of [1,2,3])if(overlaps(0,i))labelPositions[0].y=Math.min(s.top+s.height-labelSizes[0].height-2,labelPositions[i].y+labelSizes[i].height+6);
+        }
+        // Long names stay near the own model in the free band between footer cards.
+        const own=labelPositions[0],ownSize=labelSizes[0];
+        for(const o of this.obstacles){
+          if(own.y+ownSize.height<=o.top||own.y>=o.bottom)continue;
+          if(own.x+ownSize.width/2<=o.left||own.x-ownSize.width/2>=o.right)continue;
+          const before=o.left-ownSize.width/2-8,after=o.right+ownSize.width/2+8;
+          if(before>=s.left+ownSize.width/2+2)own.x=before;
+          else if(after<=s.left+s.width-ownSize.width/2-2)own.x=after;
         }
         this.lobby.survivors.forEach((survivor,i)=>{
           const label=this.labels[i];if(!label)return;label.hidden=!survivor.group.visible;
-          const pos=new T.Vector3(survivor.group.position.x,-.10,survivor.group.position.z).project(this.camera);
-          label.style.left=`${(pos.x+1)*this.width/2}px`;label.style.top=`${(1-pos.y)*this.height/2}px`;
+          if(!survivor.group.visible)return;
+          const pos=labelPositions[i];
+          label.style.left=`${pos.x}px`;label.style.top=`${pos.y}px`;
         });
+        this.fittedStage={...this.stage};
+        this.homeCamera=true;
       }
       this.lobby.idle(time,this.reducedMotion);
       this.renderer.render(this.lobby.scene,this.camera);
     }
   }
-  stats(){const info=this.renderer.info;return{drawCalls:info.render.calls,triangles:info.render.triangles,geometries:info.memory.geometries,textures:info.memory.textures,pixelRatio:this.renderer.getPixelRatio(),idle:this.lobby?.survivors[0].body.position.y??0,bounds:this.bounds,formation:this.lobby?.survivors.map(s=>({visible:s.group.visible,x:s.group.position.x,z:s.group.position.z}))??[]};}
+  stats(){const info=this.renderer.info;return{drawCalls:info.render.calls,triangles:info.render.triangles,geometries:info.memory.geometries,textures:info.memory.textures,pixelRatio:this.renderer.getPixelRatio(),idle:this.lobby?.survivors[0].body.position.y??0,layoutFits:this.layoutFits,homeCamera:this.homeCamera,stage:this.fittedStage,bounds:this.bounds,formation:this.lobby?.survivors.map(s=>({visible:s.group.visible,x:s.group.position.x,z:s.group.position.z}))??[]};}
   dispose(){this.renderer.domElement.removeEventListener('webglcontextlost',this.contextLost);const geometries=new Set<T.BufferGeometry>(),materials=new Set<T.Material>(),textures=new Set<T.Texture>();
     for(const scene of [this.title.scene,this.lobby?.scene])scene?.traverse((o)=>{const mesh=o as T.Mesh;if(mesh.geometry)geometries.add(mesh.geometry);for(const m of Array.isArray(mesh.material)?mesh.material:mesh.material?[mesh.material]:[]){materials.add(m);const map=(m as T.MeshLambertMaterial).map;if(map)textures.add(map);}});
     geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());textures.forEach(t=>t.dispose());this.renderer.dispose();this.renderer.domElement.remove();}

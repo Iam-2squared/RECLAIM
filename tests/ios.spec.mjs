@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
+import { fourFits, sheetFits, scrollEnd, contained, rects } from './layout-helpers.mjs';
 
 const snapshot = page => page.evaluate(() => window.__RECLAIM__.snapshot());
 const ready = async page => {
@@ -12,20 +13,7 @@ const ready = async page => {
 };
 const home = async page => { await ready(page); await page.locator('#home-button').tap(); await expect(page.locator('#home-screen')).toBeVisible(); };
 const open = async (page, name) => { await page.locator('#menu-toggle').tap(); await page.getByRole('button', { name, exact: true }).tap(); await expect(page.locator('#home-nav')).toBeHidden(); };
-const fullSquad = async page => {
-  // A flat fallback cannot satisfy the four visible 3D survivors requirement.
-  await expect(page.locator('body')).toHaveAttribute('data-renderer', 'webgl');
-  await expect.poll(async () => (await snapshot(page)).render?.formation.filter(s => s.visible).length).toBe(4);
-  await expect.poll(async () => (await snapshot(page)).render?.bounds.length).toBe(4);
-  const stage = await page.locator('#lobby-stage').boundingBox(), view = await snapshot(page);
-  for (const b of view.render.bounds) {
-    expect(b.left).toBeGreaterThanOrEqual(stage.x - 1);
-    expect(b.right).toBeLessThanOrEqual(stage.x + stage.width + 1);
-    expect(b.top).toBeGreaterThanOrEqual(stage.y - 1);
-    expect(b.bottom).toBeLessThanOrEqual(stage.y + stage.height + 1);
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize().width);
-};
+const fullSquad = fourFits;
 
 test('a file-viewer-like module block gives a visible Safari instruction instead of an active dead HOME button', async ({ page }) => {
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/, route => route.abort());
@@ -76,9 +64,10 @@ for (const [width, height] of [[375, 667], [390, 664], [390, 844], [430, 932]]) 
     await info.attach('portrait-four-survivors', { path:imagePath, contentType: 'image/png' });
     await info.attach('portrait-model-bounds', { path:boundsPath, contentType: 'application/json' });
     await page.setViewportSize({ width, height: height - 80 }); await fullSquad(page);
-    await open(page, '武器'); await fullSquad(page);
-    await page.locator('[data-slot="primary"][data-gun="sniper"]').tap(); await fullSquad(page);
-    await page.locator('#panel-close').tap(); await expect(page.locator('#start-button')).toBeInViewport({ ratio: 1 });
+    // V2 gives a compact screen to a full sheet; verify all four again on close.
+    await open(page, '武器'); await sheetFits(page);
+    await page.locator('[data-slot="primary"][data-gun="sniper"]').tap(); await sheetFits(page);
+    await page.locator('#panel-close').tap(); await fullSquad(page); await expect(page.locator('#start-button')).toBeInViewport({ ratio: 1 });
   });
 }
 
@@ -115,4 +104,52 @@ test('Safari without storage or WebGL still reaches HOME and permits local contr
   await expect(page.locator('#survivor-name')).toHaveText('一時プレビュー');
   await open(page, '武器'); await page.locator('[data-slot="primary"][data-gun="rifle"]').tap(); await page.locator('#panel-close').tap();
   await expect(page.locator('body')).toHaveAttribute('data-held-weapon', 'rifle');
+});
+
+for(const [width,height] of [[390,844],[375,667],[844,390]]){
+ test(`HOME V2 Safari sheet ${width}x${height}: every menu, fixed actions, focus and bottom reachability`,async({page})=>{
+  test.setTimeout(60000);await page.setViewportSize({width,height});await home(page);await page.locator('#squad-button').tap();await fullSquad(page);
+  for(const name of ['マップ','キャラ設定','武器','今のボス状況','ランキング']){
+   await open(page,name);await sheetFits(page);
+   const r=await rects(page);
+   if(name==='マップ'){contained(r['#campaign-map'],r['#panel-content']);await expect(page.locator('#region-select')).toHaveValue('0');}
+   if(name==='武器'){for(const card of await page.locator('.gun-option span').evaluateAll(ns=>ns.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};})))contained(card,r['#panel-content']);}
+   if(name==='キャラ設定')for(const id of ['apply-character','cancel-character','reset-character'])await expect(page.locator(`#${id}`)).toBeInViewport({ratio:1});
+   await scrollEnd(page);
+   await page.locator('#panel-close').focus();await page.keyboard.press('Shift+Tab');expect(await page.evaluate(()=>document.querySelector('#home-panel').contains(document.activeElement))).toBe(true);
+   await page.locator('#panel-close').tap();await expect(page.locator('#menu-toggle')).toBeFocused();await fullSquad(page);
+  }
+  await open(page,'キャラ設定');await page.locator('#preview-name').fill('縦横を確認');
+  // Emulates a reduced visual height; this does not claim a physical iOS keyboard.
+  await page.setViewportSize({width,height:Math.max(300,height-220)});await expect(page.locator('#apply-character')).toBeInViewport({ratio:1});await expect(page.locator('#cancel-character')).toBeInViewport({ratio:1});
+  await page.locator('#cancel-character').tap();await page.setViewportSize({width,height});await fullSquad(page);
+ });
+}
+
+test('HOME V2 compact focus/background fallback works without native inert and restores original tab order',async({page})=>{
+ await page.addInitScript(()=>{delete HTMLElement.prototype.inert;});
+ await home(page);expect(await page.evaluate(()=> 'inert' in HTMLElement.prototype)).toBe(false);
+ await open(page,'キャラ設定');await expect(page.locator('#panel-title')).toBeFocused();await page.keyboard.press('Tab');await expect(page.locator('#panel-close')).toBeFocused();await page.keyboard.press('Shift+Tab');await expect(page.locator('#reset-character')).toBeFocused();await page.keyboard.press('Tab');await expect(page.locator('#panel-close')).toBeFocused();
+ expect(await page.locator('#squad-button').evaluate(n=>n.tabIndex)).toBe(-1);await page.locator('#squad-button').evaluate(n=>n.focus());await expect(page.locator('#panel-title')).toBeFocused();
+ await page.locator('#panel-close').tap();await expect(page.locator('#menu-toggle')).toBeFocused();expect(await page.locator('#squad-button').evaluate(n=>n.tabIndex)).toBe(0);await expect(page.locator('.topbar')).not.toHaveAttribute('aria-hidden','true');await expect(page.locator('#start-button')).toBeEnabled();
+});
+
+test('HOME V2 safe-area substitutes keep the header, four models and sheet actions clear in both orientations',async({page})=>{
+ await home(page);await page.locator('#squad-button').tap();
+ for(const view of [{width:390,height:844,top:47,bottom:34,left:16,right:16},{width:844,height:390,top:16,bottom:21,left:47,right:47}]){
+  await page.setViewportSize({width:view.width,height:view.height});
+  // These CSS inset substitutes exercise geometry, not a physical notch/Safari UI.
+  await page.evaluate(v=>{for(const [edge,px] of Object.entries(v).filter(([k])=>['top','bottom','left','right'].includes(k)))document.body.style.setProperty(`--home-safe-${edge}`,`${px}px`);document.body.style.setProperty('--sheet-safe-top',`${v.top}px`);document.body.style.setProperty('--sheet-safe-bottom',`${v.bottom}px`);},view);
+  await fullSquad(page);
+  const r=await page.locator('.topbar').boundingBox(),heading=await page.locator('.home-location').boundingBox();expect(heading.y).toBeGreaterThanOrEqual(r.y+r.height+8);
+  const start=await page.locator('#start-button').boundingBox();expect(start.x+start.width).toBeLessThanOrEqual(view.width-view.right+1);expect(start.y+start.height).toBeLessThanOrEqual(view.height-view.bottom+1);
+  await open(page,'キャラ設定');
+  // Linux mobile WebKit can retain the old IntersectionObserver root after
+  // setViewportSize. Check the actual visual viewport, hit targets and tap.
+  for(const id of ['apply-character','cancel-character','reset-character','panel-close']){
+   const b=await page.locator(`#${id}`).boundingBox();contained({x:b.x,y:b.y,right:b.x+b.width,bottom:b.y+b.height},{x:0,y:0,right:view.width,bottom:view.height});
+   expect(await page.locator(`#${id}`).evaluate(n=>{const r=n.getBoundingClientRect();return n.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
+  }
+  const p=await page.locator('#home-panel').boundingBox();expect(p.y).toBeGreaterThanOrEqual(view.top);expect(p.y+p.height).toBeLessThanOrEqual(view.height-view.bottom+1);await page.locator('#cancel-character').tap();await expect(page.locator('#home-panel')).toBeHidden();
+ }
 });

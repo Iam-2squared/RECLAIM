@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 const root=resolve(import.meta.dirname,'..'),dist=resolve(root,'dist');
 let html=await readFile(resolve(dist,'index.html'),'utf8');
 const script=html.match(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/);
@@ -8,8 +9,12 @@ if(!script||!css)throw new Error('Unexpected Vite output: cannot safely inline a
 const js=await readFile(resolve(dist,script[1]),'utf8'),styles=await readFile(resolve(dist,css[1]),'utf8');
 html=html.replace(script[0],()=>`<script type="module">${js.replace(/<\/script/gi,'<\\/script')}</script>`).replace(css[0],()=>`<style>${styles}</style>`);
 const license=await readFile(resolve(root,'node_modules/three/LICENSE'),'utf8');
-html=html.replace('</head>',()=>`<!-- Three.js MIT license\n${license.replaceAll('--','—')}-->\n</head>`);
+const sourceCommit=process.env.RECLAIM_BUILD_SHA??execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();
+const workingTree=execFileSync('git',['status','--porcelain'],{cwd:root,encoding:'utf8'}).trim()?'dirty':'clean';
+if(!/^[a-f0-9]{40}$/.test(sourceCommit))throw new Error('Expected a full source commit SHA');
+html=html.replace('</head>',()=>`<meta name="reclaim-source-commit" content="${sourceCommit}">\n<meta name="reclaim-working-tree" content="${workingTree}">\n<!-- Three.js MIT license\n${license.replaceAll('--','—')}-->\n</head>`);
 await mkdir(resolve(root,'release'),{recursive:true});
 await writeFile(resolve(root,'release/RECLAIM_Title_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Home_Preview.html'),html);
-console.log('Standalone preview: release/RECLAIM_Home_Preview.html (legacy title filename retained; no runtime CDN or API)');
+await writeFile(resolve(root,'release/RECLAIM_Home_V2_Preview.html'),html);
+console.log(`Standalone HOME V2: release/RECLAIM_Home_V2_Preview.html (source ${sourceCommit}; compatible aliases retained; no runtime CDN or API)`);

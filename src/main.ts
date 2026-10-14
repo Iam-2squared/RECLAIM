@@ -71,6 +71,7 @@ function switchScreen(target:'title'|'home'){
 homeButton.addEventListener('click',()=>switchScreen('home'));
 element('back-title').addEventListener('click',()=>switchScreen('title'));
 element('settings-button').addEventListener('click',()=>settings.showModal());
+settings.addEventListener('close',()=>{if(home.modal&&home.panel)element('panel-title').focus({preventScroll:true});});
 const quality=element<HTMLSelectElement>('quality-select'),motion=element<HTMLInputElement>('motion-toggle');quality.value=prefs.quality;motion.checked=prefs.reducedMotion;
 function savePrefs(){world?.preferences(prefs);try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));}catch{/* Storage is optional; browsing in private mode still works. */}}
 quality.addEventListener('change',()=>{prefs.quality=quality.value==='low'?'low':'balanced';savePrefs();});
@@ -82,8 +83,9 @@ soundButton.addEventListener('click',async()=>{const enabled=await atmosphere.se
 function resize(){world?.resize();home.layout();}
 function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;}}
 function visibility(){cancelAnimationFrame(frameId);if(document.hidden){endReveal();}else{lastFrame=0;frameId=requestAnimationFrame(frame);}void atmosphere.visibility(document.hidden);}
-addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
-function dispose(){if(disposed)return;disposed=true;endReveal();cancelAnimationFrame(frameId);world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);}
+const viewportScroll=()=>home.layout();
+addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
+function dispose(){if(disposed)return;disposed=true;endReveal();cancelAnimationFrame(frameId);home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);}
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.

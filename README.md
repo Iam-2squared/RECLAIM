@@ -7,8 +7,8 @@ Three.js + TypeScript + Vite。荒廃した東京を背景とした最初のタ�
 
 ## すぐに見る
 
-**iPhoneでは、HTTPSのVercel Preview URLをSafariで開いてください。**「ファイル」アプリ内のHTMLプレビューは操作確認に使えません。URLと検証結果はHOMEのDraft PRに記録します。
-PCでは配布用 `RECLAIM_Home_Preview.html`（従来名 `RECLAIM_Title_Preview.html` も出力）を対応ブラウザで開く方法もあります。
+**iPhoneの操作確認には、通常のSafariで開くHTTPS Previewが必要です。現在、利用可能なPreview URLは未用意です。**「ファイル」アプリ内のHTMLプレビューは操作確認に使えません。接続の制約は `docs/STATUS.md` とHOMEのDraft PRに記録しています。
+PCでは配布用 `RECLAIM_Home_V2_Preview.html` を対応ブラウザで開いてください。従来名のHTMLも互換用に出力します。
 実行時にCDN、生成AI API、解析サービス、ゲームサーバーへ接続しません。
 WebGL2が使えない環境では簡易背景に切り替わります。そこでのキャラクター3D表示はありません。
 

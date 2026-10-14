@@ -193,9 +193,10 @@ export function createLobby() {
   });
   function preview(settings: HomePreview) { survivors[0].appearance(settings.appearance.palette); survivors[0].equip(settings[settings.held]); }
   function formation(squad: boolean, portrait: boolean) {
-    const positions = portrait ? [[.38, 1.65], [-1.52, -.75], [-.30, -1.15], [1.42, -.75]] : [[.30, 1.7], [-2.38, -.5], [-.70, -1.05], [2.50, -.65]];
+    const positions = portrait ? [[.45, 4.5], [-1.7, -1.2], [-.8, -5.3], [1.85, -1.2]] : [[.8, 2.5], [-3.2, -.9], [-.9, -3.8], [3.45, -.9]];
     survivors.forEach((s, i) => {
       s.group.visible = i === 0 || squad;
+      s.group.scale.setScalar(portrait && squad && i > 0 ? .82 : 1);
       const [x, z] = squad ? positions[i] : [0, 1]; s.group.position.set(x, 0, z);
       shadows[i].position.set(x, .002, z); shadows[i].visible = s.group.visible;
     });

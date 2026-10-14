@@ -24,6 +24,8 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run package:preview
+        env:
+          RECLAIM_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install browser and Japanese text rendering
         run: |
           npx playwright install --with-deps chromium webkit

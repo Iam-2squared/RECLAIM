@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { fourFits } from './layout-helpers.mjs';
 const ready = async page => { await page.goto('/'); await expect(page.locator('body')).toHaveAttribute('data-ready', 'true'); await page.locator('#home-button').click(); };
 const open = async (page, name) => { if (await page.locator('#menu-toggle').isVisible()) await page.locator('#menu-toggle').click(); await page.getByRole('button', { name, exact: true }).click(); };
 const snapshot = page => page.evaluate(() => window.__RECLAIM__.snapshot());
@@ -100,7 +101,7 @@ test('touch drawer closes, all five items remain reachable, Escape restores focu
 
 for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [844, 390]]) {
   test(`real WebGL composition ${width}x${height}, full squad bounds and usable START`, async ({ page }) => {
-    test.setTimeout(60000); await page.setViewportSize({ width, height }); await ready(page); await visualReady(page); await page.locator('#squad-button').click();
+    test.setTimeout(60000); await page.setViewportSize({ width, height }); await ready(page); await visualReady(page); await page.locator('#squad-button').click(); await fourFits(page);
     await expect.poll(async () => (await snapshot(page)).render.formation.filter(s => s.visible).length).toBe(4);
     const stage = await page.locator('#lobby-stage').boundingBox(), s = await snapshot(page);
     for (const b of s.render.bounds) { expect(b.left).toBeGreaterThanOrEqual(stage.x); expect(b.right).toBeLessThanOrEqual(stage.x + stage.width); expect(b.top).toBeGreaterThanOrEqual(stage.y); expect(b.bottom).toBeLessThanOrEqual(stage.y + stage.height); }

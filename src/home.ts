@@ -19,6 +19,12 @@ export class Home {
   draft: Appearance | null = null;
   panel: Panel | null = null;
   opener: HTMLElement | null = null;
+  modal = false;
+  layoutFrame = 0;
+  readonly compact = matchMedia('(max-width: 959px), (max-height: 440px)');
+  readonly stageObserver = new ResizeObserver(() => this.layout());
+  readonly compactChanged = () => this.layout();
+  readonly blocked = new Map<HTMLElement, { aria: string | null; inert: boolean; tabs: [HTMLElement, string | null][] }>();
   readonly labels = Array.from(document.querySelectorAll<HTMLElement>('.survivor-label'));
   constructor(readonly state: ScreenState, readonly world: WorldView | null, readonly announce: (s: string) => void) {
     try { this.saved = parseHome(localStorage.getItem(HOME_KEY)); } catch { this.saved = defaults(); }
@@ -31,9 +37,23 @@ export class Home {
     el('solo-button').addEventListener('click', () => this.squad(false));
     el('squad-button').addEventListener('click', () => this.squad(true));
     document.addEventListener('keydown', e => {
+      if (e.key === 'Tab' && this.panel && this.modal && !el<HTMLDialogElement>('settings-dialog').open) {
+        const controls = Array.from(el('home-panel').querySelectorAll<HTMLElement>('button:not(:disabled), input, select, summary, [tabindex]')).filter(n => n.tabIndex >= 0 && n.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (document.activeElement === el('panel-title') || (e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) {
+          e.preventDefault(); (e.shiftKey ? last : first)?.focus();
+        }
+      }
       if (e.key !== 'Escape' || el<HTMLDialogElement>('settings-dialog').open) return;
       if (this.panel) { e.preventDefault(); this.close(); }
       else if (el('menu-toggle').getAttribute('aria-expanded') === 'true') { this.drawer(false); el('menu-toggle').focus(); }
+    });
+    // Observe the reserved stage, rather than measuring the DOM on every render frame.
+    this.stageObserver.observe(el('lobby-stage'));
+    this.labels.forEach(label => this.stageObserver.observe(label));
+    this.compact.addEventListener('change', this.compactChanged);
+    document.addEventListener('focusin', e => {
+      if (this.modal && this.panel && !el<HTMLDialogElement>('settings-dialog').open && !el('home-panel').contains(e.target as Node)) el('panel-title').focus({ preventScroll: true });
     });
     this.sync();
   }
@@ -41,7 +61,7 @@ export class Home {
   squad(value: boolean) {
     this.state.squadPreview = value;
     el('solo-button').setAttribute('aria-pressed', String(!value)); el('squad-button').setAttribute('aria-pressed', String(value));
-    el('squad-note').textContent = value ? '4人編成プレビュー・オンライン未接続' : 'SOLO · この端末のローカルプレビュー';
+    this.formationNote();
     this.labels.slice(1).forEach(label => { label.hidden = !value; });
     if (this.panel === 'briefing') this.briefing();
     this.layout(); this.announce(value ? '4人編成プレビュー。後方3人は見本です。オンライン未接続。' : 'ソロ配置に戻しました。');
@@ -54,7 +74,53 @@ export class Home {
     document.body.dataset.heldWeapon = v[v.held]; document.body.dataset.palette = v.appearance.palette;
     this.world?.preview(v);
   }
-  layout() { if (this.state.screen === 'home') this.world?.setStage(el('lobby-stage').getBoundingClientRect(), this.labels); }
+  formationNote() {
+    el('squad-note').textContent = this.state.squadPreview
+      ? this.panel && !this.compact.matches ? '自キャラの外観プレビュー・4人は閉じて確認' : '4人編成プレビュー・オンライン未接続'
+      : 'SOLO · この端末のローカルプレビュー';
+  }
+  panelMode() {
+    const modal = Boolean(this.panel && this.compact.matches);
+    if (modal === this.modal) return;
+    this.modal = modal;
+    el('home-panel').setAttribute('aria-modal', String(modal));
+    el('panel-backdrop').hidden = !modal;
+    if (modal) {
+      const roots = [document.querySelector<HTMLElement>('.topbar')!, ...Array.from(el('home-screen').children).filter(n => n.id !== 'home-panel' && n.id !== 'panel-backdrop') as HTMLElement[]];
+      for (const root of roots) {
+        const tabs = Array.from(root.querySelectorAll<HTMLElement>('button, input, select, [tabindex]')).map(n => [n, n.getAttribute('tabindex')] as [HTMLElement, string | null]);
+        if (root.matches('button, input, select, [tabindex]')) tabs.push([root, root.getAttribute('tabindex')]);
+        this.blocked.set(root, { aria: root.getAttribute('aria-hidden'), inert: root.inert, tabs });
+        root.inert = true; root.setAttribute('aria-hidden', 'true'); root.classList.add('panel-background');
+        // Safari 15.4 predates native inert. Preserve/restore tab order as a fallback.
+        tabs.forEach(([n]) => n.setAttribute('tabindex', '-1'));
+      }
+    } else {
+      for (const [root, prior] of this.blocked) {
+        root.inert = prior.inert; root.classList.remove('panel-background');
+        if (prior.aria === null) root.removeAttribute('aria-hidden'); else root.setAttribute('aria-hidden', prior.aria);
+        prior.tabs.forEach(([n, tab]) => { if (tab === null) n.removeAttribute('tabindex'); else n.setAttribute('tabindex', tab); });
+      }
+      this.blocked.clear();
+    }
+  }
+  layout() {
+    if (this.state.screen !== 'home') return;
+    const view = window.visualViewport;
+    document.body.style.setProperty('--home-height', `${view?.height ?? innerHeight}px`);
+    document.body.style.setProperty('--home-offset-top', `${view?.offsetTop ?? 0}px`);
+    this.panelMode(); this.formationNote();
+    if (this.layoutFrame) cancelAnimationFrame(this.layoutFrame);
+    this.layoutFrame = requestAnimationFrame(() => {
+      this.layoutFrame = 0;
+      const rect = el('lobby-stage').getBoundingClientRect();
+      const nameLimit = innerWidth >= 960 && innerWidth < 1200 && !this.panel ? 160 : 250;
+      document.body.style.setProperty('--preview-label-width', `${Math.max(80, Math.min(nameLimit, rect.width - 16))}px`);
+      this.labels.forEach((label,i) => { label.hidden = i > 0 && (!this.state.squadPreview || Boolean(this.panel)); });
+      const obstacles = ['.home-footnote', '.launch-area', '.lobby-heading', '.squad-tools'].map(s => document.querySelector<HTMLElement>(s)!).filter(n => n.getClientRects().length).map(n => n.getBoundingClientRect());
+      this.world?.setStage(rect, this.labels, Boolean(this.panel), obstacles);
+    });
+  }
   screenChanged() {
     this.close(false); this.drawer(false);
     if (this.state.screen === 'home') { this.sync(); this.layout(); }
@@ -70,6 +136,8 @@ export class Home {
     el('panel-category').textContent = item?.[2] ?? 'MISSION / 01';
     el('panel-title').textContent = item?.[1] ?? '最初の出撃：知床';
     el('home-panel').hidden = false; document.body.dataset.panelOpen = 'true';
+    el<HTMLButtonElement>('start-button').disabled = true;
+    this.footer();
     el('nav-items').querySelectorAll<HTMLElement>('button').forEach(b => b.setAttribute('aria-expanded', String(b.dataset.panel === id)));
     if (id === 'character') this.character();
     else if (id === 'weapons') this.weapons();
@@ -77,12 +145,14 @@ export class Home {
     else if (id === 'boss') this.boss();
     else if (id === 'ranking') this.ranking();
     else this.briefing();
-    el('panel-content').scrollTop = 0; el('panel-title').focus({ preventScroll: true }); this.layout();
+    el('panel-content').scrollTop = 0; this.layout(); el('panel-title').focus({ preventScroll: true });
   }
   close(focus = true) {
     if (!this.panel) return;
     this.draft = null; this.panel = null; this.sync();
     el('home-panel').hidden = true; document.body.dataset.panelOpen = 'false';
+    el<HTMLButtonElement>('start-button').disabled = false;
+    this.panelMode();
     el('nav-items').querySelectorAll<HTMLElement>('button').forEach(b => b.setAttribute('aria-expanded', 'false'));
     this.layout();
     if (focus) {
@@ -90,12 +160,15 @@ export class Home {
       (opener && opener.getClientRects().length ? opener : el('menu-toggle')).focus({ preventScroll: true });
     }
   }
+  footer(html = '') { el('panel-footer').innerHTML = html; el('panel-footer').hidden = !html; }
+  dispose() { cancelAnimationFrame(this.layoutFrame); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); }
   character() {
     this.draft = { ...this.saved.appearance };
-    el('panel-content').innerHTML = `<p class="panel-intro">旅に出る、自分の姿を。</p><p class="muted">この端末だけの外観設定です。</p>
+    el('panel-content').innerHTML = `<p class="panel-intro">旅に出る、自分の姿を。</p>
       <label class="field-label" for="preview-name">表示名</label><input id="preview-name" class="name-input" maxlength="64" autocomplete="off" spellcheck="false" aria-describedby="name-help name-count"><div class="field-meta"><span id="name-help">16文字まで。空欄はSURVIVOR。</span><span id="name-count"></span></div>
       <p class="field-label">衣服と装備の色</p><div class="palette-options">${PALETTES.map(p => `<button type="button" class="palette" data-palette="${p.id}" aria-pressed="${p.id === this.draft!.palette}"><span class="color-chip" style="--chip:${p.color}"></span>${p.name}</button>`).join('')}</div><p id="palette-note" class="muted"></p>
-      <div class="panel-actions"><button id="apply-character" class="primary-action" type="button">適用</button><button id="cancel-character" class="secondary-action" type="button">キャンセル</button></div><button id="reset-character" class="text-action" type="button">初期状態に戻す</button><p class="muted">適用するまでプレビュー。閉じると変更を取り消します。</p>`;
+      <p class="muted">この端末だけの外観設定です。適用するまでプレビュー。閉じると変更を取り消します。</p>`;
+    this.footer('<div class="panel-actions"><button id="apply-character" class="primary-action" type="button">適用</button><button id="cancel-character" class="secondary-action" type="button">キャンセル</button><button id="reset-character" class="text-action" type="button">初期状態に戻す</button></div>');
     const input = el<HTMLInputElement>('preview-name'); input.value = this.draft.name;
     const update = () => {
       this.draft!.name = normalizeName(input.value);
@@ -119,10 +192,12 @@ export class Home {
   }
   weapons() {
     const v = this.saved;
-    el('panel-content').innerHTML = `<p class="panel-intro">この手に、頼れる道具を。</p><p class="muted">見た目用のローカル装備プレビュー。選択はこの端末に保存します。</p>
-      ${(['primary', 'secondary'] as const).map((slot, i) => `<fieldset class="weapon-slot"><legend>${i === 0 ? '主武器' : '副武器'}</legend><div class="gun-options">${GUNS.map(g => `<button type="button" data-slot="${slot}" data-gun="${g.id}" class="gun-option" aria-pressed="${v[slot] === g.id}"><small>${g.code}</small><span>${g.name}</span></button>`).join('')}</div></fieldset>`).join('')}
-      <p class="muted">同じ銃を選ぶと、主・副武器が入れ替わります。</p><p class="field-label">HOMEで手に持つ銃</p><div class="held-options"><button type="button" id="hold-primary" class="secondary-action" aria-pressed="${v.held === 'primary'}">主武器を持つ</button><button type="button" id="hold-secondary" class="secondary-action" aria-pressed="${v.held === 'secondary'}">副武器を持つ</button></div>
+    el('panel-content').innerHTML = `<p class="panel-intro">この手に、頼れる道具を。</p>
+      <div class="weapon-slots">${(['primary', 'secondary'] as const).map((slot, i) => `<fieldset class="weapon-slot"><legend>${i === 0 ? '主武器' : '副武器'}</legend><div class="gun-options">${GUNS.map(g => `<button type="button" data-slot="${slot}" data-gun="${g.id}" class="gun-option" aria-pressed="${v[slot] === g.id}"><small>${g.code}</small><span>${g.name}</span></button>`).join('')}</div></fieldset>`).join('')}</div>
+      <p class="muted">見た目用のローカル装備プレビュー。選択はこの端末に保存します。<br>同じ銃を選ぶと、主・副武器が入れ替わります。</p><p class="field-label">HOMEで手に持つ銃</p><div class="held-options"><button type="button" id="hold-primary" class="secondary-action" aria-pressed="${v.held === 'primary'}">主武器を持つ</button><button type="button" id="hold-secondary" class="secondary-action" aria-pressed="${v.held === 'secondary'}">副武器を持つ</button></div>
       <div class="katana-card"><span>日本刀</span><small>左腰に帯刀 · 鞘つき</small></div><details><summary>装備レアリティについて</summary><p class="muted">${RARITIES.join(' → ')}<br>分類の予定です。所持・取得を示すものではありません。競技ランクとは別です。</p></details><p class="muted">性能・強化・素材消費は未実装。</p>`;
+    this.footer('<button id="weapon-done" class="secondary-action" type="button">閉じて装備を見る</button>');
+    el('weapon-done').addEventListener('click', () => this.close());
     el('panel-content').querySelectorAll<HTMLButtonElement>('[data-gun]').forEach(b => b.addEventListener('click', () => {
       this.saved = chooseGun(this.saved, b.dataset.slot as 'primary' | 'secondary', b.dataset.gun as GunId); this.persist(); this.sync(); this.weapons();
       el('panel-content').querySelector<HTMLElement>(`[data-slot="${b.dataset.slot}"][data-gun="${b.dataset.gun}"]`)?.focus({ preventScroll: true });
@@ -133,7 +208,8 @@ export class Home {
   }
   map() {
     const path = ROUTE.slice(0, -1).map(r => `${r[2]},${r[3]}`).join(' ');
-    el('panel-content').innerHTML = `<p class="panel-intro">北の果てから、もう一度東京へ。</p><div class="paper-map"><span class="map-caption">JAPAN / ROUTE PLAN</span><svg id="campaign-map" viewBox="0 0 350 360" role="group" aria-label="日本編の作戦ルート概略図"><g class="map-grid"><path d="M0 90h350M0 180h350M0 270h350M87 0v360M175 0v360M262 0v360"/></g><g class="map-land"><path d="M252 38l23-15 15 22 43 4-18 28-30 14-23 18-29-15 12-28-21-7zM233 122l21 13-8 31 15 22-7 35 15 24 3 34-27 27-38 1-19 15-27-8-26-9-15 12-39-3-17 18-26-9 2-21 31-7 24-18 25-11 24 4 27-12 18-10 12-30 11-25 4-29-5-24zM50 315l20 18-18 25-18-4-7-17zM78 329l28-4 15 10-25 12-20-5z"/></g><polyline class="map-route" points="${path}"/><path class="map-return" d="M95 308Q161 192 277 265"/>${ROUTE.map((r, i) => `<circle data-region="${i}" cx="${r[2]}" cy="${r[3]}" r="${i === 0 ? 7 : 4}" tabindex="0" role="button" aria-label="${r[1]}の予定を見る"/>`).join('')}<text x="281" y="35">知床</text><text x="265" y="300">東京</text><text x="12" y="36">N ↑</text></svg><span class="map-caption">経路の概略図 · 地理的な正確さを示す地図ではありません</span></div><label class="field-label" for="region-select">地域を閲覧</label><select id="region-select" class="region-select">${ROUTE.map((r, i) => `<option value="${i}">${String(i + 1).padStart(2, '0')} / ${r[1]}</option>`).join('')}</select><div id="region-detail" class="region-detail"><h3 id="region-name"></h3><span id="region-status" class="status-tag"></span><p id="region-description"></p></div><p class="muted">現在地は知床。地域を眺めても出撃先は変わりません。</p>`;
+    el('panel-content').innerHTML = `<div class="map-overview"><div class="paper-map"><span class="map-caption">JAPAN / ROUTE PLAN</span><svg id="campaign-map" viewBox="0 0 350 360" role="group" aria-label="日本編の作戦ルート概略図"><g class="map-grid"><path d="M0 90h350M0 180h350M0 270h350M87 0v360M175 0v360M262 0v360"/></g><g class="map-land"><path d="M252 38l23-15 15 22 43 4-18 28-30 14-23 18-29-15 12-28-21-7zM233 122l21 13-8 31 15 22-7 35 15 24 3 34-27 27-38 1-19 15-27-8-26-9-15 12-39-3-17 18-26-9 2-21 31-7 24-18 25-11 24 4 27-12 18-10 12-30 11-25 4-29-5-24zM50 315l20 18-18 25-18-4-7-17zM78 329l28-4 15 10-25 12-20-5z"/></g><polyline class="map-route" points="${path}"/><path class="map-return" d="M95 308Q161 192 277 265"/>${ROUTE.map((r, i) => `<circle data-region="${i}" cx="${r[2]}" cy="${r[3]}" r="${i === 0 ? 7 : 4}" tabindex="0" role="button" aria-label="${r[1]}の予定を見る"/>`).join('')}<text x="281" y="35">知床</text><text x="265" y="300">東京</text><text x="12" y="36">N ↑</text></svg><span class="map-caption">経路の概略図 · 地理的な正確さを示す地図ではありません</span></div><div class="map-details"><p class="panel-intro">北の果てから、もう一度東京へ。</p><label class="field-label" for="region-select">地域を閲覧</label><select id="region-select" class="region-select">${ROUTE.map((r, i) => `<option value="${i}">${String(i + 1).padStart(2, '0')} / ${r[1]}</option>`).join('')}</select><div id="region-detail" class="region-detail"><h3 id="region-name"></h3><span id="region-status" class="status-tag"></span><p id="region-description"></p></div><p class="muted">初回の東京は撤退、最後の東京は再突入の予定です。</p></div></div>`;
+    this.footer('<p>現在地：知床 · 地点を眺めても出撃先は変わりません。</p>');
     const select = el<HTMLSelectElement>('region-select');
     const update = () => {
       const i = Number(select.value), r = ROUTE[i]; el('region-name').textContent = r[1];
@@ -154,7 +230,8 @@ export class Home {
   }
   briefing() {
     const v = this.current;
-    el('panel-content').innerHTML = `<span class="briefing-location">SHIRETOKO</span><p class="panel-intro">ここから、奪還の旅が始まる。</p><div class="mission-boundary"><strong>戦闘は未実装</strong><p id="combat-reason">この画面では開始できません。<br>知床の移動・射撃は次の制作工程です。</p></div><div class="briefing-strip"><span>出撃予定地</span><strong>知床 / 北海道</strong></div><div class="briefing-strip"><span>編成</span><strong>${this.state.squadPreview ? '4人配置見本' : 'SOLO'}</strong></div><p class="muted">${this.state.squadPreview ? '後方3人は見本です。オンライン未接続。' : 'この端末のローカルプレビューです。'}</p><div class="briefing-strip"><span>生存者</span><strong id="briefing-name"></strong></div><div class="briefing-strip"><span>主武器 / 副武器</span><strong>${gunName(v.primary)} / ${gunName(v.secondary)}</strong></div><div class="briefing-strip"><span>現在の持ち物</span><strong>${gunName(v[v.held])} + 日本刀</strong></div><button class="primary-action combat-disabled" type="button" disabled aria-describedby="combat-reason">出撃開始 · 準備中</button><button id="briefing-back" class="secondary-action full-width" type="button">HOMEに戻る</button>`;
+    el('panel-content').innerHTML = `<span class="briefing-location">SHIRETOKO</span><p class="panel-intro">ここから、奪還の旅が始まる。</p><div class="mission-boundary"><strong>戦闘は未実装</strong><p id="combat-reason">この画面では開始できません。<br>知床の移動・射撃は次の制作工程です。</p></div><div class="briefing-strip"><span>出撃予定地</span><strong>知床 / 北海道</strong></div><div class="briefing-strip"><span>編成</span><strong>${this.state.squadPreview ? '4人配置見本' : 'SOLO'}</strong></div><p class="muted">${this.state.squadPreview ? '後方3人は見本です。オンライン未接続。' : 'この端末のローカルプレビューです。'}</p><div class="briefing-strip"><span>生存者</span><strong id="briefing-name"></strong></div><div class="briefing-strip"><span>主武器 / 副武器</span><strong>${gunName(v.primary)} / ${gunName(v.secondary)}</strong></div><div class="briefing-strip"><span>現在の持ち物</span><strong>${gunName(v[v.held])} + 日本刀</strong></div>`;
+    this.footer('<div class="panel-actions"><button class="primary-action combat-disabled" type="button" disabled aria-describedby="combat-reason">出撃開始 · 準備中</button><button id="briefing-back" class="secondary-action" type="button">HOMEに戻る</button></div>');
     el('briefing-name').textContent = v.appearance.name;
     el('briefing-back').addEventListener('click', () => this.close());
   }
