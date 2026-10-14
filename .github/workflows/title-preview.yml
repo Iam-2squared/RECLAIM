@@ -1,4 +1,4 @@
-name: Title preview checks
+name: RECLAIM preview checks
 on:
   push:
     branches: [main]
@@ -11,7 +11,9 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
+    env:
+      LIBGL_ALWAYS_SOFTWARE: '1'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -26,7 +28,7 @@ jobs:
       - run: npm run package:preview
       - name: Install browser and Japanese text rendering
         run: |
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
           sudo apt-get install -y fonts-noto-cjk
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4

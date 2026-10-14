@@ -7,7 +7,8 @@ Three.js + TypeScript + Vite。荒廃した東京を背景とした最初のタ�
 
 ## すぐに見る
 
-配布用 `RECLAIM_Home_Preview.html`（従来名 `RECLAIM_Title_Preview.html` も出力） をPCのChrome/Edge/Safariなどで開きます。
+**iPhoneでは、HTTPSのVercel Preview URLをSafariで開いてください。**「ファイル」アプリ内のHTMLプレビューは操作確認に使えません。URLと検証結果はHOMEのDraft PRに記録します。
+PCでは配布用 `RECLAIM_Home_Preview.html`（従来名 `RECLAIM_Title_Preview.html` も出力）を対応ブラウザで開く方法もあります。
 実行時にCDN、生成AI API、解析サービス、ゲームサーバーへ接続しません。
 WebGL2が使えない環境では簡易背景に切り替わります。そこでのキャラクター3D表示はありません。
 
@@ -26,7 +27,7 @@ npm run dev
 npm run typecheck
 npm test
 npm run build
-npx playwright install chromium
+npx playwright install --with-deps chromium webkit
 npm run test:e2e
 npm run package:preview
 ```
@@ -67,3 +68,5 @@ HOMEの構図と操作を確認した後、別工程で知床の移動・射撃�
 4人協力、共有ボスHP、3段階の壁は後続開発です。このプロトタイプで実装済みとは扱いません。
 
 詳細は [HOME仕様](docs/HOME_SPEC.md) と [状態記録](docs/STATUS.md) を参照してください。
+
+iPhone向けの調査、互換性とPreview検証は [Safari確認](docs/IOS_PREVIEW.md) を参照してください。

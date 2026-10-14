@@ -82,10 +82,12 @@ soundButton.addEventListener('click',async()=>{const enabled=await atmosphere.se
 function resize(){world?.resize();home.layout();}
 function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;}}
 function visibility(){cancelAnimationFrame(frameId);if(document.hidden){endReveal();}else{lastFrame=0;frameId=requestAnimationFrame(frame);}void atmosphere.visibility(document.hidden);}
-addEventListener('resize',resize);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
-function dispose(){if(disposed)return;disposed=true;endReveal();cancelAnimationFrame(frameId);world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);}
+addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
+function dispose(){if(disposed)return;disposed=true;endReveal();cancelAnimationFrame(frameId);world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);}
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.
 Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,home:home.snapshot(),render:world?.stats()??null})}),writable:false});
 document.body.dataset.ready='true';
+for(const button of [titleButton,homeButton,soundButton,element<HTMLButtonElement>('settings-button')])button.disabled=false;
+element('boot-notice').hidden=true;

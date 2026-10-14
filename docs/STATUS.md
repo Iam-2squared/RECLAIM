@@ -7,7 +7,7 @@
 | Local preview only | Appearance/name, two gun slots, held gun, sheathed katana, rear-three mannequins, planned route/rarity explanations. No server authority. |
 | Not implemented | Movement, shooting, combat, real co-op, authentication, shared boss HP, ranking collection, ownership, upgrades, payments. |
 | Not authorized/performed | Merge, direct main push, force-push or production publishing. |
-| Not measured | Physical PC/iPhone/Safari behavior, device FPS and gameplay performance. |
+| Not measured | Physical PC/iPhone/iOS Safari behavior, device FPS and gameplay performance. Automated WebKit coverage is separate. |
 
 ## Source/review boundaries
 
@@ -25,6 +25,14 @@ HOME work is `feature/home-lobby`, based on `feature/tokyo-title-screen` at `a9c
 
 ## Review/delivery
 
-The Draft PR's artifact contains actual WebGL images, static-file performance timings, standalone HTML and test evidence. `RECLAIM_Home_Preview.html` includes title + HOME and works from a file without a server or runtime external assets. The legacy title filename is retained as an identical alias. Both include the Three.js MIT notice. No third-party art/audio/font files, credentials or API keys are bundled.
+The Draft PR's artifact contains actual WebGL images, static-file performance timings, standalone HTML and test evidence. `RECLAIM_Home_Preview.html` includes title + HOME and can work in a desktop browser from a file without a server or runtime external assets. iPhone Files/Quick Look is not an interactive test environment; iPhone verification uses an HTTPS Preview in Safari. The legacy title filename is retained as an identical alias. Both include the Three.js MIT notice. No third-party art/audio/font files, credentials or API keys are bundled.
 
 The visual review gate is the survivor's presence and readability of the four-person formation, particularly at 390px portrait width. Art approval is still the owner's decision. Next implementation would be Shiretoko movement/shooting as a separate task; online co-op/shared raid work remains later.
+
+## iPhone Safari follow-up
+
+See `IOS_PREVIEW.md` for investigation and the new nine-case iPhone/WebKit suite. Local WebKit 27.2 passed all nine cases with actual WebGL, touch controls, four portrait sizes, changing viewport height, every menu, persistence and unavailable-storage/WebGL behavior. Test-only Linux libraries were extracted into the browser cache because system package installation is restricted. Only Playwright's system dependency precheck was bypassed locally; no browser assertion or test was skipped. CI installs normal system dependencies and does not bypass that precheck.
+
+The original 30 Chromium cases remain in CI alongside WebKit. The final source head and CI result are recorded in PR #2. Safari 15.4 is the explicit output/functionality baseline, not a claim that every older iOS version was run.
+
+Vercel Preview creation is authorized for RECLAIM only. During this follow-up, the connector could identify the account but returned HTTP 403 for its default team (`iam-2squareds-projects`); the CLI fallback had no existing authentication. No Preview URL has been created while this access block remains. No main merge, production deploy or other repository mutation was performed.
