@@ -46,6 +46,7 @@ test('all planned regions can be inspected, while the briefing stays at Shiretok
   await page.locator('#region-select').selectOption('17'); await expect(page.locator('#region-name')).toHaveText('東京［再突入］');
   await page.keyboard.press('Escape'); await page.locator('#start-button').click();
   await expect(page.locator('#panel-title')).toHaveText('最初の出撃：知床'); await expect(page.locator('#panel-content')).toContainText('知床 / 北海道');
+  await expect(page.locator('.mission-boundary')).toBeInViewport({ ratio: 1 });
   await page.locator('#briefing-back').click(); await expect(page.locator('#start-button')).toBeFocused();
 });
 test('boss and rankings stay honest empty states without fabricated data', async ({ page }) => {
@@ -118,7 +119,7 @@ test('actual menu, solo and mission screenshots with WebGL, plus load metrics', 
   for (const [name, file] of [['キャラ設定', 'character-settings'], ['武器', 'weapons'], ['マップ', 'map'], ['今のボス状況', 'boss-unconnected'], ['ランキング', 'ranking-empty']]) {
     await open(page, name); await page.waitForTimeout(180); await page.screenshot({ path: `test-results/visual/home-${file}.png` }); await page.keyboard.press('Escape');
   }
-  await page.locator('#start-button').click(); await page.waitForTimeout(180); await page.screenshot({ path: 'test-results/visual/home-start-briefing.png' }); await page.locator('#briefing-back').click();
+  await page.locator('#start-button').click(); await expect(page.locator('.mission-boundary')).toBeInViewport({ ratio: 1 }); await page.waitForTimeout(180); await page.screenshot({ path: 'test-results/visual/home-start-briefing.png' }); await page.locator('#briefing-back').click();
   const metrics = await page.evaluate(() => ({ userAgent: navigator.userAgent, navigation: performance.getEntriesByType('navigation').map(n => ({ duration: n.duration, domContentLoaded: n.domContentLoadedEventEnd, transferSize: n.transferSize })), resources: performance.getEntriesByType('resource').map(r => ({ name: r.name, transferSize: r.transferSize, encodedBodySize: r.encodedBodySize, duration: r.duration })), snapshot: window.__RECLAIM__.snapshot() }));
   await writeFile('test-results/visual/home-performance.json', JSON.stringify(metrics, null, 2)); expect(errors).toEqual([]);
 });

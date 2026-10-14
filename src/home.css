@@ -105,3 +105,10 @@ body[data-screen="home"] button:focus-visible,body[data-screen="home"] input:foc
   .home-screen .lobby-footer{height:67px;bottom:16px}.home-footnote{left:0;bottom:4px;max-width:245px}.launch-area{left:auto;right:0}.launch-area strong{font-size:22px}.home-screen .home-button{height:51px;min-width:208px}.launch-area .overline{display:none}.launch-area strong span{font-size:8px;margin-top:4px}
   .home-panel{left:20px;top:120px;bottom:16px;width:310px;height:auto;max-height:none}body[data-panel-open="true"] #lobby-stage{left:355px;top:125px;bottom:80px}.home-panel>h2{font-size:17px}.panel-header{padding-top:4px}.home-panel .close-button{height:44px}
 }
+
+/* Keep the briefing boundary visible before the equipment detail. */
+.briefing-location{font-size:22px;line-height:1.5}
+.briefing-strip{flex-direction:row;align-items:baseline;justify-content:space-between;gap:12px;padding:9px 0}
+.briefing-strip>span{flex:0 0 78px;font-size:10px}
+.briefing-strip>strong{flex:1;text-align:right;font-size:12px;line-height:1.6}
+.mission-boundary{margin:14px 0;padding:9px 12px}
