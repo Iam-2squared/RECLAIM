@@ -39,12 +39,12 @@ test('weapon slots swap duplicates, change the held gun and persist without gran
   await expect(page.locator('body')).toHaveAttribute('data-held-weapon', 'rifle'); await page.locator('#start-button').click();
   await expect(page.locator('#panel-content')).toContainText('スナイパー / 小銃');
 });
-test('all planned regions can be inspected, while the briefing stays at Shiretoko', async ({ page }) => {
+test('all18 stops remain with unreached names hidden, while the initial briefing stays at Shiretoko', async ({ page }) => {
   await ready(page); await open(page, 'マップ');
   await expect(page.locator('#region-select option')).toHaveCount(18);
-  await page.locator('#region-select').selectOption('9'); await expect(page.locator('#region-name')).toHaveText('東京［初回：撤退］');
-  await expect(page.locator('#region-status')).toHaveText('未到達 / 未実装');
-  await page.locator('#region-select').selectOption('17'); await expect(page.locator('#region-name')).toHaveText('東京［再突入］');
+  await page.locator('#region-select').selectOption('9'); await expect(page.locator('#region-name')).toHaveText('???');
+  await expect(page.locator('#region-status')).toHaveText('???');
+  await page.locator('#region-select').selectOption('17'); await expect(page.locator('#region-name')).toHaveText('???');
   await page.keyboard.press('Escape'); await page.locator('#start-button').click();
   await expect(page.locator('#panel-title')).toHaveText('最初の出撃：知床'); await expect(page.locator('#panel-content')).toContainText('知床 / 北海道');
   await expect(page.locator('.mission-boundary')).toBeInViewport({ ratio: 1 });

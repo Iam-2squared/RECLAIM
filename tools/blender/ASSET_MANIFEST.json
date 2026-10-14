@@ -1,0 +1,186 @@
+{
+  "schema": "reclaim.blender-source-manifest.v1",
+  "scope": "Optional local Blender authoring tools; game runtime uses separate procedural modules",
+  "sourceFiles": [
+    {
+      "path": "tools/blender/build_shiretoko_environment.py",
+      "bytes": 25892,
+      "sha256": "cf3b55cfc6b0c709bddb5f06fd619d6fd79d5ef096c5a1e580abf028f9c02708"
+    },
+    {
+      "path": "tools/blender/inspect_fab_pack.py",
+      "bytes": 4153,
+      "sha256": "06fdfeea0b366924f6c596f2b3a744ff5e887d65359427842a2d7196300ee930"
+    },
+    {
+      "path": "tools/blender/prepare_forest_assets.py",
+      "bytes": 11354,
+      "sha256": "79d0cbb90e704715ce5571a0c58073d0ee7447d809041c422d8fd6eb84ead455"
+    },
+    {
+      "path": "tools/blender/_reclaim_common.py",
+      "bytes": 14830,
+      "sha256": "b8f70956f38b9637cfd3d79e31323b7ee4d37d1f84ce924e34fb635249d8f56a"
+    },
+    {
+      "path": "tools/blender/_reclaim_bpy.py",
+      "bytes": 9562,
+      "sha256": "c371a1fa1ab8075741488cfa93f304b05908a1c2fea7540bf54fca0f5e12d2da"
+    },
+    {
+      "path": "tools/blender/export_world_contract.mjs",
+      "bytes": 2327,
+      "sha256": "471e5cacc124116cd7d6ac4c4f87ca773242ecdad461447a798a338a98e31142"
+    },
+    {
+      "path": "tools/blender/shiretoko_contract.json",
+      "bytes": 6263,
+      "sha256": "01903d26aae90049d75831bba544584a3832b3ea79ff3a4332022d5153e67196"
+    },
+    {
+      "path": "tools/blender/export_original_world_glb.mjs",
+      "bytes": 15090,
+      "sha256": "2cc1aae37b3484db4cd59458243876882c9a8427814217c515a4232dedc25a2c"
+    }
+  ],
+  "originalAssets": [
+    {
+      "id": "procedural/shiretoko-v03",
+      "origin": "Self-authored parameterized geometry",
+      "thirdPartyArt": false,
+      "license": "Project-controlled original RECLAIM geometry; no separate third-party art licence",
+      "textures": [],
+      "externalAssetDependencies": []
+    },
+    {
+      "id": "procedural/runtime-shiretoko-snapshot-v03",
+      "origin": "Actual original AreaLoader scene, Node Three GLTFExporter",
+      "thirdPartyArt": false,
+      "license": "Project-controlled original RECLAIM geometry; no separate third-party art licence",
+      "textures": [],
+      "externalAssetDependencies": []
+    }
+  ],
+  "thirdPartyAssets": [
+    {
+      "name": "Trees and bush Pack LOWPOLY",
+      "creator": "EFX",
+      "referenceSource": "User instructions only",
+      "fileReceivedInWork": false,
+      "sourceUrl": null,
+      "sourceSha256": null,
+      "licenseEvidence": null,
+      "licenseStatus": "UNVERIFIED",
+      "meshTriangles": null,
+      "textureDimensions": null,
+      "inRepository": false,
+      "inGame": false
+    }
+  ],
+  "verification": {
+    "pythonSyntax": "PASS",
+    "pureSafetyAndRuntimeHeightContractTests": {
+      "command": "python3 tests/blender-tools.test.py",
+      "pass": 27,
+      "fail": 0,
+      "skip": 0
+    },
+    "blenderVersionTarget": "5.2.2 (user-provided)",
+    "blenderExecutedInWork": false,
+    "blenderSceneRender": "UNVERIFIED",
+    "fabGlbInspectionOrConversion": "UNVERIFIED",
+    "worldContractReadOnlyCheck": "PASS: exact bytes/source hashes; stale/missing/conflicting mode fail without mutation",
+    "runtimeTerrainParity": {
+      "samples": 51,
+      "tolerance": "1e-9",
+      "includes": [
+        "canonical terrain/cabin",
+        "lakebank optional spur and offsets"
+      ],
+      "result": "PASS"
+    },
+    "nodeOriginalWorldGlb": {
+      "structuralGlbValidation": "PASS",
+      "nodeThreeParserRoundTrip": "PASS",
+      "vertexAndIndexHashes": "PASS",
+      "instanceColours": "PASS",
+      "stats": {
+        "meshObjects": 185,
+        "instancedMeshes": 147,
+        "instances": 11331,
+        "triangles": 259298,
+        "uniqueGeometries": 46,
+        "materials": 21,
+        "textures": 0,
+        "bounds": {
+          "min": [
+            -386.4721984863281,
+            -4.882550404444601,
+            -363.1497497558594
+          ],
+          "max": [
+            379.00738525390625,
+            117.6803560256958,
+            356.3023376464844
+          ]
+        }
+      },
+      "maxInstanceMatrixDelta": 4.76837158203125e-07,
+      "maxWorldMatrixDelta": 0,
+      "maxBoundsDelta": 1.0140547601622529e-07,
+      "requiredExtensions": [
+        "EXT_mesh_gpu_instancing"
+      ],
+      "usedExtensions": [
+        "EXT_mesh_gpu_instancing",
+        "KHR_materials_unlit"
+      ],
+      "glbJsonBytes": 224064,
+      "glbBinaryBytes": 1074908,
+      "blender522Import": "UNVERIFIED",
+      "blender522Render": "UNVERIFIED",
+      "browserVisualRoundTrip": "UNVERIFIED",
+      "existingOutputRefusal": "PASS: existing GLB/manifest bytes and mtime unchanged",
+      "readOnlyVerify": "PASS: existing GLB/manifest bytes and mtime unchanged"
+    }
+  },
+  "generatedOutputsInWork": [
+    {
+      "path": "release/RECLAIM_Shiretoko_Procedural_v03.glb",
+      "bytes": 1299000,
+      "sha256": "56f838faefd2b10faf20e80a64996d6d4c0db75f61fee4dcc07559535c986ddd"
+    },
+    {
+      "path": "release/RECLAIM_Shiretoko_Procedural_v03.manifest.json",
+      "bytes": 5503,
+      "sha256": "75333bb778d78498a63e04dd330d56f72b20d3f5cfb3808e7824da5c9651d86f"
+    }
+  ],
+  "measuredOutputGeometry": {
+    "meshObjects": 185,
+    "instancedMeshes": 147,
+    "instances": 11331,
+    "triangles": 259298,
+    "uniqueGeometries": 46,
+    "materials": 21,
+    "textures": 0,
+    "bounds": {
+      "min": [
+        -386.4721984863281,
+        -4.882550303039125,
+        -363.1497497558594
+      ],
+      "max": [
+        379.00738525390625,
+        117.6803560256958,
+        356.3023376464844
+      ]
+    }
+  },
+  "outputManifestContract": "When actually run in Blender, each tool writes original/source hashes, inspected hierarchy and geometry facts, output bytes/SHA-256, and configuration fingerprint. Unknown facts remain unknown.",
+  "notes": [
+    "No .blend or Blender-generated GLB was created in Work because Blender is not installed. A separate original AreaLoader GLB was actually exported/parsed in Node; Blender import/render remains UNVERIFIED.",
+    "A generated v03 .blend keeps source scenes; user-source Fab assets may remain in that private authoring copy. The generated-only GLB excludes source scenes.",
+    "Do not publicly commit raw third-party exports; inspect the actual licence before any asset distribution."
+  ]
+}

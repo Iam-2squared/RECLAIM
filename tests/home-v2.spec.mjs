@@ -44,7 +44,7 @@ test('HOME V2 desktop nonmodal keyboard changes panels, resets scrolling and nev
  expect(await page.locator('#panel-content').evaluate(n=>n.scrollTop)).toBe(0);await expect(page.locator('#panel-title')).toBeFocused();
  // The V2 header puts the title before its close button in natural DOM order.
  await page.keyboard.press('Tab');await expect(page.locator('#panel-close')).toBeFocused();await page.keyboard.press('Tab');await expect(page.locator('#preview-name')).toBeFocused();await page.keyboard.press('Escape');await expect(character).toBeFocused();
- await page.locator('#start-button').focus();await page.keyboard.press('Space');await expect(page.locator('#panel-title')).toHaveText('最初の出撃：知床');await expect(page.locator('.combat-disabled')).toBeDisabled();await page.locator('#briefing-back').click();
+ await page.locator('#start-button').focus();await page.keyboard.press('Space');await expect(page.locator('#panel-title')).toHaveText('最初の出撃：知床');await expect(page.locator('#mission-launch')).toBeEnabled();await page.locator('#briefing-back').click();
 });
 test('HOME V2 longest weapon and name fit after rotation; camera fitting stays idle between layout events',async({page})=>{
  await home(page);await page.locator('#squad-button').click();await page.getByRole('button',{name:'キャラ設定',exact:true}).click();await page.locator('#preview-name').fill('知床の生存者あいうえおかきくけこ');await page.locator('#apply-character').click();
