@@ -39,7 +39,7 @@ export async function holdForward(page,metres,{sprint=false,maxMs=5000,keepHeld=
 }
 
 export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,stopOnDeath=false}={}){
- const deadline=Date.now()+maxMs;let unchanged=0;
+ const deadline=Date.now()+maxMs;let unchanged=0,forwardHeld=false,state=null;
  const reached=state=>Math.hypot(target.x-state.player.x,target.z-state.player.z)<=radius;
  const terminal=state=>stopOnDeath&&state.paused&&state.player.hp===0;
  const inspect=state=>{
@@ -48,35 +48,76 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
   if(state.paused)throw new Error(`mission paused during walk: ${JSON.stringify(state)}`);
   return false;
  };
- while(true){
-  const state=(await snapshot(page)).mission;
-  // Read the exact geometric predicate before the deadline. The last real input
-  // can reach the target while a slow GPU delays the following browser response.
-  if(inspect(state))return state;
+ const stopForward=async()=>{if(forwardHeld){await page.keyboard.up('KeyW');forwardHeld=false;}};
+ const startForward=async()=>{if(!forwardHeld){await page.keyboard.down('KeyW');forwardHeld=true;}};
+ const settle=async state=>{
+  if(!inspect(state))return null;
+  await stopForward();
+  // The release is a real input too. Verify its resulting position, rather
+  // than reporting an earlier radius crossing if a slow response overshot it.
+  const stopped=(await snapshot(page)).mission;
+  state=stopped;
+  return inspect(stopped)?stopped:null;
+ };
+ try{
+  state=(await snapshot(page)).mission;
+  const already=await settle(state);if(already)return already;
   if(Date.now()>=deadline)throw new Error(`actual walking timed out at ${JSON.stringify(state)}`);
-  await turnToward(page,target);
-  const before=(await snapshot(page)).mission;if(inspect(before))return before;
-  const distance=Math.hypot(target.x-before.player.x,target.z-before.player.z);
-  const pulse=Math.min(2,Math.max(.12,(distance-radius)*.7));
-  const remaining=deadline-Date.now();
-  if(remaining<=0)continue;
-  let after;
-  try{
-   after=await forwardInput(page,next=>{
-    if(inspect(next))return true;
-    // After a bounded amount of actual simulation, re-aim or report physical
-    // blocking. Idle wall time and stalled rendering do not count as collision.
-    return next.player.distance-before.player.distance>=pulse||next.elapsed-before.elapsed>=.45;
-   },{sprint,maxMs:Math.min(5000,remaining)});
-  }catch(error){
-   const final=(await snapshot(page)).mission;
-   if(inspect(final))return final;
-   if(Date.now()>=deadline)throw new Error(`actual walking timed out at ${JSON.stringify(final)}`,{cause:error});
-   throw error;
+  await turnToward(page,target); // Initial aim is stationary, including the small cabin approach.
+  state=(await snapshot(page)).mission;
+  const aimed=await settle(state);if(aimed)return aimed;
+  if(sprint)await page.keyboard.down('ShiftLeft');
+  await startForward();
+  while(true){
+   state=(await snapshot(page)).mission;
+   const finished=await settle(state);if(finished)return finished;
+   // Test the unchanged exact radius before the unchanged wall deadline.
+   if(Date.now()>=deadline)throw new Error(`actual walking timed out at ${JSON.stringify(state)}`);
+   const desired=Math.atan2(-(target.x-state.player.x),-(target.z-state.player.z));
+   const delta=Math.atan2(Math.sin(desired-state.player.yaw),Math.cos(desired-state.player.yaw));
+   if(Math.abs(delta)>Math.PI/3){
+    // A near-target overshoot can require a large turn. Stop real forward input
+    // for that turn, avoiding an uncontrolled arc, then resume genuine walking.
+    await stopForward();await turnToward(page,target);
+    state=(await snapshot(page)).mission;
+    const turned=await settle(state);if(turned)return turned;
+   }else{
+    // Keep W/Shift held through small corrections and intermediate observations.
+    // Recheck the actual pose after each arrow, so correction cannot hide arrival.
+    const count=Math.min(3,Math.round(Math.abs(delta)/.0484));
+    for(let i=0;i<count;i++){
+     await page.keyboard.press(delta>0?'ArrowLeft':'ArrowRight');
+     state=(await snapshot(page)).mission;
+     const corrected=await settle(state);if(corrected)return corrected;
+    }
+   }
+   if(Date.now()>=deadline)continue;
+   await startForward();
+   const before=state;
+   const beforeProbe=await settle(before);if(beforeProbe)return beforeProbe;
+   // Only actual arrival releases the held movement keys. A bounded probe
+   // merely observes progress/physics, retaining input through IPC/GPU delays.
+   const distance=Math.hypot(target.x-before.player.x,target.z-before.player.z);
+   const milestone=Math.min(2,Math.max(.12,(distance-radius)*.7));
+   let after=before;
+   try{
+    await expect.poll(async()=>{
+     after=(await snapshot(page)).mission;
+     if(inspect(after))return true;
+     return after.player.distance-before.player.distance>=milestone||after.elapsed-before.elapsed>=.45;
+    },{timeout:Math.min(5000,Math.max(1,deadline-Date.now())),intervals:[20,40,80,100]}).toBe(true);
+   }catch(error){
+    const final=(await snapshot(page)).mission;
+    const observed=await settle(final);if(observed)return observed;
+    if(Date.now()>=deadline)throw new Error(`actual walking timed out at ${JSON.stringify(final)}`,{cause:error});
+    throw error;
+   }
+   const arrived=await settle(after);if(arrived)return arrived;
+   const simulated=after.elapsed-before.elapsed;
+   if(simulated>=.4&&Math.hypot(after.player.x-before.player.x,after.player.z-before.player.z)<.035)unchanged++;else unchanged=0;
+   if(unchanged>9)throw new Error(`actual walking blocked en route to ${JSON.stringify(target)}: ${JSON.stringify(after)}`);
   }
-  if(inspect(after))return after;
-  const simulated=after.elapsed-before.elapsed;
-  if(simulated>=.4&&Math.hypot(after.player.x-before.player.x,after.player.z-before.player.z)<.035)unchanged++;else unchanged=0;
-  if(unchanged>9)throw new Error(`actual walking blocked en route to ${JSON.stringify(target)}: ${JSON.stringify(after)}`);
+ }finally{
+  try{await page.keyboard.up('KeyW');}finally{await page.keyboard.up('ShiftLeft');}
  }
 }

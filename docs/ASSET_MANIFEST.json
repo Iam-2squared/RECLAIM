@@ -454,7 +454,7 @@
   "missionAssets": {
     "origin": "Original procedural shapes in src/mission/runtime.ts; no external model/texture/audio file",
     "source": "src/mission/runtime.ts",
-    "sourceSha256": "009f6e308595d148d6024f795eacb794da15c7316dfc39e211abb4ce362a68e3",
+    "sourceSha256": "34eaa9c3b6aab51d57062774e00719024e25d87decbc011a2d75236152c669fb",
     "scoutDrone": {
       "triangles": 292,
       "meshObjects": 12,
@@ -466,7 +466,15 @@
       "sniperTriangles": 84,
       "textures": []
     },
-    "audio": "Original oscillator effects, optional sound ON only; cancelled on mission disposal"
+    "audio": "Original oscillator effects, optional sound ON only; cancelled on mission disposal",
+    "simulationClock": {
+      "source": "src/mission/clock.ts",
+      "sourceSha256": "013d8990065e1fae7c3c9cb959b52b2dc77e79047fa4bf45c165a9b069c14c96",
+      "stepSeconds": 0.016666666666666666,
+      "maxFrameSeconds": 0.25,
+      "maxStepsPerRender": 15,
+      "longDelayPolicy": "Bounded catch-up; discard remaining time immediately on pause or death"
+    }
   },
   "legacyProceduralTextures": [
     {

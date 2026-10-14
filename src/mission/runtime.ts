@@ -2,6 +2,7 @@ import * as T from 'three';
 import { AreaLoader, getAreaDefinition, type AreaId, type WorldQuality } from '../world/index.ts';
 import { CampaignStore, visibleAreas, type MissionCheckpoint } from '../campaign/index.ts';
 import { CharacterController, PLAYER_TUNING } from './controller.ts';
+import { SimulationClock, SIMULATION_TIMING } from './clock.ts';
 import { ScoutDrone, COMBAT_TUNING, WEAPON_TUNING, raySphere, obstructionDistance } from './combat.ts';
 import type { HomePreview } from '../home-state.ts';
 import './mission.css';
@@ -26,7 +27,7 @@ function createWeapon(id:string) {
 export type MissionHooks={returnHome:()=>void;announce:(s:string)=>void;invalidate:()=>void;effect:(kind:'radio'|'shot'|'hit')=>void;stopEffects:()=>void};
 export class Mission {
  loader:AreaLoader;camera=new T.PerspectiveCamera(74,1,.055,900);controller:CharacterController;drone:ScoutDrone|null=null;droneArt:ReturnType<typeof createDroneModel>|null=null;weapon:T.Group;
- paused=true;disposed=false;hp:number=COMBAT_TUNING.playerHp;keys=new Set<string>();accumulator=0;elapsed=0;checkpointClock=0;hudClock=0;nextShot=0;shots=0;misses=0;lastHit=false;hitFlash=0;lastUI='';locked=false;transitions=0;frames=0;frameTimes:number[]=[];loadMs=0;storyShowing=false;endShowing=false;lockSettledAt=0;ignoreFirstMouseMove=false;jumpBuffered=false;
+ paused=true;disposed=false;hp:number=COMBAT_TUNING.playerHp;keys=new Set<string>();clock=new SimulationClock();elapsed=0;checkpointClock=0;hudClock=0;nextShot=0;shots=0;misses=0;lastHit=false;hitFlash=0;lastUI='';locked=false;transitions=0;frames=0;frameTimes:number[]=[];loadMs=0;storyShowing=false;endShowing=false;lockSettledAt=0;ignoreFirstMouseMove=false;jumpBuffered=false;
  canvas:HTMLCanvasElement;store:CampaignStore;renderer:T.WebGLRenderer;hooks:MissionHooks;preview:HomePreview;areaId:AreaId;quality:WorldQuality;debug:boolean;
  constructor(renderer:T.WebGLRenderer,store:CampaignStore,areaId:AreaId,quality:WorldQuality,preview:HomePreview,hooks:MissionHooks,resume:MissionCheckpoint|null=null,debug=false){
   const start=performance.now();this.renderer=renderer;this.canvas=renderer.domElement;this.store=store;this.hooks=hooks;this.preview=preview;this.areaId=areaId;this.quality=quality;this.debug=debug;
@@ -56,12 +57,12 @@ export class Mission {
  keyUp=(e:KeyboardEvent)=>{this.keys.delete(e.code);};
  mouseMove=(e:MouseEvent)=>{if(!this.locked||this.paused)return;if(this.ignoreFirstMouseMove){this.ignoreFirstMouseMove=false;return;}if(performance.now()<this.lockSettledAt||Math.abs(e.movementX)>180||Math.abs(e.movementY)>180)return;this.controller.look(e.movementX,e.movementY);};
  mouseDown=(e:MouseEvent)=>{if(e.button!==0||this.paused||!this.locked)return;this.shoot();};
- lockChange=()=>{if(this.disposed)return;this.locked=document.pointerLockElement===this.canvas;if(this.locked){this.lockSettledAt=performance.now()+100;this.ignoreFirstMouseMove=true;}if(this.locked&&!this.storyShowing&&!this.endShowing&&!document.hidden){this.paused=false;this.accumulator=0;node('mission-overlay').hidden=true;node('mission-pause').hidden=true;this.canvas.focus();}else this.pause(false);this.updateHUD(true);this.hooks.invalidate();};
+ lockChange=()=>{if(this.disposed)return;this.locked=document.pointerLockElement===this.canvas;if(this.locked){this.lockSettledAt=performance.now()+100;this.ignoreFirstMouseMove=true;}if(this.locked&&!this.storyShowing&&!this.endShowing&&!document.hidden){this.paused=false;this.clock.reset();node('mission-overlay').hidden=true;node('mission-pause').hidden=true;this.canvas.focus();}else this.pause(false);this.updateHUD(true);this.hooks.invalidate();};
  lockError=()=>{if(this.disposed)return;node('mission-pause-message').textContent='視点操作を開始できませんでした。通常のPCブラウザで「探索を開始」を押してください。';this.pause(false);};
  visibility=()=>{if(document.hidden)this.pause();};blur=()=>this.pause();
  lockClick=()=>this.requestLock();homeClick=()=>{this.save();this.hooks.returnHome();};interactClick=()=>this.interact();skipClick=()=>this.skipOpening();continueClick=()=>this.continueStory();retryClick=()=>this.retry();nextClick=()=>{this.endShowing=false;this.hooks.returnHome();};pauseClick=()=>this.pause();
  requestLock(){if(this.disposed||this.storyShowing||this.endShowing||this.hp<=0)return;try{const promise=this.canvas.requestPointerLock();promise?.then(()=>{if(this.disposed&&document.pointerLockElement===this.canvas)document.exitPointerLock();}).catch(()=>{if(!this.disposed)this.lockError();});}catch{this.lockError();}}
- pause(release=true){this.paused=true;this.keys.clear();this.jumpBuffered=false;this.accumulator=0;if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
+ pause(release=true){this.paused=true;this.keys.clear();this.jumpBuffered=false;this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
  showInitial(){node('mission-area').textContent=getAreaDefinition(this.areaId).displayName;node('mission-prototype').textContent=this.areaId==='shiretoko'?'導入プレイ / 仮バランス':'環境プロトタイプ / 正式任務は開発中';if(this.areaId==='shiretoko'&&this.store.value.introStep===0&&!this.debug)this.showStory('WAKE / 01','北の家で、目を覚ます。','朝の薄明かり。木造の家には、いつもと違う静けさがある。まず、ラジオの報道を確かめよう。','起き上がる');else if(this.areaId==='shiretoko'&&this.store.value.introStep===2&&!this.debug)this.showStory('RADIO / 02','日本各地で、AIが暴走。','日本各地に危機が広がっている。東京の親友から連絡が届いた。','届いた連絡を読む');else this.pause(false);}
  showStory(kicker:string,title:string,text:string,action:string){this.pause();this.storyShowing=true;node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-story').hidden=false;node('mission-story-kicker').textContent=kicker;node('mission-story-title').textContent=title;node('mission-story-text').textContent=text;node('mission-continue').textContent=action;node('mission-continue').focus();}
  continueStory(){
@@ -77,9 +78,10 @@ export class Mission {
  }
  update(dt:number){
   if(this.disposed||document.hidden)return;
-  if(!Number.isFinite(dt)||dt<0)dt=0;dt=Math.min(dt,.1);
-  if(!this.paused){this.accumulator+=dt;let steps=0;while(this.accumulator>=1/60&&steps++<6){this.step(1/60);this.accumulator-=1/60;}}
-  this.hitFlash=Math.max(0,this.hitFlash-dt);this.updateCamera();this.render();this.hudClock+=dt;if(this.hudClock>.12){this.hudClock=0;this.updateHUD();}
+  if(!Number.isFinite(dt)||dt<0)dt=0;dt=Math.min(dt,SIMULATION_TIMING.maxFrameSeconds);
+  this.hitFlash=Math.max(0,this.hitFlash-dt);
+  if(!this.paused)this.clock.advance(dt,seconds=>{this.step(seconds);return !this.paused;});
+  this.updateCamera();this.render();this.hudClock+=dt;if(this.hudClock>.12){this.hudClock=0;this.updateHUD();}
  }
  step(dt:number){
   this.elapsed+=dt;const oldRecover=this.controller.recoveries;

@@ -24,5 +24,7 @@
 | CIの1920×1080新規操作試験がジャンプ着地確認中に30秒のケース予算を消費 | 起動/大画像撮影/視点/徒歩/ジャンプ/ポーズ/帰還を含む新規4ケースだけ60秒。5秒のジャンプとUI判定は維持。4AREA通し歩行だけ、実測のsoftware GPU速度と追加歩行に合わせ600秒。既存テストの時間枠は変更しない。 |
 | 射撃試験の260ms wall待機は低fpsで実cooldownの0.2秒に届かない可能性 | 次の実クリック前にread-only snapshotのsimulation elapsedで満了を確認。5秒の観測上限、最大6回の実クリック、3hit/HP0/実停止を保持し、ゲームの武器値/命中判定は変えない。 |
 | CI38606977966はUI41/WebKit14/製品MISSION13がPASS、dev AREA3件がFAIL | 全AREA開発プレビューはboot中にBalancedを生成し、その後Lowへ切替していた（active9/load34/unload25）。製品側はLowを選んでから生成する。開発画像/徒歩試験もユーザーの表示設定をboot前にLowへ保存し、実際の初期active9/load9/unload0を追加確認する。動的Balanced→Low試験は別ケースで保持。歩行半径/50秒/入力観測5秒/120秒ケースは変更しない。失敗ログ・画像をreviewへ保持する。 |
+| CI38611531084は69/72 PASS、石狩徒歩/1920×1080着地/TITLE再訪が期限切れ | 石狩はsimulation11.33秒で31.87mへ実歩行していた。旧helperの観測間にWを離す動作と、遅延RAFの0.1秒/6step上限を改める。途中観測と小さな実Arrow回転はWを保持し、実到達後のkeyup位置も元の半径で検査。大きな回転はWを停止してから行う。時計を0.25秒/15stepに広げても全衝突/地形/重力/敵AIは同じ1/60秒。長い遅延の上限とpause/死亡直後の残更新破棄を追加5件で検証。到達半径/通常5秒/徒歩50秒を維持。 |
+| 同CIの既存TITLE再訪は5秒camera predicateで期限切れ | 7.4秒時の失敗snapshotは既に正しいHOME camera/solo/fit3。同じUI sourceの前CIは41PASS、単独の再確認もPASSだが、software GPUの遅延という説明は推定であり最終CIの成功を代替しない。TITLE/HOME cameraや判定は変更せず、最新HEADで全回帰を実施する。 |
 
 skip、失敗テスト削除、正しい出口/HP/保存のpredicate緩和は行わない。長い4AREA歩行・10回往復にはその実フローに対応するcase-specific時間枠を使う。通常の5秒UI predicateを無条件に延長しない。既存WebKit14件は維持し、ローカルで実行できない場合は未実行と明記して最終CIと分ける。
