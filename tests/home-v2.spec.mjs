@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './browser-fixtures.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { snapshot, rects, contained, intersects, fourFits, scrollEnd } from './layout-helpers.mjs';
 const home=async page=>{await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');await page.locator('#home-button').click();};

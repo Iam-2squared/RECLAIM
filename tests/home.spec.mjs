@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './browser-fixtures.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fourFits } from './layout-helpers.mjs';
 const ready = async page => { await page.goto('/'); await expect(page.locator('body')).toHaveAttribute('data-ready', 'true'); await page.locator('#home-button').click(); };
@@ -91,7 +91,7 @@ test('WebGL failure still permits appearance, equipment and briefing', async ({ 
   await ready(page); await open(page, 'キャラ設定'); await page.locator('#preview-name').fill('表示なしでも操作'); await page.locator('#apply-character').click();
   await page.locator('#start-button').click(); await expect(page.locator('#briefing-name')).toHaveText('表示なしでも操作');
 });
-test('touch drawer closes, all five items remain reachable, Escape restores focus', async ({ browser }) => {
+test('touch drawer closes, all five items remain reachable, Escape restores focus', async ({ isolatedBrowser: browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }); const page = await context.newPage();
   await page.goto('http://127.0.0.1:4173/'); await page.locator('#home-button').tap(); await page.locator('#menu-toggle').tap();
   await expect(page.locator('#nav-items button')).toHaveCount(5); await page.getByRole('button', { name: 'キャラ設定', exact: true }).tap();

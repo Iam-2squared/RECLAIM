@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './browser-fixtures.mjs';
 import { writeFile } from 'node:fs/promises';
 import { fourFits, sheetFits, scrollEnd, contained, rects } from './layout-helpers.mjs';
 
