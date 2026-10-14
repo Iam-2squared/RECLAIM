@@ -1,4 +1,4 @@
-name: Title preview checks
+name: RECLAIM preview checks
 on:
   push:
     branches: [main]
@@ -11,7 +11,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
@@ -24,15 +24,17 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run package:preview
+        env:
+          RECLAIM_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install browser and Japanese text rendering
         run: |
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium webkit
           sudo apt-get install -y fonts-noto-cjk
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reclaim-title-preview-${{ github.sha }}
+          name: reclaim-preview-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             test-results/
             release/
