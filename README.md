@@ -1,13 +1,61 @@
-# RECLAIM
+# RECLAIM — Tokyo title prototype
 
-SOLUYRA's cooperative post-apocalyptic FPS project.
+**奪われた世界を、取り戻せ。**
 
-## Current scope — 2026-10-14
+Three.js + TypeScript + Vite。荒廃した東京を背景とした最初のタイトル画面です。
+これはFPS本体の完成版ではなく、タイトルとHOMEの導線・雰囲気を確認するプロトタイプです。
 
-The first deliverable is the **title screen**, not a complete game: ruined Tokyo, a simple overcast gray sky, a brief Tokyo-boss silhouette on title activation, and a HOME button leading to a local lobby scaffold.
+## すぐに見る
 
-Future lobby: the player's character at the front of a formation of up to four, with Map, Character, Weapons, World Boss and Ranking navigation. Real multiplayer, combat, accounts, rankings and shared boss progression are not implemented yet.
+配布用 `RECLAIM_Title_Preview.html` をPCのChrome/Edge/Safariなどで開きます。
+実行時にCDN、生成AI API、解析サービス、ゲームサーバーへ接続しません。
+WebGL2が使えない環境では簡易背景に切り替わります。そこでのキャラクター3D表示はありません。
 
-The journey begins in Shiretoko; the Tokyo title backdrop is a narrative preview, not a change to the campaign starting location.
+## 開発
 
-Only this repository is in scope. No paid API, external account integration or production deployment is required for the title prototype.
+Node.js 22.16以上を使用。
+
+```sh
+npm ci
+npm run dev
+```
+
+表示されたローカルURLをブラウザで開いてください。
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
+npm run package:preview
+```
+
+## 操作
+
+- **RECLAIMタイトル**をクリック、タップ、またはフォーカスしてEnter/Space：東京大ボスの影を約1.75秒だけ表示。連打では延長されません。
+- **HOME**：ホームのレイアウトへ移動。再読込は必ずタイトルから始まり、戦闘へ直接入りません。
+- **SOLO / 4人配置**：自分を先頭にした編成見本。追加3体は仮モデルで、オンラインプレイヤーではありません。
+- **左の5メニュー / START**：制作予定の内容を表示。装備変更・ランキング・実戦へは接続しません。
+- **右上**：音のオン/オフ、軽量描画、背景の動きの抑制。音は初期状態でオフ。
+
+## 演出
+
+単純な灰色の空、霧に沈む廃ビル、崩れた高架、空の車両、道路の瓦礫。
+東京タワーを想起させる塔を含む架空の市街地で、実地図の再現ではありません。
+背景・仮キャラクター・ボス影はコードで構成したオリジナル形状。大ボスの最終デザインは未確定です。
+タイトルは東京ですが、キャンペーン開始地点は引き続き**知床**です。
+
+## 技術上の境界
+
+- 静的配信のみ。サーバー、DB、APIキー、決済、マッチングなし。
+- 描画はメニュー用途で最大30fpsに制限。実機での性能保証ではありません。
+- InstancedMeshによる静的部材の集約。動的な雲・影・破壊物理・ポスト処理はなし。
+- タブ非表示時は描画を停止。環境音も一時停止。
+- 表示設定のみlocalStorageに保存。プレイヤー情報やクリア進行は保存しません。
+- 他のPractice / GlobeQ / ARK / Ark Terminalリポジトリは対象外。
+
+## 今後
+
+まずタイトルのビジュアルを承認してからHOMEのモデルと遷移を磨き、その後に知床の移動・射撃を制作します。
+4人協力、共有ボスHP、3段階の壁は後続開発です。このプロトタイプで実装済みとは扱いません。
