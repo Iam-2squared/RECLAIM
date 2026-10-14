@@ -1,0 +1,38 @@
+name: Title dependency bootstrap
+on:
+  push:
+    branches: [feature/tokyo-title-screen]
+    paths: [.github/workflows/bootstrap-title.yml]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    if: github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Resolve exact packages in isolated scratch folder
+        run: |
+          mkdir title-dependencies
+          cd title-dependencies
+          printf '{"name":"reclaim","version":"0.1.0","private":true,"type":"module"}\n' > package.json
+          npm install --save-exact --ignore-scripts three@0.185.1
+          npm install --save-dev --save-exact --ignore-scripts vite typescript @types/three @playwright/test
+          npm audit --json > dependency-audit.json || true
+          node -e "const p=require('./package.json');console.log(JSON.stringify({dependencies:p.dependencies,devDependencies:p.devDependencies}))"
+          tar -czf dependencies.tgz node_modules
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reclaim-title-dependencies
+          path: |
+            title-dependencies/package.json
+            title-dependencies/package-lock.json
+            title-dependencies/dependency-audit.json
+            title-dependencies/dependencies.tgz
+          retention-days: 3
