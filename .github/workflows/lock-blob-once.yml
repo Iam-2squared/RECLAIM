@@ -1,0 +1,44 @@
+name: One-time title lock blob
+on:
+  push:
+    branches: [feature/tokyo-title-screen]
+    paths: [.github/workflows/lock-blob-once.yml]
+permissions:
+  contents: read
+jobs:
+  lock:
+    if: github.repository == 'Iam-2squared/RECLAIM' && github.run_attempt == 1
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm install --package-lock-only --ignore-scripts
+      - name: Store only the lockfile as an unreferenced Git blob; do not update any ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'JS'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { createHash } from 'node:crypto';
+          const bytes=readFileSync('package-lock.json');
+          const lock=JSON.parse(bytes);
+          if(lock.name!=='reclaim'||lock.packages[''].dependencies.three!=='0.185.1')throw new Error('UNEXPECTED_LOCK');
+          writeFileSync('/tmp/lock-blob-request.json',JSON.stringify({content:bytes.toString('base64'),encoding:'base64'}));
+          console.log('LOCK_SHA256',createHash('sha256').update(bytes).digest('hex'));
+          JS
+          gh api --method POST repos/Iam-2squared/RECLAIM/git/blobs --input /tmp/lock-blob-request.json --jq '{sha: .sha}' > lock-blob.json
+          cat lock-blob.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reclaim-lock-blob
+          path: |
+            package-lock.json
+            lock-blob.json
+          retention-days: 3
