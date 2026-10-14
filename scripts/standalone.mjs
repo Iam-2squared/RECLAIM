@@ -7,6 +7,8 @@ const css=html.match(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/);
 if(!script||!css)throw new Error('Unexpected Vite output: cannot safely inline assets.');
 const js=await readFile(resolve(dist,script[1]),'utf8'),styles=await readFile(resolve(dist,css[1]),'utf8');
 html=html.replace(script[0],()=>`<script type="module">${js.replace(/<\/script/gi,'<\\/script')}</script>`).replace(css[0],()=>`<style>${styles}</style>`);
+const license=await readFile(resolve(root,'node_modules/three/LICENSE'),'utf8');
+html=html.replace('</head>',()=>`<!-- Three.js MIT license\n${license.replaceAll('--','—')}-->\n</head>`);
 await mkdir(resolve(root,'release'),{recursive:true});
 await writeFile(resolve(root,'release/RECLAIM_Title_Preview.html'),html);
 console.log('Standalone preview: release/RECLAIM_Title_Preview.html (no runtime CDN or API)');

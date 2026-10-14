@@ -1,7 +1,7 @@
 name: Title preview checks
 on:
   push:
-    branches: [feature/tokyo-title-screen, main]
+    branches: [main]
   pull_request:
 permissions:
   contents: read
@@ -19,9 +19,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Install exact dependencies
-        run: |
-          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+      - run: npm ci
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
