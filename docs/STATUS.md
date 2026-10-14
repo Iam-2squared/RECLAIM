@@ -26,7 +26,7 @@ PROVISIONALな通過条件は実際の位置・接地・歩行距離・経路POI
 - `npm ci`、typecheck、build、standalone package: PASS。依存/lockfile追加なし、外部runtime通信なし。
 - JSテスト **85 PASS / 0 FAIL / 0 skip**（既存15、campaign26、mission10、world34）。Blender安全ツールPythonテスト **27 PASS**。4AREAの本物のControllerでLow/Balanced両方の徒歩経路と破棄を検証。
 - Blender/ゲームの51座標の高さを1e-9以内で照合、world contract `--check`: PASS。
-- ローカルChromium全58件: **58 PASS / 0 FAIL / 0 skip**（12.4分）。後続の出撃確認文言を選択中の区域に合わせる調整は別途チェックし、最終CIでも全件を再実行する。CIはChromium58＋既存WebKit14の**72件**を実行し、最終HEADのURL/件数をPRと配布manifestに記録する。ローカルWebKitは今回未実行。
+- ローカルChromium全58件: **58 PASS / 0 FAIL / 0 skip**（12.4分）。後続の出撃確認文言を選択中の区域に合わせる調整は単独HTMLでも確認。最初のCI [38597322051](https://github.com/Iam-2squared/RECLAIM/actions/runs/38597322051)は4件失敗、25分で残りWebKitを中断。実入力を観測する試験helperと到着/死亡/敵移動の観測タイミングを修正し、既存UI41・ワールド17・WebKit14の3jobへ分割。全**72件**と通常5秒の判定を保持し、最終HEADのURL/件数はPRと配布manifestに記録する。ローカルWebKitは今回未実行。
 - ローカル環境: Linux / Node24.19 / Chromium138.0.7204.0 / SwiftShader / テスト用日本語OSフォント。Playwright browser156/151取得の失敗と途中の修正は `VERIFICATION_NOTES.md` とreview failure-historyに保持。テストをskipしていない。
 - 実PC viewport: 1920×1080、1366×768、1280×720、1024×576のMISSION。HOMEは6PC寸法と既存モバイル導線も確認。WebGL画像を目視し、家の切妻裏面、遠景の尖った山、扁平な雲、低画面の地図見切れを修正した。
 - 既存東京TITLEと同一browser/フォント/reduced-motionの1920×1080、1366×768画像比較は**0差分pixel**。`src/scene.ts` / `src/lobby-scene.ts` / title CSS / title演出値は変更しない。

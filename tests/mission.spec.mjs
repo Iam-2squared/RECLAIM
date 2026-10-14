@@ -1,6 +1,6 @@
 import {test,expect} from './browser-fixtures.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
-import {enter,lock,snapshot,walkTo,turnToward} from './mission-helpers.mjs';
+import {enter,lock,snapshot,walkTo,turnToward,holdForward} from './mission-helpers.mjs';
 const evidence='test-results/world-evidence';
 async function capture(page,name){await mkdir(evidence,{recursive:true});await page.screenshot({path:`${evidence}/${name}.png`});await writeFile(`${evidence}/${name}.json`,JSON.stringify(await snapshot(page),null,2));}
 
@@ -14,6 +14,10 @@ test('initial map and all panels hide future places; reset has explicit confirma
 });
 
 for(const[width,height]of[[1920,1080],[1366,768],[1280,720],[1024,576]])test(`mission actual WebGL ${width}x${height} shows wake house and reachable PC controls`,async({page})=>{
+ // These new complete cases include a full-resolution WebGL evidence capture,
+ // mouse, movement, jump and pause. CI exhausted 30s during the final jump poll;
+ // reserve 60s for the complete case while retaining every five-second predicate.
+ test.setTimeout(60000);
  await page.setViewportSize({width,height});await enter(page);await expect(page.locator('#mission-story')).toBeVisible();await expect(page.locator('#mission-continue')).toBeInViewport({ratio:1});await expect(page.locator('#mission-skip')).toBeInViewport({ratio:1});await capture(page,`wake-${width}x${height}`);
  expect((await snapshot(page)).mission.locked).toBe(false);await page.locator('#mission-continue').click();await expect(page.locator('#mission-lock')).toBeInViewport({ratio:1});const anchor=await page.locator('#mission-lock').boundingBox();await lock(page);
  const before=(await snapshot(page)).mission.player;
@@ -25,16 +29,23 @@ for(const[width,height]of[[1920,1080],[1366,768],[1280,720],[1024,576]])test(`mi
  let changed=await page.evaluate(yaw=>window.__LOOK_SAMPLES.some(v=>typeof v==='number'&&Math.abs(Math.atan2(Math.sin(v-yaw),Math.cos(v-yaw)))>.02),before.yaw);
  if(!changed){await page.mouse.move(35,0);changed=await page.evaluate(yaw=>window.__LOOK_SAMPLES.some(v=>typeof v==='number'&&Math.abs(Math.atan2(Math.sin(v-yaw),Math.cos(v-yaw)))>.02),before.yaw);}
  expect(changed).toBe(true);await turnToward(page,{x:0,z:5,y:1.62});
- await page.keyboard.down('KeyW');await page.waitForTimeout(380);await page.keyboard.up('KeyW');const moved=(await snapshot(page)).mission.player;expect(moved.distance).toBeGreaterThan(before.distance);expect(Math.abs(moved.y)).toBeLessThan(.2);
+ const moved=(await holdForward(page,.35)).player;expect(moved.distance).toBeGreaterThan(before.distance);expect(Math.abs(moved.y)).toBeLessThan(.2);
  await page.keyboard.press('Space');await expect.poll(async()=>(await snapshot(page)).mission.player.grounded).toBe(false);await expect.poll(async()=>(await snapshot(page)).mission.player.grounded).toBe(true);
  await page.keyboard.press('Escape');await expect.poll(async()=>(await snapshot(page)).mission.locked).toBe(false);await expect(page.locator('#mission-home')).toBeInViewport({ratio:1});const stopped=(await snapshot(page)).mission.player;await page.waitForTimeout(220);expect((await snapshot(page)).mission.player).toEqual(stopped);await page.locator('#mission-home').click();await expect(page.locator('#home-screen')).toBeVisible();expect((await snapshot(page)).mission).toBeNull();
 });
 
 test('real wake-radio-contact-leave, moving drone, ray hits/stop, trail exit and one-step unlock survive resume',async({page})=>{
- test.setTimeout(300000);const errors=[],requests=[],sockets=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));page.on('websocket',s=>sockets.push(s.url()));await page.setViewportSize({width:1366,height:768});await enter(page);
+ // The genuine four-area journey took 204s locally; CI observed 36.5 simulation
+ // seconds per 108 wall seconds. Budget the added real walks and captures, while
+ // every UI/HP/lock predicate and each 50s geometric walk deadline stays unchanged.
+ test.setTimeout(600000);const errors=[],requests=[],sockets=[];page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>requests.push(r.url()));page.on('websocket',s=>sockets.push(s.url()));await page.setViewportSize({width:1366,height:768});await enter(page);
  await page.locator('#mission-continue').click();await lock(page);await walkTo(page,{x:-1.4,z:-2.8},{radius:.5,sprint:false});await turnToward(page,{x:-3,y:1.2,z:-3});await capture(page,'cabin-radio');await page.keyboard.press('KeyE');await expect(page.locator('#mission-story-title')).toContainText('AIが暴走');await capture(page,'radio-report');await page.locator('#mission-continue').click();await expect(page.locator('#mission-story-title')).toContainText('東京の親友');await capture(page,'friend-contact');await page.locator('#mission-continue').click();await lock(page);
- await walkTo(page,{x:0,z:3.8},{radius:.6});await walkTo(page,{x:0,z:10},{radius:1});expect((await snapshot(page)).campaign.introStep).toBe(4);
- await turnToward(page,{x:0,y:2.5,z:0});await capture(page,'house-exterior');await turnToward(page,{x:0,y:2.7,z:25});await capture(page,'cabin-outside-and-drone');const enemyBefore=(await snapshot(page)).mission.enemy.position;await page.waitForTimeout(1000);expect((await snapshot(page)).mission.enemy.position.z).toBeLessThan(enemyBefore.z);
+ await walkTo(page,{x:0,z:3.8},{radius:.6});const enemyBefore=(await snapshot(page)).mission.enemy.position;
+ await walkTo(page,{x:0,z:10},{radius:1});expect((await snapshot(page)).campaign.introStep).toBe(4);
+ // Observe actual pursuit before slow screenshots/turning let the scout reach
+ // its eight-metre attack standoff. The displacement assertion is unchanged.
+ await expect.poll(async()=>(await snapshot(page)).mission.enemy.position.z).toBeLessThan(enemyBefore.z);
+ await turnToward(page,{x:0,y:2.5,z:0});await capture(page,'house-exterior');await turnToward(page,{x:0,y:2.7,z:25});await capture(page,'cabin-outside-and-drone');
  await walkTo(page,{x:0,z:16},{radius:1});for(let i=0;i<6&&(await snapshot(page)).mission.enemy.hp>0;i++){const enemy=(await snapshot(page)).mission.enemy;await turnToward(page,enemy.position);await page.mouse.down();await page.mouse.up();await page.waitForTimeout(260);}
  await expect.poll(async()=>(await snapshot(page)).mission.enemy.hp).toBe(0);expect((await snapshot(page)).mission.enemy.hits).toBe(3);expect((await snapshot(page)).campaign.droneDefeated).toBe(true);await capture(page,'drone-stopped');
  await walkTo(page,{x:0,z:30});await walkTo(page,{x:12,z:64},{radius:2});await capture(page,'shiretoko-trail');await page.keyboard.press('Escape');const saved=(await snapshot(page)).mission.player;await page.locator('#mission-home').click();await page.locator('#start-button').click();await page.locator('#mission-resume').click();await expect(page.locator('body')).toHaveAttribute('data-screen','mission');expect((await snapshot(page)).mission.player.x).toBeCloseTo(saved.x,2);expect((await snapshot(page)).mission.enemy.state).toBe('stopped');await lock(page);
@@ -60,7 +71,7 @@ test('real wake-radio-contact-leave, moving drone, ray hits/stop, trail exit and
 
 test('10 actual HOME-mission returns dispose resources, input and pointer lock without growth',async({page})=>{
  test.setTimeout(120000);await enter(page);await page.locator('#mission-skip').click();await page.locator('#mission-home').click();let baseline=null;const samples=[];
- for(let i=0;i<10;i++){await page.locator('#start-button').click();await page.locator('#mission-launch').click();await lock(page);await page.keyboard.down('KeyW');await page.waitForTimeout(100);await page.keyboard.up('KeyW');await page.keyboard.press('Escape');await page.locator('#mission-home').click();await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(true);await page.waitForTimeout(60);const render=(await snapshot(page)).render;samples.push(render);if(!baseline)baseline=render;else{expect(render.geometries).toBe(baseline.geometries);expect(render.textures).toBe(baseline.textures);}expect((await snapshot(page)).mission).toBeNull();expect(await page.evaluate(()=>document.pointerLockElement)).toBeNull();}
+ for(let i=0;i<10;i++){await page.locator('#start-button').click();await page.locator('#mission-launch').click();await lock(page);await holdForward(page,.12);await page.keyboard.press('Escape');await page.locator('#mission-home').click();await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(true);await page.waitForTimeout(60);const render=(await snapshot(page)).render;samples.push(render);if(!baseline)baseline=render;else{expect(render.geometries).toBe(baseline.geometries);expect(render.textures).toBe(baseline.textures);}expect((await snapshot(page)).mission).toBeNull();expect(await page.evaluate(()=>document.pointerLockElement)).toBeNull();}
  await mkdir(evidence,{recursive:true});await writeFile(`${evidence}/ten-returns.json`,JSON.stringify(samples,null,2));
 });
 
@@ -72,14 +83,18 @@ test('mission quality changes LOD, corrupted storage and WebGL loss keep safe HO
 test('public production build ignores developer area URL and never bypasses title or unlock',async({page})=>{await page.goto('/?dev-area=sapporo');await expect(page.locator('#title-screen')).toBeVisible();expect((await snapshot(page)).mission).toBeNull();await page.locator('#home-button').click();await page.locator('#start-button').click();await expect(page.locator('#mission-area-select option')).toHaveCount(1);await expect(page.locator('#mission-area-select')).toHaveValue('shiretoko');});
 
 test('visibility pause clears input, freezes enemy/movement and requires explicit resume',async({page})=>{
- await enter(page);await page.locator('#mission-skip').click();await lock(page);await page.keyboard.down('KeyW');await page.waitForTimeout(120);
+ await enter(page);await page.locator('#mission-skip').click();await lock(page);await holdForward(page,.12,{keepHeld:true});
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});const before=(await snapshot(page)).mission;expect(before.paused).toBe(true);await page.waitForTimeout(180);const after=(await snapshot(page)).mission;expect(after.player).toEqual(before.player);expect(after.enemy).toEqual(before.enemy);
  await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});await expect(page.locator('#mission-lock')).toBeVisible();expect((await snapshot(page)).mission.paused).toBe(true);await page.keyboard.up('KeyW');await lock(page);const pos=(await snapshot(page)).mission.player;await page.waitForTimeout(180);expect((await snapshot(page)).mission.player.x).toBe(pos.x);expect((await snapshot(page)).mission.player.z).toBe(pos.z);await page.keyboard.press('Escape');await page.locator('#mission-home').click();
 });
 
 test('a restored low-health checkpoint takes actual drone damage, reaches HP0 and retries safely',async({page})=>{
  test.setTimeout(60000);await page.addInitScript(()=>{localStorage.setItem('reclaim.campaign.v1',JSON.stringify({version:1,introStep:4,droneDefeated:false,completedAreaIds:[],passages:[],checkpoint:{areaId:'shiretoko',x:0,y:0,z:8,yaw:Math.PI,pitch:0,hp:4},traversal:{areaId:'shiretoko',distance:9.5,lastPosition:{x:0,y:0,z:8},passedCheckpointIds:[]}}));});
- await page.goto('/');await page.locator('#settings-button').click();await page.locator('#quality-select').selectOption('low');await page.keyboard.press('Escape');await page.locator('#home-button').click();await page.locator('#start-button').click();await page.locator('#mission-resume').click();await lock(page);expect((await snapshot(page)).mission.player.hp).toBe(4);await walkTo(page,{x:0,z:16},{radius:1});await expect(page.locator('#mission-retry')).toBeVisible({timeout:20000});expect((await snapshot(page)).mission.player.hp).toBe(0);expect((await snapshot(page)).campaign.droneDefeated).toBe(false);await page.locator('#mission-retry').click();expect((await snapshot(page)).mission.player.hp).toBe(100);expect((await snapshot(page)).mission.player.z).toBe(-1.5);await expect(page.locator('#mission-lock')).toBeVisible();
+ await page.goto('/');await page.locator('#settings-button').click();await page.locator('#quality-select').selectOption('low');await page.keyboard.press('Escape');await page.locator('#home-button').click();await page.locator('#start-button').click();await page.locator('#mission-resume').click();await lock(page);const initial=(await snapshot(page)).mission.player;expect(initial.hp).toBe(4);
+ // A real four-HP player may die during the approach. Accept only that precise
+ // expected terminal state, then assert actual damage/death/retry as before.
+ const approached=await walkTo(page,{x:0,z:16},{radius:1,stopOnDeath:true});expect(approached.player.distance).toBeGreaterThan(initial.distance);
+ await expect(page.locator('#mission-retry')).toBeVisible({timeout:20000});expect((await snapshot(page)).mission.player.hp).toBe(0);expect((await snapshot(page)).mission.enemy.hp).toBe(24);expect((await snapshot(page)).mission.enemy.hits).toBe(0);expect((await snapshot(page)).campaign.droneDefeated).toBe(false);await page.locator('#mission-retry').click();expect((await snapshot(page)).mission.player.hp).toBe(100);expect((await snapshot(page)).mission.player.z).toBe(-1.5);await expect(page.locator('#mission-lock')).toBeVisible();
 });
 
 test('story/pause buttons accept Space; storage quota updates the idle save status honestly',async({page})=>{
