@@ -46,8 +46,18 @@ test('real wake-radio-contact-leave, moving drone, ray hits/stop, trail exit and
  // its eight-metre attack standoff. The displacement assertion is unchanged.
  await expect.poll(async()=>(await snapshot(page)).mission.enemy.position.z).toBeLessThan(enemyBefore.z);
  await turnToward(page,{x:0,y:2.5,z:0});await capture(page,'house-exterior');await turnToward(page,{x:0,y:2.7,z:25});await capture(page,'cabin-outside-and-drone');
- await walkTo(page,{x:0,z:16},{radius:1});for(let i=0;i<6&&(await snapshot(page)).mission.enemy.hp>0;i++){const enemy=(await snapshot(page)).mission.enemy;await turnToward(page,enemy.position);await page.mouse.down();await page.mouse.up();await page.waitForTimeout(260);}
+ await walkTo(page,{x:0,z:16},{radius:1});for(let i=0;i<6&&(await snapshot(page)).mission.enemy.hp>0;i++){
+  const enemy=(await snapshot(page)).mission.enemy;await turnToward(page,enemy.position);await page.mouse.down();await page.mouse.up();
+  // Default assault cooldown is .2 simulation seconds. A 260ms wall wait can
+  // elapse between software-WebGL frames, suppressing the next real click.
+  // Observe after the click so this conservative anchor cannot precede firing.
+  const shotObservedAt=(await snapshot(page)).mission.elapsed;
+  await expect.poll(async()=>(await snapshot(page)).mission.elapsed).toBeGreaterThanOrEqual(shotObservedAt+.2);
+ }
  await expect.poll(async()=>(await snapshot(page)).mission.enemy.hp).toBe(0);expect((await snapshot(page)).mission.enemy.hits).toBe(3);expect((await snapshot(page)).campaign.droneDefeated).toBe(true);await capture(page,'drone-stopped');
+ // At the actual combat position, the full gable fits in view; the earlier
+ // near-door exterior capture clips its top edge. This is additional evidence.
+ await turnToward(page,{x:0,y:2.5,z:0});await capture(page,'house-and-roof');
  await walkTo(page,{x:0,z:30});await walkTo(page,{x:12,z:64},{radius:2});await capture(page,'shiretoko-trail');await page.keyboard.press('Escape');const saved=(await snapshot(page)).mission.player;await page.locator('#mission-home').click();await page.locator('#start-button').click();await page.locator('#mission-resume').click();await expect(page.locator('body')).toHaveAttribute('data-screen','mission');expect((await snapshot(page)).mission.player.x).toBeCloseTo(saved.x,2);expect((await snapshot(page)).mission.enemy.state).toBe('stopped');await lock(page);
  await walkTo(page,{x:4,z:104},{radius:5});await expect(page.locator('#mission-end')).toBeVisible();expect((await snapshot(page)).campaign.completedAreaIds).toEqual(['shiretoko']);await capture(page,'shiretoko-exit');await page.locator('#mission-next').click();await page.getByRole('button',{name:'マップ',exact:true}).click();const revealed=await page.locator('#home-panel').innerText();expect(revealed).toContain('石狩山地');expect(revealed).not.toMatch(/日高山脈|札幌|函館|撤退|再突入/);await capture(page,'home-unlocked-ishikari');await page.locator('#panel-close').click();
  // Continue the same saved campaign with genuine traversal through all prototypes.
