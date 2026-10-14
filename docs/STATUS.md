@@ -35,4 +35,13 @@ See `IOS_PREVIEW.md` for investigation and the new nine-case iPhone/WebKit suite
 
 The original 30 Chromium cases remain in CI alongside WebKit. The final source head and CI result are recorded in PR #2. Safari 15.4 is the explicit output/functionality baseline, not a claim that every older iOS version was run.
 
-Vercel Preview creation is authorized for RECLAIM only. During this follow-up, the connector could identify the account but returned HTTP 403 for its default team (`iam-2squareds-projects`); the CLI fallback had no existing authentication. No Preview URL has been created while this access block remains. No main merge, production deploy or other repository mutation was performed.
+Vercel Preview creation is authorized for RECLAIM only. Team-scoped discovery initially returned HTTP 403 for `iam-2squareds-projects`; the CLI had no existing authentication. Default-account project creation succeeded and verified the same owner. However, the first Git-source deployment, with target omitted according to the connector documentation, was returned as Production. A second fresh RECLAIM project with explicit API `target: staging` also returned Production. Both finished before cancellation could succeed. Pause requests succeeded for both projects; no further deployment is attempted through this path. Project deletion-link and protected-access operations return 403, so complete removal and an actual usable Preview require the Vercel dashboard or a corrected connection.
+
+| Incident resource | ID | Current handling |
+| --- | --- | --- |
+| reclaim-home-preview | prj_NXT4Fiik0VYPMuq9XvUhEMzgGZIU | Pause API succeeded; erroneous Production record dpl_E6DTniUfqg8sYePbqe6vmPwUktWw remains. |
+| reclaim-safari-preview | prj_c5CQvrRjQRcesZC6GMoMv89evR69 | Pause API succeeded; erroneous Production record dpl_8jG4QeeMG8Hj1XTNQ9DwFUX17mVk remains. |
+
+No functioning Preview URL is reported. No main merge/push or other repository mutation occurred. These Production-labelled records are an incident, not an authorized production release. Authenticated HTTP verification of the paused deployments is blocked by the connection's 403; successful pause responses are not presented as successful iPhone access.
+
+Final executable source `87a55fa4f1f2928f435db89c6f0e37d6c83c3ef1` passed [CI 38524912642](https://github.com/Iam-2squared/RECLAIM/actions/runs/38524912642): 15 state tests and all 39 browser cases (Chromium 30 + iPhone/WebKit 9), with no skipped browser assertions. An earlier run had one Chromium expiry failure, then the software-rendering setting was scoped to WebKit and the same assertions passed in the complete final run. The subsequent status update is documentation only.
