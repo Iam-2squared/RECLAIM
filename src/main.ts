@@ -31,7 +31,7 @@ try{
 }catch{enableFallback();}
 // Entry always starts at the title. No previous session is ever resumed straight into a mission.
 document.body.dataset.screen='title';document.body.dataset.reveal='false';
-let frameId=0,lastFrame=0,wasVisible=false,disposed=false;
+let frameId=0,lastFrame=0,frameCount=0,lastRafTime=0,wasVisible=false,disposed=false;
 let revealTimer:ReturnType<typeof setTimeout>|null=null;
 /** A brief reveal must end even when the GPU stops delivering animation frames. */
 function endReveal(){
@@ -43,13 +43,16 @@ function endReveal(){
 function frame(time:number){
   if(disposed||document.hidden)return;
   frameId=requestAnimationFrame(frame);
-  if(time-lastFrame<1000/30)return;
-  lastFrame=time;
-  // RAF timestamps can be stale after a software-GPU stall; use current monotonic time.
-  const opacity=state.bossOpacity(performance.now(),prefs.reducedMotion);
+  lastRafTime=time;
+  // A delayed compositor timestamp must not gate new UI/camera work. Use the
+  // same current monotonic clock for the 30fps cap, animation and reveal expiry.
+  const now=performance.now();
+  if(now-lastFrame<1000/30)return;
+  lastFrame=now;frameCount++;
+  const opacity=state.bossOpacity(now,prefs.reducedMotion);
   const visible=opacity>0;
   if(visible!==wasVisible){document.body.dataset.reveal=String(visible);wasVisible=visible;}
-  if(world&&!world.lost)world.render(time,state,opacity);else fallback?.bossOpacity(opacity);
+  if(world&&!world.lost)world.render(now,state,opacity);else fallback?.bossOpacity(opacity);
 }
 frameId=requestAnimationFrame(frame);
 function announce(message:string){live.textContent=message;}
@@ -89,7 +92,7 @@ function dispose(){if(disposed)return;disposed=true;endReveal();cancelAnimationF
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.
-Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,home:home.snapshot(),render:world?.stats()??null})}),writable:false});
+Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount},home:home.snapshot(),render:world?.stats()??null})}),writable:false});
 document.body.dataset.ready='true';
 for(const button of [titleButton,homeButton,soundButton,element<HTMLButtonElement>('settings-button')])button.disabled=false;
 element('boot-notice').hidden=true;

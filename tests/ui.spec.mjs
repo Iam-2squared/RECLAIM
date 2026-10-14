@@ -27,3 +27,16 @@ test('standalone file opens without an HTTP server or external asset requests',a
 test('WebGL context loss keeps title and home navigation accessible',async({page})=>{const errors=[];page.on('pageerror',e=>errors.push(e.message));await ready(page);await expect(page.locator('body')).toHaveAttribute('data-renderer','webgl');await page.locator('#scene canvas').evaluate(canvas=>canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true})));await expect(page.locator('body')).toHaveAttribute('data-renderer','fallback');await page.locator('#home-button').click();await expect(page.locator('#home-screen')).toBeVisible();expect(errors).toEqual([]);});
 
 test('boss expiry is independent of animation frame delivery',async({page})=>{await page.addInitScript(()=>{const request=window.requestAnimationFrame.bind(window);window.requestAnimationFrame=callback=>request(time=>{if(!window.__HOLD_RAF__)callback(time);});});await ready(page);await page.locator('#title-button').click();await expect(page.locator('body')).toHaveAttribute('data-reveal','true');await page.evaluate(()=>{window.__HOLD_RAF__=true;});await page.waitForTimeout(2100);await expect(page.locator('body')).toHaveAttribute('data-reveal','false');await page.locator('#home-button').click();await expect(page.locator('#home-screen')).toBeVisible();});
+
+test('stale RAF timestamps cannot stop title expiry or HOME camera updates',async({page})=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.addInitScript(()=>{const request=window.requestAnimationFrame.bind(window);window.requestAnimationFrame=callback=>request(()=>callback(0));});
+ await ready(page);await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.drawCalls).toBeGreaterThan(0);
+ const clock=await page.evaluate(()=>window.__RECLAIM__.snapshot().renderClock);expect(clock.rafTime).toBe(0);expect(clock.clockTime).toBeGreaterThan(0);
+ await page.locator('#title-button').click();await expect(page.locator('body')).toHaveAttribute('data-reveal','true');await expect(page.locator('body')).toHaveAttribute('data-reveal','false');
+ await page.locator('#home-button').click();await page.locator('#squad-button').click();
+ await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.bounds.length).toBe(4);
+ await page.locator('#menu-toggle').click();await page.getByRole('button',{name:'マップ',exact:true}).click();
+ await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.bounds.length).toBe(1);
+ await page.locator('#panel-close').click();await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.bounds.length).toBe(4);
+});
