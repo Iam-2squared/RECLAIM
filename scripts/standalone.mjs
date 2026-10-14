@@ -11,4 +11,5 @@ const license=await readFile(resolve(root,'node_modules/three/LICENSE'),'utf8');
 html=html.replace('</head>',()=>`<!-- Three.js MIT license\n${license.replaceAll('--','—')}-->\n</head>`);
 await mkdir(resolve(root,'release'),{recursive:true});
 await writeFile(resolve(root,'release/RECLAIM_Title_Preview.html'),html);
-console.log('Standalone preview: release/RECLAIM_Title_Preview.html (no runtime CDN or API)');
+await writeFile(resolve(root,'release/RECLAIM_Home_Preview.html'),html);
+console.log('Standalone preview: release/RECLAIM_Home_Preview.html (legacy title filename retained; no runtime CDN or API)');
