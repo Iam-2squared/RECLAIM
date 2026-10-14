@@ -12,8 +12,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      LIBGL_ALWAYS_SOFTWARE: '1'
     steps:
       - uses: actions/checkout@v5
         with:
@@ -34,7 +32,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reclaim-title-preview-${{ github.sha }}
+          name: reclaim-preview-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             test-results/
             release/
