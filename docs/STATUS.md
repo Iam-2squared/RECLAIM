@@ -28,6 +28,8 @@ PROVISIONALな通過条件は実際の位置・接地・歩行距離・経路POI
 - Blender/ゲームの51座標の高さを1e-9以内で照合、world contract `--check`: PASS。
 - ローカルChromium全58件: **58 PASS / 0 FAIL / 0 skip**（12.4分）。後続の出撃確認文言を選択中の区域に合わせる調整は単独HTMLでも確認。最初のCI [38597322051](https://github.com/Iam-2squared/RECLAIM/actions/runs/38597322051)は4件失敗、25分で残りWebKitを中断。実入力を観測する試験helperと到着/死亡/敵移動の観測タイミングを修正し、既存UI41・ワールド17・WebKit14の3jobへ分割。全**72件**と通常5秒の判定を保持し、最終HEADのURL/件数はPRと配布manifestに記録する。ローカルWebKitは今回未実行。
 - helper修正後の対象12件は**12 PASS / 0 FAIL / 0 skip**（7.0分）：4AREAの実歩行、4PCのマウス/移動/ジャンプ/着地、4AREA通しの実戦/解放/保存再開、10回往復、hidden停止、実被弾/HP0/再挑戦。射撃試験は実シミュレーションのcooldown満了を読取確認してから次の実クリックを行う。ゲームの射撃判定/intervalは変更しない。
+- 続くCI [38606977966](https://github.com/Iam-2squared/RECLAIM/actions/runs/38606977966)はUI41/WebKit14/製品MISSION13 PASS、dev AREA3件 FAIL（合計69/72）。開発プレビューのLow試験で不要なBalanced初期生成を避け、boot前のユーザー表示設定を復元してから初期9チャンクと実歩行を検証する。通常の表示設定の復元規約を使い、ゲームの挙動や到達/時間判定は変えない。最終CIの結果はPR/配布manifestを参照。
+- Low直接起動にそろえた開発4AREAの実ブラウザ確認は**4 PASS / 0 FAIL**（1.9分）。初期9load/0unloadと、その後の実歩行によるunload>0を確認し、品質切替によるunloadを徒歩の証拠へ混ぜない。
 - ローカル環境: Linux / Node24.19 / Chromium138.0.7204.0 / SwiftShader / テスト用日本語OSフォント。Playwright browser156/151取得の失敗と途中の修正は `VERIFICATION_NOTES.md` とreview failure-historyに保持。テストをskipしていない。
 - 実PC viewport: 1920×1080、1366×768、1280×720、1024×576のMISSION。HOMEは6PC寸法と既存モバイル導線も確認。WebGL画像を目視し、家の切妻裏面、遠景の尖った山、扁平な雲、低画面の地図見切れを修正した。
 - 既存東京TITLEと同一browser/フォント/reduced-motionの1920×1080、1366×768画像比較は**0差分pixel**。`src/scene.ts` / `src/lobby-scene.ts` / title CSS / title演出値は変更しない。
@@ -36,12 +38,14 @@ PROVISIONALな通過条件は実際の位置・接地・歩行距離・経路POI
 
 | AREA / 撮影位置 | 初期構築ms | 実draw calls / triangles | render CPU中央値 / p95 ms | active / 累計load / unload |
 | --- | ---: | ---: | ---: | ---: |
-| 知床・湖岸 | 77.3 | 58 / 59,424 | 0.9 / 4.3 | 9 / 43 / 34 |
-| 石狩・トンネル前 | 92.3 | 51 / 79,398 | 0.9 / 3.0 | 9 / 40 / 31 |
-| 日高・尾根 | 52.6 | 30 / 14,240 | 0.6 / 3.8 | 9 / 40 / 31 |
-| 札幌・道路 | 69.0 | 60 / 42,822 | 0.8 / 2.6 | 9 / 37 / 28 |
+| 知床・湖岸 | 60.2 | 58 / 59,424 | 0.8 / 1.5 | 9 / 18 / 9 |
+| 石狩・トンネル前 | 60.8 | 51 / 79,398 | 0.9 / 3.4 | 9 / 15 / 6 |
+| 日高・尾根 | 52.3 | 30 / 14,240 | 0.5 / 0.9 | 9 / 15 / 6 |
+| 札幌・道路 | 47.2 | 60 / 42,822 | 0.8 / 1.6 | 9 / 12 / 3 |
 
 毎秒60Hzの固定シミュレーションと描画は別。MISSIONにHOMEの30fps capを流用しない。時計遅延は上限を設け、hidden/blur/Esc/ロック喪失で停止する。10回HOME往復のrenderer資源は**geometry24 / texture7のまま一定**。最終ブラウザ証拠へ保存した。60fps保証・物理PCのGPU時間/メモリを計測済みとはしない。
+
+追加の実描画cadence計測は1366×768、各AREA/品質ごとに新しいChromium138/SwiftShader、shader/ロック準備後の起点で3秒以上を観測した。平均実描画FPSはLowで知床10.8/石狩10.6/日高19.1/札幌13.2、Balancedで6.8/6.7/13.4/7.6。RAF間隔の中央値/p95、simulated seconds、CPU送信時間を分けてJSON保存した。クラウドのsoftware GPU・静止起点の値であり、物理Windows性能や全視点の保証ではない。
 
 ## 納品・未検証・次工程
 
