@@ -34,7 +34,16 @@ try {
  await page.waitForFunction(p=>{const q=window.__SHIRETOKO_TERRAIN__.diagnostics().player;return Math.hypot(q.x-p.x,q.z-p.z)>.5;},before,{timeout:15000});await page.keyboard.up('w');
  await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit');checks.push('direct start with real user-gesture pointer lock, movement and Escape');
  await open();await page.locator('#intro-fly').click();await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().intro==='landed',{}, {timeout:20000});
- assert.equal((await state()).pointerLocked,false);await page.screenshot({path:resolve(out,'02-landed.jpg'),type:'jpeg',quality:94});
+ assert.equal((await state()).pointerLocked,false);assert.equal((await state()).routeOverlayVisible,false);
+ // A landed state is set before the frame is submitted. Wait for a stable idle frame,
+ // then finish that exact GL submission before asking Chromium's compositor for pixels.
+ const stable=await page.evaluate(async()=>{
+  const api=window.__SHIRETOKO_TERRAIN__;let previous=-1,same=0;
+  for(let i=0;i<30&&same<3;i++){await new Promise(r=>requestAnimationFrame(r));const count=api.diagnostics().renderCallsTotal;same=count===previous?same+1:0;previous=count;}
+  document.querySelector('canvas').getContext('webgl2').finish();
+  return {same,state:api.diagnostics().intro};
+ });assert.ok(stable.same>=3);assert.equal(stable.state,'landed');
+ await page.screenshot({path:resolve(out,'02-landed.jpg'),type:'jpeg',quality:94});
  await page.locator('#intro-explore').click();await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().pointerLocked);await page.keyboard.press('Escape');checks.push('optional flight ends at a new explicit click, never acquires lock asynchronously');
  await open();await page.locator('#intro-fly').click();await page.keyboard.press('Escape');assert.equal((await state()).intro,'closed');
  await open();await page.locator('#intro-cancel').click();assert.equal((await state()).intro,'closed');checks.push('Escape cancels camera travel; cancel returns to isolated overview');

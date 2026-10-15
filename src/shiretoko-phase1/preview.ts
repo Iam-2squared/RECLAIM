@@ -173,7 +173,7 @@ async function boot() {
   on($('intro-cancel'),'click',()=>selectView(0,true));
   on($('intro-explore'),'click',()=>{if(!intro.explore())return;closeIntro();activeLocation=0;selectedView=0;enterWalk();});
   on($('intro-fly'),'click',()=>{
-    if(!intro.fly())return;
+    if(!intro.fly())return;routeLine.visible=false;
     // Reduced motion directly shows the landing; neither branch requests pointer lock asynchronously.
     flight={from:camera.position.clone(),target:controls.target.clone(),start:matchMedia('(prefers-reduced-motion: reduce)').matches?performance.now()-3200:performance.now()};
     controls.enabled=false;$('intro-fly').hidden=true;$('intro-explore').hidden=true;

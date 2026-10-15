@@ -16,6 +16,8 @@
 
 単体HTMLは従来の生成コマンドで地形版と独立イントロ版を作る。WebGL 2対応のPC Chrome/EdgeでHTMLを開く。追加CDN/DB/API/有料素材なし。自作地形/テクスチャと既存Three.js MIT、既存UIフォントSIL OFLのみ。参照写真は構図・形状の参照でありテクスチャに使用していない。UIフォントは今回の文字集合へ再サブセット化した。
 
+CI初回v2では地形13項目が成功し、イントロ着地後の画像取得が30秒でタイムアウトした。カメラ移動時に全景用のルート線を消し、着地状態だけで撮影せず、描画counterの停止とそのGL submissionの完了を確認してから撮影する検査へ修正。タイムアウト延長・skip・判定緩和は行わない。失敗ログ/画像はレビュー履歴に保持する。
+
 実測値、対応HEAD、HTML SHA256、A〜Hの同条件比較、各寸法UI、失敗画像と履歴はレビューZIPに収録。`scripts/compare-shiretoko-terrain.mjs V1.html OUTPUT_DIR` で同じカメラ群を取得できる。`report-shiretoko-terrain.mjs` が座標・水位・最大勾配・実Walker往復をJSON化する。`audit-shiretoko-scope.mjs` は基準main上の既存ファイルに変更/削除がないことを検査する。
 
 **検証PASSとユーザーの外観承認は別。** 既存CIのv1ワールドジョブは13 PASS / 4 FAILだった。失敗は実歩行の壁時計タイムアウト3件と低HP試験の移動距離0判定で、保護された既存テストを削除・skip・緩和していない。今回の最終CIはPRとレビューの記録を参照する。
