@@ -93,7 +93,17 @@ try {
   await page.waitForFunction(() => !window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded, {}, { timeout: 15000 });
   await page.keyboard.up('Space');
   await page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded, {}, { timeout: 15000 });
+  // Protocol dispatch can complete before a slow software-GL page delivers
+  // mousemove. Observe that real nonzero input before fixing the capture pose;
+  // otherwise the late event changes yaw AFTER the exact0/-.06 assertions.
+  await page.evaluate(()=>{
+    window.__terrainLookDelivered=new Promise(resolve=>{
+      const delivered=e=>{if(e.movementX||e.movementY){document.removeEventListener('mousemove',delivered);resolve();}};
+      document.addEventListener('mousemove',delivered);
+    });
+  });
   await page.mouse.move(840, 475);
+  await page.evaluate(async()=>{await window.__terrainLookDelivered;delete window.__terrainLookDelivered;});
   // Keep only the review image's heading reproducible after the real inputs.
   // Never move the walker or replace the W/jump/Escape assertions above/below.
   const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;return api.diagnostics().renderCallsTotal;});
