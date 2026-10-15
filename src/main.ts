@@ -93,6 +93,7 @@ function switchScreen(target:'title'|'home'){
  titleScreen.hidden=target!=='title';homeScreen.hidden=target!=='home';document.body.dataset.screen=target;document.body.dataset.reveal='false';wasVisible=false;
  home.screenChanged();
  referenceMenus?.refresh();
+ if(referenceMenus?.mobile)window.scrollTo({top:0,left:0,behavior:'instant'});
  invalidateRender();
  if(target==='home'){element<HTMLButtonElement>('start-button').focus({preventScroll:true});announce('ホーム。外観と装備を準備し、知床の探索へ出撃できます。オンライン未接続です。');}
  else{homeButton.focus({preventScroll:true});announce('タイトル画面に戻りました。');}

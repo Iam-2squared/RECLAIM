@@ -18,8 +18,13 @@ export async function fourFits(page) {
   for(const sample of samples)contained(sample,outer);
   for(let i=0;i<samples.length;i++)for(let j=i+1;j<samples.length;j++)expect(intersects(samples[i],samples[j])).toBe(false);
   // Mobile has intentional vertical scrolling; verify the real action is reachable.
-  if(menus.mode==='mobile-reference-2d')await page.locator('#start-button').scrollIntoViewIfNeeded();
-  await expect(page.locator('#start-button')).toBeInViewport({ratio:1});
+  if(menus.mode==='mobile-reference-2d'){
+   // WebKit can retain a stale IntersectionObserver root after viewport/inset
+   // changes. Demand complete REAL viewport containment and a live hit target,
+   // not a reduced IO threshold or a forced click. The touch suite taps START.
+   await page.locator('#start-button').evaluate(n=>n.scrollIntoView({block:'center',behavior:'instant'}));
+   await expect.poll(()=>page.locator('#start-button').evaluate(n=>{const r=n.getBoundingClientRect(),v=visualViewport;const left=v?.offsetLeft??0,top=v?.offsetTop??0,right=left+(v?.width??innerWidth),bottom=top+(v?.height??innerHeight);return r.width>=44&&r.height>=44&&r.left>=left&&r.top>=top&&r.right<=right+1&&r.bottom<=bottom+1&&n.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
+  }else await expect(page.locator('#start-button')).toBeInViewport({ratio:1});
   // info.render.calls describes the LAST Three frame, which may belong to the
   // unchanged narrow layout. The actual frame counter must not advance here.
   const frameCount=(await snapshot(page)).renderClock.rendererFrames;

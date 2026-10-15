@@ -128,7 +128,7 @@ body[data-touch-only="true"] #mobile-mission-notice:not([hidden]){display:block;
  body[data-menu-presentation="mobile-reference-2d"] .chapter-route{display:none}
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .home-screen,
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"][data-panel-open="true"] .home-screen{grid-template-columns:minmax(0,1fr) minmax(260px,1fr);grid-template-rows:64px 66px auto auto auto auto;gap:10px 22px;--hero-height:370px}
- body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .home-screen .reference-backplate{left:calc(28% - var(--hero-height)*.87037);top:130px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .home-screen .reference-backplate{left:calc(23% - var(--hero-height)*.87037);top:130px}
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] #operator-labels{grid-row:3/7;min-height:250px}
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] #reference-equipment{grid-column:2;grid-row:2}
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] #reference-destination{grid-column:2;grid-row:3}
