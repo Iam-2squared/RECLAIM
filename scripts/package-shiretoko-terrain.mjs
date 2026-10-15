@@ -1,0 +1,18 @@
+import { build } from 'vite';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+const root = resolve(import.meta.dirname, '..'), output = resolve(root, 'release/shiretoko-phase1-build');
+await build({ configFile: false, root, base: './', build: { outDir: output, emptyOutDir: true, target: 'es2022', assetsInlineLimit: Infinity, rollupOptions: { input: resolve(root, 'shiretoko-terrain.html'), output: { inlineDynamicImports: true } } } });
+let html = await readFile(resolve(output, 'shiretoko-terrain.html'), 'utf8');
+const script = html.match(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/), css = html.match(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/);
+if (!script || !css) throw new Error('Unexpected terrain build; refusing partial artifact');
+const js = await readFile(resolve(output, script[1]), 'utf8'), styles = await readFile(resolve(output, css[1]), 'utf8');
+html = html.replace(script[0], () => `<script type="module">${js.replace(/<\/script/gi, '<\\/script')}</script>`).replace(css[0], () => `<style>${styles}</style>`);
+const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() ? 'dirty' : 'clean';
+const license = await readFile(resolve(root, 'node_modules/three/LICENSE'), 'utf8');
+html = html.replace('</head>', () => `<meta name="reclaim-terrain-source" content="${sha}"><meta name="reclaim-terrain-tree" content="${dirty}"><!-- Three.js MIT license\n${license.replaceAll('--', '—')} -->\n</head>`);
+await mkdir(resolve(root, 'release'), { recursive: true });
+await writeFile(resolve(root, 'release/RECLAIM_Shiretoko_Terrain_Phase1.html'), html);
+console.log(`Terrain-only standalone: ${Buffer.byteLength(html)} bytes / source ${sha} / ${dirty}`);
