@@ -1,6 +1,49 @@
-# Phase 1 v2 / 独立地形の品質改善
+# Phase 1 v3 / 地形形状・境界の仕上げレビュー
 
-2026-10-16 JST。v1 `dd0d41a1c033ae2e958f6709c11606f580c4625f` からの改修。以下のv1記録は履歴として保持する。**現在の仕様はこのv2節が優先**。本体TITLE/HOME・出撃経路・保存・既存ワールドは無変更。Draft / 見た目承認待ち。
+2026-10-16 JST。基準v2 `6091ad298543100c0c42c1e9b4a2986d2b4d0d7e` からのTASK A。以下のv2/v1記録は履歴であり、**現行はこのv3節が優先**。TITLE/HOME・ミッション・キャンペーン・保存・既存アート・依存・通常build設定は変更しない。独立地形と独立イントロのみ。mainマージ・本番公開・本体イントロ接続は未実施。
+
+| 系統 | v3の実装と境界 |
+| --- | --- |
+| 海岸 | 左右それぞれの非周期の入り江・岩の鼻。海中の裾、崖錐、下段の岩盤、主壁、後退した上段を場所ごとに変化させ、斜め断層と大小の破断を地形そのものに追加。沖の岩は同じ衝突高さ場内で角張ったものと尖ったものを混ぜる |
+| 外周 | 全陸の外周は引き続き海面下へ自然に終端。20m/80m接合を維持。逆俯瞰で見つけた海Plane自体の台形終端は、描画面を視錐台より広くし海の遠端色を空の地平色に一致させて解消。陸の矩形を霧だけで隠す方式ではない |
+| 湿原 | 排水方向を持つ低いpeat-ridge、最大約1.8mの局所バー、浅い窪み、5m格子でサンプルする約±0.55mの微地形。11点の蛇行水路は92→90.5mへ単調に低下。主ルートを切断しない |
+| 湖 | 北側の流入湾、東側の入り江、半島状の岸、湿地側の浅い岸と山側の急岸。水面は別式の楕円shaderを廃止し、同じ描画/接地三角形の水位以下をCPUでclip。水面が乾いた岸を貫く状態を自動検査 |
+| 山岳 | 主/支稜線の鞍部、非対称肩斜面、5系統の構造谷を追加。D8侵食を細い反復溝にしすぎず分散。80m遠景で鋭い稜線が鋸歯にaliasする状態を遠景側だけ丸める |
+| 地表 | 安全ルートにも最大約±11cmの微起伏。岩の露出度 `aExposure` を追加し、既存の高さ・法線・湿りとともに後のPBRの入力にできる。表示専用の頂点変位や浮遊メッシュは追加しない |
+
+2,400m/64チャンク/5m/seed 431071、18主ルートwaypointの座標/目標高、主要4地点、水位90/92/90.5/113/149mを維持。住宅予定地108m・中心の平坦面を保持。小さな道の起伏により他3地点の実高はv2から約2cmだけ変わる。主地形最高点は約700.65m、主ルート約2068.527m、往復実Walker約4136.463m（42791固定60Hz tick）。途中teleportなし、接地誤差0、水域への進入0。ルート実最大勾配は約0.509（既存の<0.65条件を保持）。
+
+全景の同条件実測で約607,467 triangles / 74 draw calls（v2: 592,912 / 74、約+2.45%）。追加の水岸clipの分で、遠景を高密度化した値ではない。64チャンク・20m/80m面・texture2枚を維持。geometry属性約11.51MB、index約7.28MB、高さ0.925MB、texture概算2.32MB。VRAM全量ではない。初回/継続描画とheapの実測は対応HEADのverification JSONを正とする。SwiftShader/Linuxの値をWindows GPU/FPSとして扱わない。
+
+## v3の再生成と検査
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npm run test:blender
+node scripts/package-shiretoko-terrain.mjs
+node scripts/verify-shiretoko-terrain.mjs
+node scripts/verify-shiretoko-intro.mjs
+node scripts/verify-shiretoko-v3.mjs
+node scripts/report-shiretoko-v3.mjs
+node scripts/audit-shiretoko-scope.mjs release/shiretoko-phase1-review/scope.json
+# 比較はv2とv3の両HTMLに同じスクリプトを使用
+node scripts/compare-shiretoko-terrain.mjs /absolute/path/v2.html release/shiretoko-phase1-review/comparison/v2
+node scripts/compare-shiretoko-terrain.mjs release/RECLAIM_Shiretoko_Terrain_Phase1.html release/shiretoko-phase1-review/comparison/v3
+```
+
+必要な環境のみ `RECLAIM_TEST_BROWSER=/absolute/path/chromium` を設定。比較A〜Jは1600×900/DPR1/FOV44/同一世界座標カメラ/uTime=0、片側10枚。追加で360度8方向・海上・遠景終端・20/80m接合・山麓見下ろし・湿原と高原近景を保存。全64チャンクと遠景接合の位置/法線/AO/湿り/**露出度**、水面polygonの岸接合、固定seed、幅4mの通行面も検査する。実ブラウザでは4寸法UI、W/ジャンプ/ESC、再入場、静止0描画、blur/hidden（合成lifecycle試験）、ロック拒否/WebGL不可/context loss、10回イントロ資源一定、disposeを検査。物理Windows/iPhone/Androidではない。
+
+初期の変更では、岩盤profileのsmooth区間反転がルートに段差を作り、追加湖湾が低いルートへ掛かった。既存のルート/移動試験が失敗を検出したため、区間の上限と湾の位置を修正した。skip・閾値緩和・timeout延長は行っていない。初期実画像では岩の横模様が強く、遠景稜線の鋸歯と海の台形端も確認し修正。失敗/棄却画像と履歴はレビューに保持する。
+
+**検査PASSは写真品質やユーザーの見た目承認ではない。** 近景は草のない裸の地形であり、現実の植生、崖の真の張り出し、写真由来PBR、海面反射/波打ち際/霧は未完成。Phase 2（植物・自然物）、3（家・木道）、4（素材/光/水/大気）に残す。本体480mミッションと2,400m地形の座標/保存互換は未統合。独立地形v3とイントロ試作を提出し、ユーザーの見た目承認待ちで止める。
+
+---
+
+# Phase 1 v2 / 独立地形の品質改善（履歴）
+
+2026-10-16 JST。v1 `dd0d41a1c033ae2e958f6709c11606f580c4625f` からのv2改修記録。以下のv1記録も履歴として保持する。本体TITLE/HOME・出撃経路・保存・既存ワールドは無変更。Draft / 見た目承認待ち。
 
 | 系統 | v2の変更 |
 | --- | --- |

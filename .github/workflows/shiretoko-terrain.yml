@@ -15,6 +15,8 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # v3 geometry report compares the real v2 ancestor, not invented metrics
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -25,6 +27,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/verify-shiretoko-terrain.mjs
       - run: node scripts/verify-shiretoko-intro.mjs
+      - run: node scripts/verify-shiretoko-v3.mjs
+      - run: node scripts/report-shiretoko-v3.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

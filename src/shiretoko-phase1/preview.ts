@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { BASINS, CHANNELS, LOCATIONS, ROUTE, TERRAIN, ShiretokoTerrain, clamp } from './terrain.ts';
 import { TerrainIntro } from './intro.ts';
 import { sceneryMesh } from './scenery.ts';
+import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
 import './preview.css';
@@ -51,6 +52,7 @@ async function boot() {
     geometry.setAttribute('normal', new T.BufferAttribute(data.normals, 3));
     geometry.setAttribute('aOcclusion', new T.BufferAttribute(data.occlusion, 1));
     geometry.setAttribute('aWetness', new T.BufferAttribute(data.wetness, 1));
+    geometry.setAttribute('aExposure', new T.BufferAttribute(data.exposure, 1));
     geometry.setIndex(new T.BufferAttribute(data.indices, 1)); geometry.computeBoundingSphere();
     const mesh = new T.Mesh(geometry, material); mesh.name = `terrain/${cx}/${cz}/5m`; root.add(mesh); chunks.push(mesh);
   }
@@ -60,16 +62,21 @@ async function boot() {
     geometry.setAttribute('normal',new T.BufferAttribute(data.normals,3));
     geometry.setAttribute('aOcclusion',new T.BufferAttribute(data.occlusion,1));
     geometry.setAttribute('aWetness',new T.BufferAttribute(data.wetness,1));
+    geometry.setAttribute('aExposure',new T.BufferAttribute(data.exposure,1));
     geometry.setIndex(new T.BufferAttribute(data.indices,1));geometry.computeBoundingSphere();
     const mesh=new T.Mesh(geometry,material);mesh.name=`${band} inland continuation / stitched`;
     root.add(mesh);
   }
 
   const waters: T.Mesh<T.BufferGeometry, T.ShaderMaterial>[] = [];
-  const ocean = new T.Mesh(new T.PlaneGeometry(24000, 24000), waterMaterial(detail, height, 0)); ocean.rotation.x = -Math.PI / 2; ocean.position.y = .15; ocean.name = 'preview sea level'; root.add(ocean); waters.push(ocean);
+  // The old 24km plane exposed a trapezoidal END OF THE SEA in reverse aerial
+  // views. Keep its geometric edge outside every allowed camera frustum.
+  const ocean = new T.Mesh(new T.PlaneGeometry(120000, 120000), waterMaterial(detail, height, 0)); ocean.rotation.x = -Math.PI / 2; ocean.position.y = .15; ocean.name = 'preview sea level / horizon continuous'; root.add(ocean); waters.push(ocean);
   for (const b of BASINS) {
-    const lake = new T.Mesh(new T.PlaneGeometry(b.rx * 2.9, b.rz * 2.9), waterMaterial(detail, height, b.level, b));
-    lake.rotation.x = -Math.PI / 2; lake.position.set(b.x, b.level, b.z); lake.name = `preview water/${b.id}`; root.add(lake); waters.push(lake);
+    const data=basinWaterMesh(terrain,b),geometry=new T.BufferGeometry();
+    geometry.setAttribute('position',new T.BufferAttribute(data.positions,3));geometry.setIndex(new T.BufferAttribute(data.indices,1));geometry.computeBoundingSphere();
+    const lake = new T.Mesh(geometry, waterMaterial(detail, height, b.level));
+    lake.name = `preview water/${b.id}/terrain-clipped`; root.add(lake); waters.push(lake);
   }
   for(const channel of CHANNELS) {
     const positions:number[]=[],indices:number[]=[];
@@ -246,7 +253,7 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 2, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
+    ready: Boolean(firstFrame), phase: 1, revision: 3, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - started).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     triangles: renderer.info.render.triangles, drawCalls: renderer.info.render.calls,

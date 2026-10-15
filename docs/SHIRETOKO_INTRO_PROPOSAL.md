@@ -51,4 +51,6 @@
 
 Nodeの状態遷移に加え、`scripts/verify-shiretoko-intro.mjs` は実WebGL・4寸法・実Pointer Lock・移動・Esc・カメラ移動・キャンセル・10往復の資源一定・reduced motion・ロック拒否・context loss・disposeを検証する。最終結果はレビューZIPとPRを参照。
 
-次の承認は、独立地形v2の見た目、およびイントロを本体へ接続するかどうかを別々に行う。mainマージ・公開・Vercel変更は本作業の対象外。
+TASK Aのv3更新でも、独立イントロは同じv3地形・renderer・水面を再利用する。本体HOME/ミッション開始への接続は追加していない。
+
+次の承認は、独立地形v3の見た目、およびイントロを本体へ接続するかどうかを別々に行う。mainマージ・公開・Vercel変更は本作業の対象外。

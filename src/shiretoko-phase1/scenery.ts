@@ -4,10 +4,10 @@ export const SCENERY = Object.freeze({near:{x0:-3600,x1:3600,z0:-4200,z1:-1200,s
 export function sceneryMesh(terrain:ShiretokoTerrain, band:'near'|'far'):ChunkData {
  const b=SCENERY[band],cols=(b.x1-b.x0)/b.step,rows=(b.z1-b.z0)/b.step;
  if(!Number.isInteger(cols)||!Number.isInteger(rows))throw new Error('Scenery bounds must align with their LOD grid');
- const positions:number[]=[],normals:number[]=[],occlusion:number[]=[],wetness:number[]=[],indices:number[]=[];
+ const positions:number[]=[],normals:number[]=[],occlusion:number[]=[],wetness:number[]=[],exposure:number[]=[],indices:number[]=[];
  const add=(x:number,z:number)=>{
   const i=positions.length/3,v=terrain.vertexAt(x,z);
-  positions.push(x,v.y,z);normals.push(...v.normal);occlusion.push(v.occlusion);wetness.push(v.wetness);return i;
+  positions.push(x,v.y,z);normals.push(...v.normal);occlusion.push(v.occlusion);wetness.push(v.wetness);exposure.push(v.exposure);return i;
  };
  for(let row=0;row<=rows;row++)for(let col=0;col<=cols;col++)add(b.x0+col*b.step,b.z0+row*b.step);
  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
@@ -21,5 +21,5 @@ export function sceneryMesh(terrain:ShiretokoTerrain, band:'near'|'far'):ChunkDa
    indices.push(right,last,d);
   }else indices.push(right,c,d);
  }
- return {positions:new Float32Array(positions),normals:new Float32Array(normals),occlusion:new Float32Array(occlusion),wetness:new Float32Array(wetness),indices:new Uint32Array(indices),cx:0,cz:0};
+ return {positions:new Float32Array(positions),normals:new Float32Array(normals),occlusion:new Float32Array(occlusion),wetness:new Float32Array(wetness),exposure:new Float32Array(exposure),indices:new Uint32Array(indices),cx:0,cz:0};
 }
