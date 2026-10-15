@@ -97,3 +97,53 @@ test('jump leaves the shared terrain and lands; latching and paused input do not
   walker.clearInput(); walker.step({ forward: 0, right: 0, sprint: false, jump: true }, 1 / 60);
   assert.ok(walker.y > startY);
 });
+
+test('scenery joins use every fine edge, with the identical height, normal, AO and wetness', async () => {
+  const {sceneryMesh}=await import('../src/shiretoko-phase1/scenery.ts');
+  const near=sceneryMesh(terrain,'near'),far=sceneryMesh(terrain,'far');
+  for(const [mesh,z,extent,step] of [[near,-1200,1200,5],[far,-4200,3600,20]]) {
+    const used=new Set(mesh.indices),found=new Map();
+    for(const i of used)if(mesh.positions[i*3+2]===z)found.set(mesh.positions[i*3],i);
+    for(let x=-extent;x<=extent;x+=step){
+      const i=found.get(x);assert.notEqual(i,undefined,`Missing used join vertex ${x},${z}`);
+      const v=terrain.vertexAt(x,z);
+      assert.equal(mesh.positions[i*3+1],Math.fround(v.y));
+      assert.deepEqual([...mesh.normals.slice(i*3,i*3+3)],v.normal.map(Math.fround));
+      assert.equal(mesh.occlusion[i],Math.fround(v.occlusion));assert.equal(mesh.wetness[i],Math.fround(v.wetness));
+    }
+    // Actual triangle edges, not merely unused vertices in a buffer.
+    const edges=new Set();
+    for(let i=0;i<mesh.indices.length;i+=3)for(let n=0;n<3;n++){
+      const a=mesh.indices[i+n],b=mesh.indices[i+(n+1)%3];
+      if(mesh.positions[a*3+2]===z&&mesh.positions[b*3+2]===z){const p=mesh.positions[a*3],q=mesh.positions[b*3];edges.add(`${Math.min(p,q)}:${Math.max(p,q)}`);}
+    }
+    for(let x=-extent;x<extent;x+=step)assert.ok(edges.has(`${x}:${x+step}`),`Unstitched triangle edge ${x},${z}`);
+  }
+});
+
+test('the entire exposed world perimeter terminates BELOW the sea, without a land cap or wall', () => {
+  // Fine near-scene side ends, far-scene side/back ends, and uncovered main sides.
+  for(const [axis,fixed,start,end,step] of [['x',-3600,-4200,-1200,20],['x',3600,-4200,-1200,20],['x',-6000,-10200,-4200,80],['x',6000,-10200,-4200,80],['z',-10200,-6000,6000,80],['x',-1200,-1200,1200,5],['x',1200,-1200,1200,5],['z',1200,-1200,1200,5]]) {
+    for(let v=start;v<=end;v+=step){const x=axis==='x'?fixed:v,z=axis==='z'?fixed:v;assert.ok(terrain.surfaceAt(x,z)<-20,`Visible cut at ${x},${z}`);}
+  }
+  // The scenery actually has separate inland peaks and a naturally tapering coastline.
+  for(const [x,z] of [[160,-1710],[350,-3000],[650,-5000],[-100,-6200]])assert.ok(rawHeight(x,z)>600);
+  assert.ok(rawHeight(0,-8800)<rawHeight(0,-7500));
+});
+
+test('a connected shallow watercourse has one shared geometry / collision contract and leaves the route dry', async () => {
+  const {CHANNELS,channelSample}=await import('../src/shiretoko-phase1/terrain.ts');
+  for(const channel of CHANNELS)for(let i=1;i<channel.points.length;i++){
+    const a=channel.points[i-1],b=channel.points[i],length=Math.hypot(b.x-a.x,b.z-a.z);
+    for(let d=0;d<=length;d+=2){const x=a.x+(b.x-a.x)*d/length,z=a.z+(b.z-a.z)*d/length,s=channelSample(x,z);assert.ok(s);assert.ok(terrain.heightAt(x,z)<s.level-.3);assert.ok(terrain.inWater(x,z));}
+  }
+});
+
+test('the cliff keeps a steep headwall, a broader foot and a safe dry playable plateau', () => {
+  const walker=new TerrainWalker(terrain);walker.yaw=Math.PI/2;
+  for(let i=0;i<4000;i++){walker.step({forward:1,right:0,sprint:true,jump:false},1/60);assert.ok(!terrain.inWater(walker.x,walker.z));assert.ok(terrain.slopeAt(walker.x,walker.z)<=.85);assert.ok(Math.abs(walker.y-terrain.heightAt(walker.x,walker.z))<.001);}
+  assert.ok(walker.distance>35&&walker.distance<180);
+  let shelf=0,wall=0;
+  for(let x=-450;x<150;x+=5){const y=terrain.heightAt(x,850);if(y>2&&y<40)shelf++;if(Math.abs(terrain.heightAt(x+5,850)-y)>20)wall++;}
+  assert.ok(shelf>=5);assert.ok(wall>0);
+});

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>RECLAIM · SHIRETOKO — Terrain / Phase 01</title>
+    <title>RECLAIM · SHIRETOKO — Terrain / Phase 01 v2</title>
     <meta name="description" content="RECLAIM 知床・独立したPC地形プレビュー。岬、湿原、湖と高原、内陸山岳。Phase 1。" />
   </head>
   <body>
@@ -11,11 +11,12 @@
       <div id="terrain-view" aria-label="知床の3D地形"></div>
       <header class="terrain-ui masthead">
         <div class="identity"><strong>RECLAIM</strong><span>SHIRETOKO / 知床</span></div>
-        <div class="phase"><span class="live-dot"></span>WORLD STUDY <b>01</b><span class="phase-label">地形 / TERRAIN</span></div>
+        <div class="phase"><span class="live-dot"></span>WORLD STUDY <b>01</b><span class="phase-label">地形 v2 / TERRAIN</span></div>
         <div class="view-tools">
           <button id="overview" class="active" aria-pressed="true">全景 <span>0</span></button>
           <button id="elevation" aria-pressed="false">標高</button>
           <button id="route" aria-pressed="false">ルート</button>
+          <button id="intro-open">イントロ試作</button>
           <button id="clean" aria-label="表示を隠す（Hキーで戻る）">UI非表示 <span>H</span></button>
         </div>
       </header>
@@ -36,6 +37,11 @@
         <button id="walk">この場所を歩く <span>↗</span></button>
       </footer>
       <div id="walk-overlay" hidden><span class="reticle"></span><div id="walk-message">画面をクリックして視点操作を再開</div></div>
+      <section id="intro-panel" hidden aria-label="独立した全景イントロの試作">
+        <div class="intro-heading"><span>SHIRETOKO</span><h2>この土地から、始める。</h2><p id="intro-description">海と断崖、湿原と湖。その奥に続く山々へ。</p></div>
+        <div id="intro-labels" aria-hidden="true"></div>
+        <div class="intro-actions"><span>知床 / 地形レビュー</span><div><button id="intro-cancel">俯瞰に戻る <small>Esc</small></button><button id="intro-fly">短い移動を試す</button><button id="intro-explore">探索を開始</button></div></div>
+      </section>
       <div id="loading"><div class="load-mark">RECLAIM</div><p>知床の地形を構築しています</p><small>PHASE 01 / ORIGINAL TERRAIN</small></div>
       <div id="error" hidden role="alert"></div>
     </div>

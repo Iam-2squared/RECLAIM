@@ -40,10 +40,16 @@ try {
     api.freeze(true);
     return { ...api.diagnostics(), renderer: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER) };
   });
-  for (const [width, height] of [[1600, 1000], [1366, 768]]) {
+  for (const [width, height] of [[1600,900],[1366,768],[1280,720],[1024,576]]) {
     await page.setViewportSize({ width, height });
     const clipped = await page.locator('.terrain-ui button').evaluateAll(buttons => buttons.filter(b => { const r = b.getBoundingClientRect(); return r.x < 0 || r.y < 0 || r.right > innerWidth || r.bottom > innerHeight; }).map(b => b.id || b.textContent));
-    assert.deepEqual(clipped, []); checks.push(`desktop controls fit ${width}x${height}`);
+    assert.deepEqual(clipped, []);
+    const overlap=await page.evaluate(()=>{
+      const a=document.querySelector('.scene-note').getBoundingClientRect(),b=document.querySelector('.locations').getBoundingClientRect();
+      return Math.max(0,Math.min(a.right,b.right)-Math.max(a.left,b.left))*Math.max(0,Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top));
+    });assert.equal(overlap,0,'Copy must not overlap location 01');
+    await page.screenshot({path:resolve(captures,`UI-${width}x${height}.jpg`),type:'jpeg',quality:92});
+    checks.push(`desktop controls fit ${width}x${height}`);
   }
   await page.setViewportSize({ width: 1600, height: 1000 });
   await page.screenshot({ path: resolve(captures, '01-overview-with-controls.jpg'), type: 'jpeg', quality: 92 });
@@ -61,6 +67,11 @@ try {
   assert.equal(await page.locator('#elevation').getAttribute('aria-pressed'), 'true');
   await page.getByRole('button', { name: 'ルート', exact: true }).click();
   assert.equal(await page.locator('#route').getAttribute('aria-pressed'), 'true');
+  await page.keyboard.press('h');
+  assert.equal(await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().routeOverlayVisible),false);
+  await page.keyboard.press('h');
+  assert.equal(await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().routeOverlayVisible),true);
+  checks.push('H hides terrain overlays as well as DOM UI, then restores the prior route toggle');
   await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.setView(0));
   await page.screenshot({ path: resolve(captures, '07-elevation-and-route.jpg'), type: 'jpeg', quality: 92 });
   await page.locator('#elevation').click(); await page.locator('#route').click();
@@ -109,12 +120,15 @@ try {
   checks.push('zero network requests and zero local/session-storage access');
   const measured = await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.diagnostics());
   await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.dispose());
-  assert.equal(await page.locator('canvas').count(), 0); checks.push('explicit dispose releases canvas / scene / GPU resources and input listeners');
+  assert.equal(await page.locator('canvas').count(), 0);
+  const disposed=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0); checks.push('explicit dispose releases canvas / scene / GPU resources and input listeners');
   const samples = measured.frameTimesMs.filter(x => x > 0).sort((a,b) => a-b), percentile = p => samples[Math.min(samples.length-1,Math.floor(samples.length*p))] ?? null;
   const report = { source: html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1], artifactBytes: Buffer.byteLength(html), checks, errors, network, storage, initial, passage, measurements: { frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), note:'Headless Chromium / software SwiftShader, not a physical-PC FPS guarantee', end:measured } };
   await writeFile(resolve(captures,'verification.json'), JSON.stringify(report,null,2));
   console.log(JSON.stringify({ checks, firstFrameMs:initial.firstFrameMs, renderer:initial.renderer, passage, frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), output:captures }, null, 2));
 } catch(error) {
+  await page.screenshot({path:resolve(captures,'FAILED-verification.png'),timeout:60000}).catch(()=>{});
+  await writeFile(resolve(captures,'FAILED-verification.txt'),String(error));
   console.error('Verification failed', error);
   console.error('Runtime state',JSON.stringify(await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()).catch(()=>null)));
   throw error;

@@ -16,4 +16,5 @@ const fontLicense = await readFile(resolve(root, 'docs/SHIRETOKO_TERRAIN_FONT_LI
 html = html.replace('</head>', () => `<meta name="reclaim-terrain-source" content="${sha}"><meta name="reclaim-terrain-tree" content="${dirty}"><!-- Three.js MIT license\n${license.replaceAll('--', '—')} -->\n<!-- RECLAIM Terrain UI, subset of Noto Sans JP: SIL Open Font License\n${fontLicense.replaceAll('--', '—')} -->\n</head>`);
 await mkdir(resolve(root, 'release'), { recursive: true });
 await writeFile(resolve(root, 'release/RECLAIM_Shiretoko_Terrain_Phase1.html'), html);
+await writeFile(resolve(root, 'release/RECLAIM_Shiretoko_Intro_Demo.html'),html.replace('<body>','<body data-initial-intro="true">'));
 console.log(`Terrain-only standalone: ${Buffer.byteLength(html)} bytes / source ${sha} / ${dirty}`);

@@ -4,8 +4,8 @@ on:
     paths:
       - 'src/shiretoko-phase1/**'
       - 'shiretoko-terrain.html'
-      - 'scripts/*shiretoko-terrain.mjs'
-      - 'tests/shiretoko-terrain.test.mjs'
+      - 'scripts/*shiretoko-*.mjs'
+      - 'tests/shiretoko-*.test.mjs'
       - '.github/workflows/shiretoko-terrain.yml'
 permissions:
   contents: read
@@ -20,15 +20,17 @@ jobs:
           node-version: '22'
       - run: npm ci
       - run: npm run typecheck
-      - run: node --experimental-strip-types --test tests/shiretoko-terrain.test.mjs
+      - run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs
       - run: node scripts/package-shiretoko-terrain.mjs
       - run: npx playwright install --with-deps chromium
       - run: node scripts/verify-shiretoko-terrain.mjs
+      - run: node scripts/verify-shiretoko-intro.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: shiretoko-terrain-phase1-${{ github.event.pull_request.head.sha }}
           path: |
             release/RECLAIM_Shiretoko_Terrain_Phase1.html
+            release/RECLAIM_Shiretoko_Intro_Demo.html
             release/shiretoko-phase1-review/
           retention-days: 14

@@ -9,9 +9,9 @@ vec3 atmosphere(vec3 color, vec3 p) {
   return mix(color,haze,clamp(fog,0.,.97));
 }`;
 const vertex = `
-attribute float aOcclusion;
-varying vec3 vP; varying vec3 vN; varying float vOcc;
-void main(){vP=(modelMatrix*vec4(position,1.)).xyz;vN=normalize(mat3(modelMatrix)*normal);vOcc=aOcclusion;gl_Position=projectionMatrix*viewMatrix*vec4(vP,1.);}`;
+attribute float aOcclusion; attribute float aWetness;
+varying vec3 vP; varying vec3 vN; varying float vOcc; varying float vWet;
+void main(){vP=(modelMatrix*vec4(position,1.)).xyz;vN=normalize(mat3(modelMatrix)*normal);vOcc=aOcclusion;vWet=aWetness;gl_Position=projectionMatrix*viewMatrix*vec4(vP,1.);}`;
 
 /** Original tile, made from our deterministic lattice noise, not a downloaded asset. */
 export function detailTexture(): T.DataTexture {
@@ -49,7 +49,7 @@ export function terrainMaterial(detail: T.Texture): T.ShaderMaterial {
     vertexShader: vertex,
     fragmentShader: `
     uniform sampler2D uDetail; uniform float uElevation; uniform vec3 uSun;
-    varying vec3 vP; varying vec3 vN; varying float vOcc;
+    varying vec3 vP; varying vec3 vN; varying float vOcc; varying float vWet;
     ${atmospheric}
     vec3 elevation(float h) {
       vec3 c=mix(vec3(.11,.25,.25),vec3(.38,.48,.25),smoothstep(0.,170.,h));
@@ -60,15 +60,23 @@ export function terrainMaterial(detail: T.Texture): T.ShaderMaterial {
       vec3 n=normalize(vN); vec3 w=pow(abs(n),vec3(4.));w/=max(.001,w.x+w.y+w.z);
       vec3 tri=texture2D(uDetail,vP.zy*.055).rgb*w.x+texture2D(uDetail,vP.xz*.055).rgb*w.y+texture2D(uDetail,vP.xy*.055).rgb*w.z;
       vec3 ground=texture2D(uDetail,vP.xz*.18).rgb;
+      float peat=texture2D(uDetail,vP.xz*vec2(.021,.009)).g;
+
+      float joint=pow(1.-abs(sin((vP.x*.16+vP.z*.11)+tri.b*2.)),16.);
       float macro=texture2D(uDetail,vP.xz*.0009).b;
+      float strata=sin(vP.y*.21+vP.x*.022+vP.z*.009+tri.g*4.+macro*9.)*.5+.5;
       float surfacePatch=texture2D(uDetail,vP.xz*.0041).r;
       float slope=1.-n.y;
       float rock=max(smoothstep(.07,.44,slope),smoothstep(290.,490.,vP.y)*.86);
       rock=max(rock,smoothstep(.59,.72,surfacePatch)*.35);
+      rock=max(rock,(1.-smoothstep(16.,86.,vP.y))*.94);
       vec3 moss=mix(vec3(.21,.255,.11),vec3(.35,.325,.185),macro*.78+ground.r*.18);
-      moss*=.77+ground.r*.44;
+      moss*=.76+ground.r*.44;
+      moss=mix(moss,mix(vec3(.13,.17,.09),vec3(.31,.285,.15),peat),vWet*.7);
+      moss*=.92+surfacePatch*.17;
       vec3 stone=mix(vec3(.21,.235,.235),vec3(.43,.425,.38),tri.g);
-      stone*=.78+tri.g*.52;
+      stone*=.72+tri.g*.44+strata*.09;
+      stone=mix(stone,vec3(.11,.13,.135),joint*smoothstep(.22,.65,slope)*.07);
       vec3 albedo=mix(moss,stone,rock);
       float wet=(1.-smoothstep(87.,105.,vP.y))*(1.-rock)*.16;
       albedo=mix(albedo,vec3(.15,.19,.115),wet);
@@ -78,12 +86,12 @@ export function terrainMaterial(detail: T.Texture): T.ShaderMaterial {
       // Fine derivative shading supplements the 5m geometric surface; it never changes collision.
       float micro=dot(tri,vec3(.2,.7,.1));
       vec3 dx=dFdx(vP),dy=dFdy(vP);
-      vec3 bump=normalize(n-cross(n,normalize(dy)) * dFdx(micro)*.5-cross(normalize(dx),n)*dFdy(micro)*.5);
+      vec3 bump=normalize(n-cross(n,normalize(dy)) * dFdx(micro)*.18-cross(normalize(dx),n)*dFdy(micro)*.18);
       float direct=max(0.,dot(bump,uSun));
       float ambient=.34+.22*max(0.,n.y);
       vec3 lighting=vec3(.75,.84,.94)*ambient+vec3(1.1,1.03,.87)*direct*.82;
       float terrainShadow=1.-(1.-smoothstep(-760.,-430.,vP.z))*smoothstep(.1,.58,-n.x)*.18;
-      vec3 color=albedo*.43*lighting*vOcc*terrainShadow;
+      vec3 color=albedo*.49*lighting*vOcc*terrainShadow;
       color=mix(color,elevation(vP.y)*(.48+direct*.6),uElevation);
       gl_FragColor=vec4(atmosphere(color,vP),1.);
       #include <tonemapping_fragment>
@@ -113,13 +121,13 @@ export function waterMaterial(detail: T.Texture, height: T.Texture, level: numbe
       vec3 normal=normalize(vec3((grain-.5)*.13,1.,(n2-.5)*.16));
       vec3 view=normalize(cameraPosition-vP);
       float fresnel=pow(1.-max(0.,dot(view,normal)),3.5);
-      vec3 deep=uBasin.z>0.?vec3(.008,.023,.027):vec3(.005,.017,.028);
+      vec3 deep=uLevel>1.?vec3(.008,.023,.027):vec3(.005,.017,.028);
       vec3 color=mix(deep,vec3(.09,.15,.21),.12+fresnel*.7);
       color+=(grain-.5)*.007+wave*.005;
       vec2 uv=(vP.xz+1200.)/2400.*(480./481.)+.5/481.;
       vec2 encoded=texture2D(uHeight,clamp(uv,0.,1.)).rg;
       float floorY=(encoded.r*255.*256.+encoded.g*255.)/65535.*1200.-100.;
-      float foam=uBasin.z>0.?0.:(1.-smoothstep(0.,11.,uLevel-floorY))*(.3+wave*.45+grain*.25);
+      float foam=uLevel>1.?0.:(1.-smoothstep(0.,11.,uLevel-floorY))*(.3+wave*.45+grain*.25);
       if(abs(vP.x)<1199.&&abs(vP.z)<1199.)color=mix(color,vec3(.34,.4,.41),foam*.83);
       vec3 reflection=reflect(-normalize(vec3(-.65,.69,.32)),normal);
       float glint=pow(max(0.,dot(reflection,view)),130.);
