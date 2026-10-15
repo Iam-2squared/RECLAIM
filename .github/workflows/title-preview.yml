@@ -21,7 +21,7 @@ jobs:
         include:
           - suite: chromium-ui
             browser: chromium
-            tests: tests/home-v2.spec.mjs tests/home.spec.mjs tests/ui.spec.mjs
+            tests: tests/home-v2.spec.mjs tests/home.spec.mjs tests/ui.spec.mjs tests/home-v3.spec.mjs
           - suite: chromium-world
             browser: chromium
             tests: tests/mission.spec.mjs tests/area-preview.spec.mjs
