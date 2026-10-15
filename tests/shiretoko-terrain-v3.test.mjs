@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ShiretokoTerrain,TERRAIN,ROUTE,LOCATIONS,BASINS,CHANNELS,coastDistance} from '../src/shiretoko-phase1/terrain.ts';
+import {createHash} from 'node:crypto';
+import {ShiretokoTerrain,TERRAIN,ROUTE,LOCATIONS,BASINS,CHANNELS,coastDistance,rawHeight} from '../src/shiretoko-phase1/terrain.ts';
 import {sceneryMesh} from '../src/shiretoko-phase1/scenery.ts';
 import {basinWaterMesh} from '../src/shiretoko-phase1/water.ts';
 const terrain=new ShiretokoTerrain();
@@ -94,4 +95,19 @@ test('large authored collapse sectors replace the narrow headwall rather than me
   }
   const intact=section(850);assert.ok(intact>.2,'Cape retains its dangerous real headwall');
   for(const z of [55,620])assert.ok(section(z)<intact*.45,`Collapse at z=${z} must form a broad fan, not the same extruded wall`);
+});
+
+test('far coastal hills resolve the 80m grid while the entire main surface and 20/80m join remain bit-identical',()=>{
+  const hash=b=>createHash('sha256').update(b).digest('hex');
+  // Measured at the reviewed public 6c3c376 baseline before this far-only fix.
+  assert.equal(hash(Buffer.from(terrain.heights.buffer)),'51bb4d91ae69f9f62abdc236317b093f2d40968eb274af13f8db292efabfaaf1');
+  const seam=[];for(let x=-3600;x<=3600;x+=20){const v=terrain.vertexAt(x,-4200);seam.push(x,v.y,...v.normal,v.occlusion,v.wetness,v.exposure);}
+  assert.equal(hash(Buffer.from(new Float32Array(seam).buffer)),'e6ba936a47c70689f82ca6efc2d565888ff285c88f9276faef1a59312048808b');
+  for(const z of [-6800,-7600,-8400])for(const side of [-1,1]){
+    let edge=0,best=Infinity;for(let x=side<0?-4000:0;x<=(side<0?0:4000);x++){const d=Math.abs(coastDistance(x,z));if(d<best){best=d;edge=x;}}
+    const values=Array.from({length:9},(_,i)=>rawHeight(edge-side*(i*80-160),z));
+    const maxStep=Math.max(...values.slice(1).map((v,i)=>Math.abs(v-values[i]))),fullHeight=values.at(-1);
+    assert.ok(maxStep<fullHeight*.48,`Far coast ${z}/${side} must spread its rise across several 80m cells`);
+    assert.ok(values.filter(y=>y>0&&y<fullHeight*.92).length>=3,'At least three intermediate above-water hillside samples');
+  }
 });

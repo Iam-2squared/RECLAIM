@@ -94,7 +94,25 @@ try {
   await page.keyboard.up('Space');
   await page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded, {}, { timeout: 15000 });
   await page.mouse.move(840, 475);
-  await page.screenshot({ path: resolve(captures, '08-first-person-cape.jpg'), type: 'jpeg', quality: 92 });
+  // Keep only the review image's heading reproducible after the real inputs.
+  // Never move the walker or replace the W/jump/Escape assertions above/below.
+  const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;return api.diagnostics().renderCallsTotal;});
+  // Walking continuously submits frames. The software-GPU page compositor can
+  // stall on screenshot synchronization while that valid WebGL loop is active.
+  // Wait for a real new submission, then read its preserved shader framebuffer.
+  await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeWalkingCapture);
+  const walkingReadback=await page.evaluate(()=>{
+    const api=window.__SHIRETOKO_TERRAIN__,canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2');gl.finish();
+    const d=api.diagnostics(),rgba=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,rgba);
+    let min=255,max=0;for(let i=0;i<rgba.length;i+=4)for(let c=0;c<3;c++){min=Math.min(min,rgba[i+c]);max=Math.max(max,rgba[i+c]);}
+    return{width:canvas.width,height:canvas.height,viewport:[innerWidth,innerHeight],dpr:devicePixelRatio,preserveDrawingBuffer:Boolean(gl.getContextAttributes()?.preserveDrawingBuffer),mode:d.mode,pointerLocked:d.pointerLocked,grounded:d.player.grounded,inputKeys:d.inputKeys,contextLost:d.contextLost,shaderError:d.shaderError,renderCallsTotal:d.renderCallsTotal,groundError:Math.abs(d.player.y-api.terrain.heightAt(d.player.x,d.player.z)),yaw:api.walker.yaw,pitch:api.walker.pitch,cameraPosition:d.camera.position,fov:d.camera.fov,min,max,glError:gl.getError(),image:canvas.toDataURL('image/jpeg',.92)};
+  });
+  assert.equal(walkingReadback.glError,0);assert.equal(walkingReadback.preserveDrawingBuffer,true);assert.equal(walkingReadback.dpr,1);assert.deepEqual(walkingReadback.viewport,[1600,1000]);assert.equal(walkingReadback.width,1600);assert.equal(walkingReadback.height,1000);assert.ok(walkingReadback.max>walkingReadback.min,'Walking framebuffer is not blank');
+  assert.equal(walkingReadback.mode,'walk');assert.equal(walkingReadback.pointerLocked,true);assert.equal(walkingReadback.grounded,true);assert.deepEqual(walkingReadback.inputKeys,[]);assert.equal(walkingReadback.contextLost,false);assert.equal(walkingReadback.shaderError,false);assert.ok(walkingReadback.renderCallsTotal>beforeWalkingCapture);assert.ok(walkingReadback.groundError<.001);
+  assert.equal(walkingReadback.yaw,0);assert.equal(walkingReadback.pitch,-.06);assert.equal(walkingReadback.fov,66);
+  assert.ok(walkingReadback.image.startsWith('data:image/jpeg;base64,'));const walkingJPEG=Buffer.from(walkingReadback.image.split(',')[1],'base64');assert.equal(walkingJPEG[0],255);assert.equal(walkingJPEG[1],216);
+  await writeFile(resolve(captures,'08-first-person-cape-webgl-framebuffer.jpg'),walkingJPEG);
+  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='WebGL framebuffer (DOM overlay not included)';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().mode === 'orbit');
   checks.push('Space jump settles; Escape releases the pointer and returns to orbit');
@@ -123,7 +141,7 @@ try {
   assert.equal(await page.locator('canvas').count(), 0);
   const disposed=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0); checks.push('explicit dispose releases canvas / scene / GPU resources and input listeners');
   const samples = measured.frameTimesMs.filter(x => x > 0).sort((a,b) => a-b), percentile = p => samples[Math.min(samples.length-1,Math.floor(samples.length*p))] ?? null;
-  const report = { source: html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1], artifactBytes: Buffer.byteLength(html), checks, errors, network, storage, initial, passage, measurements: { frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), note:'Headless Chromium / software SwiftShader, not a physical-PC FPS guarantee', end:measured } };
+  const report = { source: html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1], artifactBytes: Buffer.byteLength(html), checks, errors, network, storage, initial, passage, walkingCapture, measurements: { frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), note:'Headless Chromium / software SwiftShader, not a physical-PC FPS guarantee', end:measured } };
   await writeFile(resolve(captures,'verification.json'), JSON.stringify(report,null,2));
   console.log(JSON.stringify({ checks, firstFrameMs:initial.firstFrameMs, renderer:initial.renderer, passage, frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), output:captures }, null, 2));
 } catch(error) {

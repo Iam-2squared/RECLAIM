@@ -11,6 +11,8 @@
 | 山岳 | 主/支稜線の鞍部、非対称肩斜面、5系統の構造谷を追加。D8侵食を細い反復溝にしすぎず分散。80m遠景で鋭い稜線が鋸歯にaliasする状態を遠景側だけ丸める |
 | 地表 | 安全ルートにも最大約±11cmの微起伏。岩の露出度 `aExposure` を追加し、既存の高さ・法線・湿りとともに後のPBRの入力にできる。表示専用の頂点変位や浮遊メッシュは追加しない |
 
+最終360度レビューで残った80m遠景海岸の巨大な柱状縁は、z<-4800mから漸増し、-6400m以奥で300〜400m幅の海岸丘陵へ遷移させた。追加メッシュ/高密度化なし。主2.4kmの全Float32高さと20/80m接合の位置・法線・属性は直前の公開6c3c376版とbit一致を検査する。遠景端で原点固定の空球の外へ出る黒欠けは、空のカメラ追従で解消した。
+
 2,400m/64チャンク/5m/seed 431071、18主ルートwaypointの座標/目標高、主要4地点、水位90/92/90.5/113/149mを維持。住宅予定地108m・中心の平坦面を保持。小さな道の起伏により他3地点の実高はv2から約2cmだけ変わる。主地形最高点は約700.65m、主ルート約2068.527m、往復実Walker約4136.463m（42791固定60Hz tick）。途中teleportなし、接地誤差0、水域への進入0。ルート実最大勾配は約0.509（既存の<0.65条件を保持）。
 
 全景の同条件実測で約602,448 triangles / 74 draw calls（v2: 592,912 / 74、約+1.61%）。追加の水岸clipの分で、遠景を高密度化した値ではない。64チャンク・20m/80m面・texture2枚を維持。geometry属性約11.34MB、index約7.22MB、高さ0.925MB、texture概算2.32MB。VRAM全量ではない。初回/継続描画とheapの実測は対応HEADのverification JSONを正とする。SwiftShader/Linuxの値をWindows GPU/FPSとして扱わない。
@@ -34,6 +36,8 @@ node scripts/compare-shiretoko-terrain.mjs release/RECLAIM_Shiretoko_Terrain_Pha
 ```
 
 必要な環境のみ `RECLAIM_TEST_BROWSER=/absolute/path/chromium` を設定。比較A〜Jは1600×900/DPR1/FOV44/同一世界座標カメラ/uTime=0、片側10枚。追加で360度8方向・海上・遠景終端・20/80m接合・山麓見下ろし・湿原と高原近景を保存。全64チャンクと遠景接合の位置/法線/AO/湿り/**露出度**、水面polygonの岸接合、固定seed、幅4mの通行面も検査する。実ブラウザでは4寸法UI、W/ジャンプ/ESC、再入場、静止0描画、blur/hidden（合成lifecycle試験）、ロック拒否/WebGL不可/context loss、10回イントロ資源一定、disposeを検査。物理Windows/iPhone/Androidではない。
+
+CIのsoftware-GPU compositor撮影同期timeoutを記録したため、歩行の `08-first-person-cape-webgl-framebuffer.jpg` とイントロ着地の `02-landed-webgl-framebuffer.jpg` の2枚だけ、実preserved WebGL framebufferを同期取得する。両画像はDOM無しとJSONに明示し、非blank/寸法/状態/GL errorをassert。歩行画像は実W/ジャンプ検査後に位置を変えずyaw/pitchだけ固定し、次の実描画counterを待つ。通常のUI画像と全入力/往復/cleanup試験は維持。timeout延長・skipでは回避しない。
 
 初期の変更では、岩盤profileのsmooth区間反転がルートに段差を作り、追加湖湾が低いルートへ掛かった。既存のルート/移動試験が失敗を検出したため、区間の上限と湾の位置を修正した。skip・閾値緩和・timeout延長は行っていない。初期実画像では岩の横模様が強く、遠景稜線の鋸歯と海の台形端も確認し修正。失敗/棄却画像と履歴はレビューに保持する。
 

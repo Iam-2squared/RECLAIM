@@ -264,6 +264,16 @@ export function rawHeight(x: number, z: number): number {
       height = Math.max(height,-29+(stack.h*.28+29)*foot+(stack.h*.72+strata)*core);
     }
   }
+  // Far scenery uses 80m cells. A 15-40m headwall collapses to one tall grid
+  // edge there, producing a picket-fence coast. Beyond the untouched 20/80m
+  // join, gradually replace it with a resolved 3-5-cell coastal hillside.
+  // Only z < -4800 changes; the main grid, route, water and join stay identical.
+  const distantCoast=smooth(-4800,-6400,z);
+  if(distantCoast>0){
+    const slopeWidth=300+noise(z*.0011,coastalSide*137)*100;
+    const lowCoastalSlope=mix(seabed,land,smooth(-110,slopeWidth,coast));
+    height=mix(height,lowCoastalSlope,distantCoast);
+  }
   return mix(height,108,1-smooth(28,53,site));
 }
 export type ChunkData = { positions: Float32Array; normals: Float32Array; occlusion: Float32Array; wetness: Float32Array; exposure:Float32Array; indices: Uint32Array; cx: number; cz: number };
