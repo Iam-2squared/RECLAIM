@@ -24,6 +24,8 @@ export class Home {
   modal = false;
   layoutTask = 0;
   readonly compact = matchMedia('(max-width: 959px), (max-height: 440px)');
+  readonly coarse = matchMedia('(any-pointer: coarse)');
+  readonly fine = matchMedia('(any-pointer: fine)');
   readonly stageObserver = new ResizeObserver(() => this.layout());
   readonly compactChanged = () => this.layout();
   readonly blocked = new Map<HTMLElement, { aria: string | null; inert: boolean; tabs: [HTMLElement, string | null][] }>();
@@ -53,7 +55,7 @@ export class Home {
     // Observe the reserved stage, rather than measuring the DOM on every render frame.
     this.stageObserver.observe(el('lobby-stage'));
     this.labels.forEach(label => this.stageObserver.observe(label));
-    this.compact.addEventListener('change', this.compactChanged);
+    for (const media of [this.compact,this.coarse,this.fine]) media.addEventListener('change', this.compactChanged);
     document.addEventListener('focusin', e => {
       if (this.modal && this.panel && !document.querySelector('dialog[open]') && !el('home-panel').contains(e.target as Node)) el('panel-title').focus({ preventScroll: true });
     });
@@ -69,6 +71,7 @@ export class Home {
     this.layout(); this.announce(value ? '4人編成プレビュー。後方3人は見本です。オンライン未接続。' : 'ソロ配置に戻しました。');
   }
   get current(): HomePreview { return { ...this.saved, appearance: this.draft ?? this.saved.appearance }; }
+  get compactMode() { return this.compact.matches || (this.coarse.matches && !this.fine.matches); }
   sync() {
     const v = this.current;
     el('survivor-name').textContent = v.appearance.name;
@@ -78,11 +81,11 @@ export class Home {
   }
   formationNote() {
     el('squad-note').textContent = this.state.squadPreview
-      ? this.panel && !this.compact.matches ? '自キャラの外観プレビュー・4人は閉じて確認' : '4人編成プレビュー・オンライン未接続'
+      ? this.panel && !this.compactMode ? '自キャラの外観プレビュー・4人は閉じて確認' : '4人編成プレビュー・オンライン未接続'
       : 'SOLO · この端末のローカルプレビュー';
   }
   panelMode() {
-    const modal = Boolean(this.panel && this.compact.matches);
+    const modal = Boolean(this.panel && this.compactMode);
     if (modal === this.modal) return;
     this.modal = modal;
     el('home-panel').setAttribute('aria-modal', String(modal));
@@ -171,11 +174,14 @@ export class Home {
     this.layout();
     if (focus) {
       const opener = this.opener;
-      (opener && opener.getClientRects().length ? opener : el('menu-toggle')).focus({ preventScroll: !this.compact.matches });
+      (opener && opener.getClientRects().length ? opener : el('menu-toggle')).focus({ preventScroll: !this.compactMode });
     }
   }
   footer(html = '') { el('panel-footer').innerHTML = html; el('panel-footer').hidden = !html; }
-  dispose() { clearTimeout(this.layoutTask); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); }
+  dispose() {
+    clearTimeout(this.layoutTask); this.stageObserver.disconnect();
+    for (const media of [this.compact,this.coarse,this.fine]) media.removeEventListener('change', this.compactChanged);
+  }
   character() {
     this.draft = { ...this.saved.appearance };
     el('panel-content').innerHTML = `<p class="panel-intro"><span class="legacy-menu-copy">旅に出る、自分の姿を。</span><span class="reference-panel-copy">人物の絵は固定。表示名と色を保存します。</span></p>

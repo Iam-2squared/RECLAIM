@@ -4,7 +4,13 @@ import { writeFile } from 'node:fs/promises';
 const views = [[320, 568], [360, 800], [375, 667], [390, 844], [430, 932], [667, 375], [844, 390], [932, 430], [768, 1024], [1024, 768], [959, 441], [960, 441], [960, 440], [959, 440]];
 const panels = ['マップ', 'キャラ設定', '武器', '今のボス状況', 'ランキング'];
 const snapshot = page => page.evaluate(() => window.__RECLAIM__.snapshot());
-const mobile = ([width, height]) => width < 960 || height < 441;
+const presentation = page => page.evaluate(() => {
+  const coarse = matchMedia('(any-pointer: coarse)').matches;
+  const fine = matchMedia('(any-pointer: fine)').matches;
+  const touchOnly = coarse && !fine;
+  const compactViewport = !matchMedia('(min-width: 960px) and (min-height: 441px)').matches;
+  return { coarse, fine, touchOnly, compactViewport, mobile: compactViewport || touchOnly };
+});
 
 async function ready(page) {
   const response = await page.goto('/');
@@ -43,6 +49,17 @@ async function targets(page, selectors) {
   }
 }
 async function capture(page, info, name) {
+  const input = await presentation(page);
+  // Do not exempt wide tablets by trusting the app's mode: that was the bug.
+  if (input.mobile) {
+    const controls = await page.locator('button,input,select,summary').evaluateAll(nodes => nodes
+      .filter(n => n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden')
+      .map(n => { const r=n.getBoundingClientRect(); return { id:n.id||n.getAttribute('aria-label')||n.textContent.trim().slice(0,60),width:r.width,height:r.height }; }));
+    for (const control of controls) {
+      expect(control.width, `${name}: ${control.id} width`).toBeGreaterThanOrEqual(44);
+      expect(control.height, `${name}: ${control.id} height`).toBeGreaterThanOrEqual(44);
+    }
+  }
   const path = info.outputPath(`${name}.png`);
   await page.screenshot({ path });
   await info.attach(name, { path, contentType: 'image/png' });
@@ -56,15 +73,17 @@ for (const view of views) {
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await ready(page);
-    expect((await snapshot(page)).menus.mode).toBe(mobile(view) ? 'mobile-reference-2d' : 'reference-2d');
+    const input = await presentation(page);
+    expect(input.touchOnly, 'all 14 device-emulation viewports exercise coarse-only touch targets').toBe(true);
+    expect((await snapshot(page)).menus.mode).toBe(input.mobile ? 'mobile-reference-2d' : 'reference-2d');
     await expect(page.locator('#continue-button')).toBeDisabled();
     await noOverflow(page);
-    if (mobile(view)) await targets(page, ['#home-button', '#continue-button', '#settings-button', '#mobile-settings', '#reference-extras', '#sound-button']);
+    await targets(page, ['#home-button', '#continue-button', '#settings-button', '#mobile-settings', '#reference-extras', '#sound-button']);
     await capture(page, info, 'title');
     await tap(page, '#home-button');
     await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
     await noOverflow(page);
-    if (mobile(view)) await targets(page, ['#menu-toggle', '#solo-button', '#squad-button', '#start-button', '#reference-destination', '#reference-equipment', '#reference-mail']);
+    await targets(page, ['#menu-toggle', '#solo-button', '#squad-button', '#start-button', '#reference-destination', '#reference-equipment', '#reference-mail']);
     await capture(page, info, 'home');
     const campaign = (await snapshot(page)).campaign;
     for (const [index, name] of panels.entries()) {
@@ -75,7 +94,7 @@ for (const view of views) {
       expect(r.y).toBeGreaterThanOrEqual(-1);
       expect(r.x + r.width).toBeLessThanOrEqual(width + 1);
       expect(r.y + r.height).toBeLessThanOrEqual(height + 1);
-      if (mobile(view)) {
+      if (input.mobile) {
         await targets(page, ['#panel-close', '#apply-character', '#cancel-character', '#reset-character', '#weapon-done', '#campaign-reset']);
         await expect(page.locator('#home-panel')).toHaveAttribute('aria-modal', 'true');
       }
@@ -96,8 +115,7 @@ for (const view of views) {
     expect((await snapshot(page)).campaign).toEqual(campaign);
     await tap(page, '#start-button');
     await capture(page, info, 'briefing');
-    const touchOnly = await page.evaluate(() => matchMedia('(any-pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches);
-    if (mobile(view) || touchOnly) {
+    if (input.mobile) {
       await expect(page.locator('#home-panel')).toContainText(/PC|キーボード|マウス/);
       await expect(page.locator('#mobile-mission-notice')).toBeVisible();
       if (await page.locator('#mission-launch').isEnabled()) await tap(page, '#mission-launch');
@@ -110,7 +128,7 @@ for (const view of views) {
     await expect(page.locator('#home-panel')).toBeHidden();
     expect(errors).toEqual([]);
     const path = info.outputPath('state.json');
-    await writeFile(path, JSON.stringify({ viewport: view, touchOnly, physicalDevice: false, browser: info.project.name, snapshot: await snapshot(page) }, null, 2));
+    await writeFile(path, JSON.stringify({ viewport: view, input, physicalDevice: false, browser: info.project.name, snapshot: await snapshot(page) }, null, 2));
     await info.attach('state', { path, contentType: 'application/json' });
   });
 }

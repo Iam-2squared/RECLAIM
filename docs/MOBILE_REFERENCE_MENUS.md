@@ -2,7 +2,7 @@
 
 ## 実装範囲と保護
 
-PC条件は従来の `width >=960px && height >=441px`。`reference-layout.ts`、`reference-menus.css`、原本JPEG/manifestは変更しない。スマホ用CSSは補集合 `(max-width:959px),(max-height:440px)` に限定し、bodyの `mobile-reference-2d` 状態を重ねる。PR #4および地形PR #6は取り込まない。
+通常のマウス/細かいポインターを持つPCの条件は従来の `width >=960px && height >=441px`。`reference-layout.ts`のPC query、`reference-menus.css`、原本JPEG/manifestは変更しない。モバイル2Dはこの寸法条件の補集合、または `any-pointer:coarse`かつ`any-pointer:fine`なしのタッチ専用端末で使う。CSSはbodyの `mobile-reference-2d` 状態内に限定する。PC幅タブレットも44px以上のDOMボタンと同じdrawer/modal/focus管理を使い、細かいポインターも持つ広幅ハイブリッドPCはPC表示を維持する。PR #4および地形PR #6は取り込まない。
 
 タイトルは東京原本の文字・UIがない上方（概ねy70–320）をクロップし、DOMロゴ・START/CONTINUE/SETTINGS/EXTRASを配置。HOMEは知床原本のx560–944を切り出して人物を保持する。画像のバイトは変えずCSS clip/maskで端を馴染ませる。新しい画像、フォント、CDN、通信、ライセンス契約は追加しない。原本の由来・権利上の留保は既存 `src/ui-reference/manifest.json` のまま。
 
@@ -18,9 +18,9 @@ PC条件は従来の `width >=960px && height >=441px`。`reference-layout.ts`�
 
 ## 本編の安全停止
 
-タッチ用FPS操作は未実装。本編のSTART/resumeが呼ばれても `main.startMission` 冒頭で狭幅条件を検査し、**Mission constructorより前**で停止する。HOMEと出撃前確認を保持し、PCキーボード/マウスが必要と表示。Mission生成、キャンペーン開始、checkpoint保存/破棄は実行しない。広いPCの既存関数経路は同じ。開発限定dev-areaの既存契約は変えない。
+タッチ用FPS操作は未実装。本編のSTART/resumeが呼ばれても `main.startMission` 冒頭で寸法と入力能力を検査し、**Mission constructorより前**で停止する。HOMEと出撃前確認を保持し、PCキーボード/マウスが必要と表示。Mission生成、キャンペーン開始、checkpoint保存/破棄は実行しない。広いPCの既存関数経路は同じ。開発限定dev-areaの既存契約は変えない。
 
-1024×768等がPC条件を満たす場合はPC表示を維持するが、`any-pointer:coarse`で`any-pointer:fine`がないタッチ専用端末は同じ開始前ガードで停止し、案内を表示する。通常PCマウス経路は維持する。狭幅表示は準備レビュー用として開始を停止する。独立した2.4km地形やイントロを本体へ接続していない。旧480m探索保存座標を変換しない。
+1024×768や960×441等でもタッチ専用端末はPCの小さい画像上ヒット領域を使わず、モバイル2Dへ切り替える。寸法/ポインター能力変更を監視し、Homeのcompact判定・モーダルfocus管理も同じ条件で切り替える。タッチ専用/狭幅表示では同じ開始前ガードで停止し、案内を表示する。通常PCマウス経路は維持する。独立した2.4km地形やイントロを本体へ接続していない。旧480m探索保存座標を変換しない。
 
 ## 描画・検証・配布
 
@@ -39,7 +39,7 @@ node scripts/mobile-review.mjs
 node scripts/compare-pc-reference.mjs BASE_MAIN.html release/RECLAIM_Mobile_Menu_Preview.html
 ```
 
-専用suiteは14 viewport（320×568、360×800、375×667、390×844、430×932、667×375、844×390、932×430、768×1024、1024×768、959×441、960×441、960×440、959×440）、実tapと保存状態/失敗/画像/回転/セーフエリア代入/仮キーボード高/focusを検査。Chromium/WebKitは別分類。PCは既存のネイティブ1536×864原本比較（各RGB差<=1、超過pixel0）を保ち、5寸法でmainビルドとの実ページ比較も行う。
+専用suiteは14 viewport（320×568、360×800、375×667、390×844、430×932、667×375、844×390、932×430、768×1024、1024×768、959×441、960×441、960×440、959×440）、実tapと保存状態/失敗/画像/回転/セーフエリア代入/仮キーボード高/focusを検査。期待modeと44px検査条件は実際のpointer media queryから算出し、全14のタッチ専用viewportで全表示DOMボタン/入力/select/summaryを検査する。実装modeを理由にPC幅2ケースを寸法検査から除外しない。Chromium/WebKitは別分類。PCは既存のネイティブ1536×864原本比較（各RGB差<=1、超過pixel0）を保ち、5寸法でmainビルドとの実ページ比較も行う。
 
 パッケージは同じソースから `RECLAIM_Mobile_Menu_Preview.html` と既存PC互換名を生成。commit/clean状態はHTML内meta、SHA256/サイズと結果はレビュー配布物で示す。PC Chrome/Edgeで直接開き、DevToolsのviewportで操作可能。iPhoneの「ファイル」内HTMLプレビューでのJS動作は案内しない。実在するHTTPS Previewが用意されていない時はURLを作らない。
 

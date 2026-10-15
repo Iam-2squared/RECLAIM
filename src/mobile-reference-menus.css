@@ -1,8 +1,7 @@
 /* Mobile presentation only. Keep the PC query, source pixels and reference rectangles untouched. */
 .mobile-only{display:none}
-/* A wide touch-only tablet keeps PC art, but must not enter pointer-lock FPS. */
-body[data-touch-only="true"] #mobile-mission-notice:not([hidden]){display:block;flex-shrink:0;margin:0;padding:8px 16px;background:#69513a42;border-block:1px solid #c2ab7655;font-size:12px;line-height:1.6;max-height:100px;overflow:auto}
-@media(max-width:959px),(max-height:440px){
+/* JS selects this mode for compact viewports OR coarse-only input at any width.
+   Every rule stays body-scoped; mouse/fine-pointer PC styles remain untouched. */
  body[data-menu-presentation="mobile-reference-2d"]{--mobile-edge:20px;--mobile-top:max(12px,env(safe-area-inset-top));--mobile-bottom:max(18px,env(safe-area-inset-bottom));background:#111b19;overflow-x:hidden;overflow-y:auto}
  body[data-menu-presentation="mobile-reference-2d"] #scene,
  body[data-menu-presentation="mobile-reference-2d"] .vignette,
@@ -52,7 +51,32 @@ body[data-touch-only="true"] #mobile-mission-notice:not([hidden]){display:block;
  body[data-menu-presentation="mobile-reference-2d"] .chapter-route{font-size:10px}
  body[data-menu-presentation="mobile-reference-2d"] .title-bottom-right{display:none}
  /* HOME art uses the exact x=560..944 crop, excluding all baked UI. No derivative JPEG. */
- body[data-menu-presentation="mobile-reference-2d"][data-screen="home"]{background:#15211d}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"]{background:#15211d;--home-edge:16px;--panel-width:0px;--home-safe-top:max(16px,env(safe-area-inset-top));--home-safe-bottom:max(16px,env(safe-area-inset-bottom));--home-safe-left:max(16px,env(safe-area-inset-left));--home-safe-right:max(16px,env(safe-area-inset-right));--sheet-safe-top:max(12px,env(safe-area-inset-top));--sheet-safe-bottom:max(12px,env(safe-area-inset-bottom))}
+ /* Share the native compact drawer/modal contract with wide touch-only tablets.
+    These rules cannot leak into the unmodified PC reference presentation. */
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"][data-panel-open="true"] main{z-index:8}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .lobby-heading,
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .squad-tools>.overline{display:none}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .segmented{margin:0}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .menu-toggle{display:flex;align-items:center;gap:8px;background:#172523e6;border:1px solid #aebca266;padding:0 12px;font-size:14px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .side-nav{display:none;background:#202e28fc;border:1px solid #b8c4a96b;box-shadow:0 12px 50px #001b;grid-column:auto;grid-row:auto}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .side-nav.is-open{display:flex}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] #menu-dismiss{display:block;width:44px;height:44px;border:1px solid var(--hair);background:transparent;font-size:25px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .back-title{min-height:44px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .panel-backdrop{position:fixed;inset:0;background:#09140dd9;display:block}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .home-panel{position:fixed;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));top:calc(var(--home-offset-top,0px) + var(--sheet-safe-top));bottom:auto;width:auto;height:calc(var(--home-height,100vh) - var(--sheet-safe-top) - var(--sheet-safe-bottom));grid-column:auto;grid-row:auto;max-height:none}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .panel-header{padding:12px 16px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .panel-header h2{font-size:22px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .panel-footer{padding:12px 16px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .panel-actions{flex-wrap:wrap;gap:8px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .panel-actions .text-action{flex-basis:100%}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .map-overview{grid-template-columns:minmax(0,1fr);gap:16px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .paper-map svg{height:min(clamp(170px,calc(var(--home-height,100vh) - 320px),430px),var(--home-map-svg-height,430px))}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .gun-options{gap:7px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .gun-option{font-size:15px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .gun-option small{font-size:11px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .briefing-strip>span{flex-basis:98px;font-size:13px}
+ body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .briefing-strip>strong{font-size:14px}
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .topbar{top:var(--home-safe-top);left:var(--home-safe-left);right:var(--home-safe-right)}
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"] .home-screen,
  body[data-menu-presentation="mobile-reference-2d"][data-screen="home"][data-panel-open="true"] .home-screen{--hero-height:clamp(300px,44svh,460px);position:relative;height:auto;min-height:100svh;min-height:100dvh;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:66px 66px minmax(var(--hero-height),1fr) auto auto auto auto;gap:10px;padding:calc(58px + var(--home-safe-top)) var(--home-safe-right) var(--home-safe-bottom) var(--home-safe-left);background:radial-gradient(ellipse at 70% 30%,#43534980,transparent 58%),linear-gradient(150deg,#15221e,#182720 58%,#0d1915);isolation:isolate}
@@ -116,7 +140,6 @@ body[data-touch-only="true"] #mobile-mission-notice:not([hidden]){display:block;
  body[data-menu-presentation="mobile-reference-2d"] #settings-save-status{font-size:14px;color:#f4c8a9;line-height:1.6}
  body[data-menu-presentation="mobile-reference-2d"][data-art-error="true"] .reference-backplate{display:none}
  body[data-menu-presentation="mobile-reference-2d"] [data-art-error="true"]::after{content:'背景画像を読み込めませんでした。操作は可能です。';position:absolute;top:120px;left:20px;right:20px;font-size:12px;line-height:1.5;color:#e4c8a6;pointer-events:none}
-}
 @media(max-height:440px) and (min-width:650px){
  body[data-menu-presentation="mobile-reference-2d"] .title-screen{align-items:end;padding-left:52%;padding-right:max(24px,env(safe-area-inset-right));min-height:440px}
  body[data-menu-presentation="mobile-reference-2d"] .title-content{margin-top:88px}

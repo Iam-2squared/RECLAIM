@@ -11,6 +11,8 @@ const el = <T extends HTMLElement = HTMLElement>(id: string) => document.getElem
 /** Only presentation and native menu input. Never awards progress or updates a mission. */
 export class ReferenceMenus {
   readonly media = matchMedia(REFERENCE_QUERY);
+  readonly coarse = matchMedia('(any-pointer: coarse)');
+  readonly fine = matchMedia('(any-pointer: fine)');
   readonly images: HTMLImageElement[] = [];
   readonly observer: MutationObserver;
   readonly changed = () => this.refresh();
@@ -81,13 +83,16 @@ export class ReferenceMenus {
     el('reference-dialog').addEventListener('close',() => this.refresh());
     this.observer = new MutationObserver(this.changed);
     this.observer.observe(el('home-screen'),{subtree:true,childList:true,characterData:true});
-    this.media.addEventListener('change',this.changed); document.addEventListener('keydown',this.keydown);
+    for (const media of [this.media,this.coarse,this.fine]) media.addEventListener('change',this.changed);
+    document.addEventListener('keydown',this.keydown);
     this.refresh();
   }
   // Both menu layouts use lightweight 2D art. The old narrow-screen 3D loop is retired.
   get active() { return true; }
-  get mobile() { return !this.media.matches; }
-  get touchOnly() { return matchMedia('(any-pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches; }
+  // A tablet must not inherit scaled-down PC hit rectangles merely because it is wide.
+  // Fine-pointer/hybrid PCs keep the original query and pixel-exact PC presentation.
+  get mobile() { return !this.media.matches || this.touchOnly; }
+  get touchOnly() { return this.coarse.matches && !this.fine.matches; }
   place(node: HTMLElement, id: ReferenceRect) {
     node.classList.add('reference-hit');
     const box = referencePercent(id);
@@ -132,5 +137,9 @@ export class ReferenceMenus {
   snapshot() { return { mode:this.state.screen==='mission'?'mission-webgl':this.mobile?'mobile-reference-2d':'reference-2d',width:1536,height:864,
     images:this.images.map(image => ({loaded:image.complete&&image.naturalWidth===1536,naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight})),
     fixedIllustration:true,formationSamples:this.state.squadPreview?3:0 }; }
-  dispose() { this.observer.disconnect();this.media.removeEventListener('change',this.changed);document.removeEventListener('keydown',this.keydown); }
+  dispose() {
+    this.observer.disconnect();
+    for (const media of [this.media,this.coarse,this.fine]) media.removeEventListener('change',this.changed);
+    document.removeEventListener('keydown',this.keydown);
+  }
 }

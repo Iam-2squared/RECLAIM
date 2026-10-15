@@ -56,13 +56,15 @@ async function capture(page, folder, name, states) {
     const rect = n => { const r = n.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
     return {
       snapshot: window.__RECLAIM__.snapshot(), visualViewport: window.visualViewport ? { width: visualViewport.width, height: visualViewport.height, offsetTop: visualViewport.offsetTop, offsetLeft: visualViewport.offsetLeft, scale: visualViewport.scale } : null,
+      input: { coarse: matchMedia('(any-pointer: coarse)').matches, fine: matchMedia('(any-pointer: fine)').matches, compactViewport: !matchMedia('(min-width: 960px) and (min-height: 441px)').matches },
       documentWidth: document.documentElement.scrollWidth,
-      targets: [...document.querySelectorAll('button,input:not([type="checkbox"]),select,summary')].filter(n => n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden').map(n => ({ id: n.id || n.getAttribute('aria-label') || n.textContent.trim().slice(0, 60), ...rect(n), disabled: n.disabled ?? false })),
+      targets: [...document.querySelectorAll('button,input,select,summary')].filter(n => n.getClientRects().length && getComputedStyle(n).visibility !== 'hidden').map(n => ({ id: n.id || n.getAttribute('aria-label') || n.textContent.trim().slice(0, 60), ...rect(n), disabled: n.disabled ?? false })),
     };
   });
   states.push({ name, screenshot, bytes: bytes.length, sha256: sha256(bytes), ...state });
   await writeFile(resolve(folder, `${name}.json`), JSON.stringify(state, null, 2));
-  if (state.snapshot.menus.mode === 'mobile-reference-2d') {
+  // Capability-derived gate: a wrong PC mode must fail instead of hiding tiny targets.
+  if (state.input.compactViewport || (state.input.coarse && !state.input.fine)) {
     for (const target of state.targets) assert(target.width >= 44 && target.height >= 44, `${name}: ${target.id} touch target ${target.width}x${target.height} is below 44x44 CSS px`);
   }
 }
@@ -82,7 +84,7 @@ for (const name of requested) {
     for (const [width, height] of views) {
       const folder = resolve(output, name, `${width}x${height}`);
       await mkdir(folder, { recursive: true });
-      const view = { width, height, mobile: width < 960 || height < 441, status: 'running', states: [], consoleErrors: [], pageErrors: [], externalRequests: [], websockets: [] };
+      const view = { width, height, compactViewport: width < 960 || height < 441, status: 'running', states: [], consoleErrors: [], pageErrors: [], externalRequests: [], websockets: [] };
       record.viewports.push(view);
       const context = await browser.newContext({ ...(name === 'webkit' ? devices['iPhone 13'] : devices['Pixel 5']), viewport: { width, height }, deviceScaleFactor: 1 });
       const page = await context.newPage();
@@ -94,7 +96,14 @@ for (const name of requested) {
         const response = await page.goto(url);
         assert(response?.ok(), 'HTML response must succeed');
         await page.waitForFunction(() => document.body.dataset.ready === 'true');
-        view.touchOnly = await page.evaluate(() => matchMedia('(any-pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches);
+        const input = await page.evaluate(() => ({
+          coarse: matchMedia('(any-pointer: coarse)').matches,
+          fine: matchMedia('(any-pointer: fine)').matches,
+          compactViewport: !matchMedia('(min-width: 960px) and (min-height: 441px)').matches,
+        }));
+        view.touchOnly = input.coarse && !input.fine;
+        view.compactViewport = input.compactViewport;
+        view.mobile = view.compactViewport || view.touchOnly;
         assert.equal((await snap(page)).menus.mode, view.mobile ? 'mobile-reference-2d' : 'reference-2d');
         await capture(page, folder, '01-title', view.states);
         await tap(page, '#settings-button');
@@ -132,7 +141,7 @@ for (const name of requested) {
         await tap(page, '#reference-dialog .close-button');
         await tap(page, '#start-button');
         await capture(page, folder, '12-preflight', view.states);
-        if ((view.mobile || view.touchOnly) && await page.locator('#mission-launch').isEnabled()) {
+        if (view.mobile && await page.locator('#mission-launch').isEnabled()) {
           await tap(page, '#mission-launch');
           assert.equal((await snap(page)).mission, null);
           assert.equal((await snap(page)).screen, 'home');

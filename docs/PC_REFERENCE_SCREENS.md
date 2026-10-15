@@ -10,7 +10,7 @@ The original 1536×864 JPEG files are copied byte-for-byte into `src/ui-referenc
 
 ## Display and interaction contract
 
-- Desktop: width ≥960px and height ≥441px. Entire 16:9 artwork fits inside the viewport without cropping/stretching. Non-16:9 windows get dark letterboxing. The 2026-10-16 mobile-only complement is documented separately in [MOBILE_REFERENCE_MENUS.md](MOBILE_REFERENCE_MENUS.md); this PC query and all original hit rectangles are unchanged.
+- Desktop with a fine pointer (including hybrids): width ≥960px and height ≥441px. Entire 16:9 artwork fits inside the viewport without cropping/stretching. Non-16:9 windows get dark letterboxing. Compact viewports and coarse-only touch devices at any width use the layout documented separately in [MOBILE_REFERENCE_MENUS.md](MOBILE_REFERENCE_MENUS.md); this PC query and all original hit rectangles are unchanged.
 - `reference-layout.ts` defines 20 measured hit regions in source-pixel coordinates; `reference-menus.ts` maps them to percentages on the exact same stage. Buttons are native focusable elements, not a screenshot pretending that input worked.
 - TITLE START → HOME; HOME START → existing preflight. Only the existing explicit launch starts the unchanged mission. Reload always enters TITLE.
 - TITLE arrows/Enter navigate START, available CONTINUE, SETTINGS and EXTRAS. CONTINUE is disabled without a real campaign checkpoint. A valid checkpoint opens preflight, not an automatic mission or fake award.
