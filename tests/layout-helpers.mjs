@@ -8,6 +8,23 @@ export const rects = page => page.evaluate(() => {
 export const intersects = (a,b) => Boolean(a&&b&&Math.min(a.right,b.right)-Math.max(a.x,b.x)>.5&&Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>.5);
 export function contained(inner,outer){expect(inner).not.toBeNull();expect(outer).not.toBeNull();expect(inner.x).toBeGreaterThanOrEqual(outer.x-1);expect(inner.y).toBeGreaterThanOrEqual(outer.y-1);expect(inner.right).toBeLessThanOrEqual(outer.right+1);expect(inner.bottom).toBeLessThanOrEqual(outer.bottom+1);}
 export async function fourFits(page) {
+ const menus=(await snapshot(page)).menus;
+ if(menus?.mode==='reference-2d'){
+  await expect(page.locator('#home-screen .reference-backplate')).toBeVisible();
+  await expect(page.locator('#squad-button')).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('.sample-label:visible')).toHaveCount(3);
+  const frame=await page.locator('#home-screen').boundingBox(),outer={x:frame.x,y:frame.y,right:frame.x+frame.width,bottom:frame.y+frame.height};
+  const samples=await page.locator('.sample-label:visible').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
+  for(const sample of samples)contained(sample,outer);
+  for(let i=0;i<samples.length;i++)for(let j=i+1;j<samples.length;j++)expect(intersects(samples[i],samples[j])).toBe(false);
+  await expect(page.locator('#start-button')).toBeInViewport({ratio:1});
+  // info.render.calls describes the LAST Three frame, which may belong to the
+  // unchanged narrow layout. The actual frame counter must not advance here.
+  const frameCount=(await snapshot(page)).renderClock.rendererFrames;
+  await page.waitForTimeout(50);
+  expect((await snapshot(page)).renderClock.rendererFrames).toBe(frameCount);
+  return;
+ }
  await expect(page.locator('body')).toHaveAttribute('data-renderer','webgl');
  let coherent;
  await expect.poll(async()=>{

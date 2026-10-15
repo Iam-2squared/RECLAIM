@@ -15,6 +15,7 @@ if(!/^[a-f0-9]{40}$/.test(sourceCommit))throw new Error('Expected a full source 
 html=html.replace('</head>',()=>`<meta name="reclaim-source-commit" content="${sourceCommit}">\n<meta name="reclaim-working-tree" content="${workingTree}">\n<!-- Three.js MIT license\n${license.replaceAll('--','—')}-->\n</head>`);
 await mkdir(resolve(root,'release'),{recursive:true});
 await writeFile(resolve(root,'release/RECLAIM_World_Preview.html'),html);
+await writeFile(resolve(root,'release/RECLAIM_PC_Menu_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Title_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Home_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Home_V2_Preview.html'),html);

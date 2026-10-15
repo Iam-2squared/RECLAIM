@@ -1,4 +1,6 @@
-# RECLAIM — Tokyo TITLE / HOME V2 / 知床3Dワールド
+# RECLAIM — PC reference TITLE / HOME / 知床3Dワールド
+
+2026-10-15 PC画面更新: **添付の東京TITLE・知床HOME画像を、そのまま2D表示**します。配置を描き直さず、同じ位置のネイティブボタンで操作します。背景の人物・武器イラストは固定、設定値は保存可能です。ワールド・戦闘・進行の実装は変更していません。PC向け `RECLAIM_PC_Menu_Preview.html` と[画面仕様・検証契約](docs/PC_REFERENCE_SCREENS.md)を参照してください。下記の旧TITLE/HOME V2演出説明は狭い画面の従来表示についての記録です。スマホ改修は今回の対象外です。
 
 **奪われた世界を、取り戻せ。**
 
