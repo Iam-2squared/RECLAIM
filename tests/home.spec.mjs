@@ -1,10 +1,11 @@
 import { test, expect } from './browser-fixtures.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { fourFits } from './layout-helpers.mjs';
+import { referenceMode,referenceReady } from './reference-helpers.mjs';
 const ready = async page => { await page.goto('/'); await expect(page.locator('body')).toHaveAttribute('data-ready', 'true'); await page.locator('#home-button').click(); };
 const open = async (page, name) => { if (await page.locator('#menu-toggle').isVisible()) await page.locator('#menu-toggle').click(); await page.getByRole('button', { name, exact: true }).click(); };
 const snapshot = page => page.evaluate(() => window.__RECLAIM__.snapshot());
-const visualReady = async page => { await expect(page.locator('body')).toHaveAttribute('data-renderer', 'webgl'); await expect.poll(async () => (await snapshot(page)).render?.formation.length).toBe(4); await page.waitForTimeout(180); };
+const visualReady = async page => { if(await referenceMode(page)){await referenceReady(page);return;}await expect(page.locator('body')).toHaveAttribute('data-renderer', 'webgl'); await expect.poll(async () => (await snapshot(page)).render?.formation.length).toBe(4); await page.waitForTimeout(180); };
 
 test('appearance previews immediately, cancels, resets, safely applies Japanese and restores on reload', async ({ page }) => {
   await ready(page); await open(page, 'キャラ設定');
@@ -102,15 +103,20 @@ test('touch drawer closes, all five items remain reachable, Escape restores focu
 for (const [width, height] of [[1920, 1080], [1366, 768], [390, 844], [844, 390]]) {
   test(`real WebGL composition ${width}x${height}, full squad bounds and usable START`, async ({ page }) => {
     test.setTimeout(60000); await page.setViewportSize({ width, height }); await ready(page); await visualReady(page); await page.locator('#squad-button').click(); await fourFits(page);
+    if(await referenceMode(page)){
+      await expect(page.locator('.sample-label:visible')).toHaveCount(3);
+      expect((await snapshot(page)).render.drawCalls).toBe(0);
+    }else{
     await expect.poll(async () => (await snapshot(page)).render.formation.filter(s => s.visible).length).toBe(4);
     const stage = await page.locator('#lobby-stage').boundingBox(), s = await snapshot(page);
     for (const b of s.render.bounds) { expect(b.left).toBeGreaterThanOrEqual(stage.x); expect(b.right).toBeLessThanOrEqual(stage.x + stage.width); expect(b.top).toBeGreaterThanOrEqual(stage.y); expect(b.bottom).toBeLessThanOrEqual(stage.y + stage.height); }
     expect(s.render.formation[0].z).toBeGreaterThan(Math.max(...s.render.formation.slice(1).map(s => s.z)));
+    }
     await expect(page.locator('#start-button')).toBeInViewport(); await expect(page.locator('#squad-note')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(height);
     await mkdir('test-results/visual', { recursive: true }); await page.screenshot({ path: `test-results/visual/home-squad-${width}x${height}.png` });
-    await writeFile(`test-results/visual/render-${width}x${height}.json`, JSON.stringify(s, null, 2));
+    await writeFile(`test-results/visual/render-${width}x${height}.json`, JSON.stringify(await snapshot(page), null, 2));
   });
 }
 test('actual menu, solo and mission screenshots with WebGL, plus load metrics', async ({ page }) => {

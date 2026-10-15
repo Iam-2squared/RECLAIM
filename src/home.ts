@@ -178,7 +178,7 @@ export class Home {
   dispose() { clearTimeout(this.layoutTask); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); }
   character() {
     this.draft = { ...this.saved.appearance };
-    el('panel-content').innerHTML = `<p class="panel-intro">旅に出る、自分の姿を。</p>
+    el('panel-content').innerHTML = `<p class="panel-intro"><span class="legacy-menu-copy">旅に出る、自分の姿を。</span><span class="reference-panel-copy">人物の絵は固定。表示名と色を保存します。</span></p>
       <label class="field-label" for="preview-name">表示名</label><input id="preview-name" class="name-input" maxlength="64" autocomplete="off" spellcheck="false" aria-describedby="name-help name-count"><div class="field-meta"><span id="name-help">16文字まで。空欄はSURVIVOR。</span><span id="name-count"></span></div>
       <p class="field-label">衣服と装備の色</p><div class="palette-options">${PALETTES.map(p => `<button type="button" class="palette" data-palette="${p.id}" aria-pressed="${p.id === this.draft!.palette}"><span class="color-chip" style="--chip:${p.color}"></span>${p.name}</button>`).join('')}</div><p id="palette-note" class="muted"></p>
       <p class="muted">この端末だけの外観設定です。適用するまでプレビュー。閉じると変更を取り消します。</p>`;
@@ -206,7 +206,7 @@ export class Home {
   }
   weapons() {
     const v = this.saved;
-    el('panel-content').innerHTML = `<p class="panel-intro">この手に、頼れる道具を。</p>
+    el('panel-content').innerHTML = `<p class="panel-intro"><span class="legacy-menu-copy">この手に、頼れる道具を。</span><span class="reference-panel-copy">装備の絵は固定。選択値を保存します。</span></p>
       <div class="weapon-slots">${(['primary', 'secondary'] as const).map((slot, i) => `<fieldset class="weapon-slot"><legend>${i === 0 ? '主武器' : '副武器'}</legend><div class="gun-options">${GUNS.map(g => `<button type="button" data-slot="${slot}" data-gun="${g.id}" class="gun-option" aria-pressed="${v[slot] === g.id}"><small>${g.code}</small><span>${g.name}</span></button>`).join('')}</div></fieldset>`).join('')}</div>
       <p class="muted">見た目用のローカル装備プレビュー。選択はこの端末に保存します。<br>同じ銃を選ぶと、主・副武器が入れ替わります。</p><p class="field-label">HOMEで手に持つ銃</p><div class="held-options"><button type="button" id="hold-primary" class="secondary-action" aria-pressed="${v.held === 'primary'}">主武器を持つ</button><button type="button" id="hold-secondary" class="secondary-action" aria-pressed="${v.held === 'secondary'}">副武器を持つ</button></div>
       <div class="katana-card"><span>日本刀</span><small>左腰に帯刀 · 鞘つき</small></div><details><summary>装備レアリティについて</summary><p class="muted">${RARITIES.join(' → ')}<br>分類の予定です。所持・取得を示すものではありません。競技ランクとは別です。</p></details><p class="muted">性能・強化・素材消費は未実装。</p>`;

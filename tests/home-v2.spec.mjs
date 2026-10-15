@@ -1,6 +1,7 @@
 import { test, expect } from './browser-fixtures.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { snapshot, rects, contained, intersects, fourFits, scrollEnd } from './layout-helpers.mjs';
+import { referenceMode,referenceReady } from './reference-helpers.mjs';
 const home=async page=>{await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');await page.locator('#home-button').click();};
 const panels=[['マップ','map'],['キャラ設定','character'],['武器','weapons'],['今のボス状況','boss'],['ランキング','ranking']];
 for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1366,600],[1280,600],[1024,576]]){
@@ -10,11 +11,13 @@ for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1366,600],[1280,
   const closed=await rects(page),viewport={x:0,y:0,right:width,bottom:height};
   expect(intersects(closed['#home-nav'],closed['.home-footnote'])).toBe(false);
   contained(closed['#back-title'],viewport);contained(closed['#start-button'],viewport);
+  const reference=await referenceMode(page);if(reference)await referenceReady(page);
   const measurements=[];
   for(const [name,id] of panels){
    const button=page.getByRole('button',{name,exact:true});await button.click();
    await expect(page.locator('#home-panel')).toHaveAttribute('aria-modal','false');
-   await expect.poll(async()=>(await snapshot(page)).render.bounds.length).toBe(1);
+   if(reference){await expect(page.locator('#home-screen .reference-backplate')).toBeVisible();await expect(page.locator('.sample-label:visible')).toHaveCount(0);}
+   else await expect.poll(async()=>(await snapshot(page)).render.bounds.length).toBe(1);
    const r=await rects(page);contained(r['#home-panel'],viewport);contained(r['#panel-close'],r['#home-panel']);
    expect(r['#home-panel'].width).toBeGreaterThanOrEqual(560);expect(r['#home-panel'].height/height).toBeGreaterThan(.7);
    expect(r['#panel-content'].height).toBeGreaterThanOrEqual(height>=600?300:275);
@@ -22,7 +25,8 @@ for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1366,600],[1280,
    expect(intersects(r['#home-nav'],r['.home-footnote'])).toBe(false);expect(intersects(r['#home-panel'],r['#lobby-stage'])).toBe(false);
    expect(await page.locator('#panel-content').evaluate(n=>parseFloat(getComputedStyle(n).fontSize))).toBeGreaterThanOrEqual(14);
    await expect(page.locator('#start-button')).toBeDisabled();
-   const own=(await snapshot(page)).render.bounds[0];contained({x:own.left,y:own.top,right:own.right,bottom:own.bottom},r['#lobby-stage']);
+   if(reference)expect((await snapshot(page)).render.drawCalls).toBe(0);
+   else{const own=(await snapshot(page)).render.bounds[0];contained({x:own.left,y:own.top,right:own.right,bottom:own.bottom},r['#lobby-stage']);}
    if(id==='map'){contained(r['#campaign-map'],r['#panel-content']);await expect(page.locator('#campaign-map text').filter({hasText:'知床'})).toBeVisible();await expect(page.locator('#region-select')).toHaveValue('0');await expect(page.locator('#region-select option')).toHaveCount(18);}
    if(id==='weapons'){
     const cards=await page.locator('.gun-option').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
@@ -55,13 +59,16 @@ test('HOME V2 longest weapon and name fit after rotation; camera fitting stays i
 
 test('HOME V2 title revisits refit the shared camera instead of reusing stale HOME diagnostics',async({page},info)=>{
  await home(page);
+ const reference=await referenceMode(page);
  for(const squad of [false,true,false]){
   if(squad)await page.locator('#squad-button').click();else await page.locator('#solo-button').click();
-  await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(true);
+  if(reference)await referenceReady(page);else await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(true);
   const count=(await snapshot(page)).render.layoutFits;
-  await page.locator('#back-title').click();await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(false);
-  await page.locator('#home-button').click();await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(true);
-  expect((await snapshot(page)).render.layoutFits).toBeGreaterThan(count);
+  await page.locator('#back-title').click();await expect(page.locator('#title-screen')).toBeVisible();
+  if(!reference)await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(false);
+  await page.locator('#home-button').click();
+  if(reference){await referenceReady(page);expect((await snapshot(page)).render.drawCalls).toBe(0);}
+  else{await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(true);expect((await snapshot(page)).render.layoutFits).toBeGreaterThan(count);}
   if(squad)await fourFits(page);
  }
  await page.locator('#squad-button').click();await fourFits(page);await page.screenshot({path:info.outputPath('four-after-title-revisit.png')});
@@ -71,9 +78,11 @@ test('HOME V2 delayed compositor callbacks still draw UI changes and restore nor
  await page.addInitScript(()=>{const request=window.requestAnimationFrame.bind(window);window.__DELAYED_FRAMES__=[];window.requestAnimationFrame=callback=>request(time=>{if(window.__PAUSE_COMPOSITOR__)window.__DELAYED_FRAMES__.push(()=>callback(time));else callback(time);});});
  await page.setViewportSize({width:1280,height:600});await home(page);await page.locator('#squad-button').click();await fourFits(page);
  const before=(await snapshot(page)).renderClock;await page.evaluate(()=>{window.__PAUSE_COMPOSITOR__=true;});
- await page.getByRole('button',{name:'マップ',exact:true}).click();await expect.poll(async()=>(await snapshot(page)).render.bounds.length).toBe(1);
+ await page.getByRole('button',{name:'マップ',exact:true}).click();await expect(page.locator('#home-panel')).toBeVisible();
+ if(!await referenceMode(page))await expect.poll(async()=>(await snapshot(page)).render.bounds.length).toBe(1);
  await page.locator('#panel-close').click();await fourFits(page);
- await page.locator('#back-title').click();await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(false);
+ await page.locator('#back-title').click();await expect(page.locator('#title-screen')).toBeVisible();
+ if(!await referenceMode(page))await expect.poll(async()=>(await snapshot(page)).render.homeCamera).toBe(false);
  await page.locator('#home-button').click();await fourFits(page);
  const stalled=(await snapshot(page)).renderClock;expect(stalled.fallbackFrames).toBeGreaterThan(before.fallbackFrames);expect(stalled.frames).toBeGreaterThan(before.frames);
  await page.evaluate(()=>{window.__PAUSE_COMPOSITOR__=false;const pending=window.__DELAYED_FRAMES__.splice(0);pending.forEach(callback=>callback());});await expect.poll(async()=>(await snapshot(page)).renderClock.rafTime).toBeGreaterThan(stalled.rafTime);

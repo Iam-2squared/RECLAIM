@@ -1,0 +1,12 @@
+{
+  "schema": "reclaim.owner-reference-images.v1",
+  "images": [
+    {"file":"title.jpeg","providedFilename":"B0FC256F-686A-4BB9-ACEA-68011BC04D9D(2).jpeg","width":1536,"height":864,"bytes":353468,"sha256":"3264b176ecb95b9aaffe3bf317972353640d22636645e3525f6d3a7609a4881c","processing":"none; original bytes copied unchanged"},
+    {"file":"home.jpeg","providedFilename":"07FB3B0E-7342-4529-8E78-F18D3DE40FF8(2).jpeg","width":1536,"height":864,"bytes":475251,"sha256":"06a44a93aca33593fcf8a95656be97a97c668b0627ffe3b48f4138080aa3d559","processing":"none; original bytes copied unchanged"}
+  ],
+  "origin":"Owner-supplied visual references in this task",
+  "licence":"No acquisition/licence proof supplied; do not mislabel as newly authored or as Fab assets. Used at owner request.",
+  "newDependencies":0,
+  "externalRuntimeRequests":0,
+  "blenderOrFabAssetsIncluded":false
+}
