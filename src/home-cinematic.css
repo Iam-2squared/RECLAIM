@@ -196,6 +196,10 @@ body[data-screen="home"][data-home-view="model"] #home-edition,
 body[data-screen="home"][data-home-view="model"] #home-weapon-art,
 body[data-screen="home"][data-home-view="model"] #home-art-note,
 body[data-screen="home"][data-home-view="model"] #home-destination-image{display:none}
+/* In model mode the noninteractive header spans the width of the viewport.
+   Let clicks reach the return control while keeping the real sound/settings buttons active. */
+body[data-screen="home"][data-home-view="model"] .topbar{pointer-events:none}
+body[data-screen="home"][data-home-view="model"] .topbar .icon-button{pointer-events:auto}
 body[data-screen="home"][data-home-view="model"] #home-render-mode{position:fixed;top:9px;left:44%;z-index:9;background:#16241ef0;min-height:32px}
 body[data-screen="home"][data-home-view="model"] .home-destination-card{max-width:230px;min-width:130px}
 body[data-screen="home"][data-home-view="model"] #home-area-select{font-size:22px;max-width:220px}

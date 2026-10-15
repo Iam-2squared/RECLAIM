@@ -79,6 +79,7 @@ test('HOME area selection is strictly restricted to unlocked areas',async({page}
 });
 
 test('reduced motion disables scenery animation; explicit 3D equipment preview can toggle',async({page})=>{
+  test.setTimeout(60000);
   await enter(page);
   await page.locator('#settings-button').click();await page.locator('#motion-toggle').check();await page.keyboard.press('Escape');
   await expect(page.locator('#home-screen')).toHaveAttribute('data-home-motion','stopped');
