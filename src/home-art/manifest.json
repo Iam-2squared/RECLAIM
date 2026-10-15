@@ -1,0 +1,46 @@
+[
+  {
+    "file": "shiretoko.avif",
+    "source_sha256": "6ff6f19986ab8e65e92ff15b7feba1cf8cca61e214474cd4fcbf8499689f4376",
+    "sha256": "91611993c3c015f2f4ef8708eb0076612069ccf60a256b6a354dce7c0a428c6d",
+    "bytes": 28750,
+    "size": [
+      1279,
+      720
+    ],
+    "kind": "approved generated landscape, compressed"
+  },
+  {
+    "file": "ishikari.avif",
+    "source_sha256": "25e8d2698c8c7d1ad8a3bcb863a23baf57d8e339bf8fe5fc7a7f58038a363b5f",
+    "sha256": "df0891f74865dc02a8ecc847fb01fd95cc43687a315439d765d21a40be33c9bf",
+    "bytes": 32691,
+    "size": [
+      1279,
+      720
+    ],
+    "kind": "approved generated landscape, compressed"
+  },
+  {
+    "file": "hidaka.avif",
+    "source_sha256": "ae5b82db01868bd3422de69dd7bd076bb3a86e4da293a97b2c363364598cd8d9",
+    "sha256": "edc10aaa364837b7ff3594f54490f29853419b23481b67a420de4bed4cafdb59",
+    "bytes": 32337,
+    "size": [
+      1279,
+      720
+    ],
+    "kind": "approved generated landscape, compressed"
+  },
+  {
+    "file": "survivor.avif",
+    "source_sha256": "5fb1d393b00609319d93d9ea46e77bcb6c8dd397d76e0474d4b84e7ba441b31f",
+    "sha256": "1bb0df769472a1c0a290ab545c4a30339a464f31f4b43337a11fdfabba41f042",
+    "bytes": 20450,
+    "size": [
+      340,
+      894
+    ],
+    "kind": "approved generated character, hand-masked 2D render; not a rigged mesh"
+  }
+]

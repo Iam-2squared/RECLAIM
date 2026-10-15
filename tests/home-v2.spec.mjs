@@ -1,7 +1,7 @@
 import { test, expect } from './browser-fixtures.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { snapshot, rects, contained, intersects, fourFits, scrollEnd } from './layout-helpers.mjs';
-const home=async page=>{await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');await page.locator('#home-button').click();};
+const home=async page=>{await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');await page.locator('#home-button').click();await page.locator('#home-render-mode').click();};
 const panels=[['マップ','map'],['キャラ設定','character'],['武器','weapons'],['今のボス状況','boss'],['ランキング','ranking']];
 for(const [width,height] of [[1920,1080],[1440,900],[1366,768],[1366,600],[1280,600],[1024,576]]){
  test(`HOME V2 desktop ${width}x${height}: all panels have usable content, reserved footer and visible own preview`,async({page},info)=>{

@@ -11,7 +11,19 @@ const ready = async page => {
   await expect(page.locator('#boot-notice')).toBeHidden();
   await expect(page.locator('#home-button')).toBeEnabled();
 };
-const home = async page => { await ready(page); await page.locator('#home-button').tap(); await expect(page.locator('#home-screen')).toBeVisible(); };
+const home = async page => {
+  await ready(page); await page.locator('#home-button').tap();
+  await expect(page.locator('#home-screen')).toBeVisible();
+  // V3 is intentionally 2D-first. Keep V2's real 3D checks when WebGL is available;
+  // unavailable-WebGL tests must instead exercise the actual cinematic fallback.
+  if ((await page.locator('body').getAttribute('data-renderer')) === 'webgl') {
+    await page.locator('#home-render-mode').tap();
+    await expect(page.locator('body')).toHaveAttribute('data-home-view','model');
+  } else {
+    await expect(page.locator('body')).toHaveAttribute('data-home-view','cinematic');
+    await expect(page.locator('#home-render-mode')).toBeDisabled();
+  }
+};
 const open = async (page, name) => { await page.locator('#menu-toggle').tap(); await page.getByRole('button', { name, exact: true }).tap(); await expect(page.locator('#home-nav')).toBeHidden(); };
 const fullSquad = fourFits;
 
@@ -50,7 +62,11 @@ test('Safari display dialog, reduced motion and quality remain touch operable', 
   await page.locator('#settings-dialog .close-button').tap();
   await expect(page.locator('#settings-dialog')).toBeHidden();
   expect((await snapshot(page)).reducedMotion).toBe(true);
-  await page.locator('#home-button').tap(); await page.locator('#squad-button').tap(); await fullSquad(page);
+  await page.locator('#home-button').tap();
+  await expect(page.locator('body')).toHaveAttribute('data-home-view','cinematic');
+  await page.locator('#home-render-mode').tap();
+  await expect(page.locator('body')).toHaveAttribute('data-home-view','model');
+  await page.locator('#squad-button').tap(); await fullSquad(page);
   expect((await snapshot(page)).render.pixelRatio).toBeLessThanOrEqual(.75);
 });
 

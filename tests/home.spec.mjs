@@ -4,7 +4,7 @@ import { fourFits } from './layout-helpers.mjs';
 const ready = async page => { await page.goto('/'); await expect(page.locator('body')).toHaveAttribute('data-ready', 'true'); await page.locator('#home-button').click(); };
 const open = async (page, name) => { if (await page.locator('#menu-toggle').isVisible()) await page.locator('#menu-toggle').click(); await page.getByRole('button', { name, exact: true }).click(); };
 const snapshot = page => page.evaluate(() => window.__RECLAIM__.snapshot());
-const visualReady = async page => { await expect(page.locator('body')).toHaveAttribute('data-renderer', 'webgl'); await expect.poll(async () => (await snapshot(page)).render?.formation.length).toBe(4); await page.waitForTimeout(180); };
+const visualReady = async page => { await expect(page.locator('body')).toHaveAttribute('data-renderer', 'webgl'); await page.locator('#home-render-mode').click(); await expect.poll(async () => (await snapshot(page)).render?.formation.length).toBe(4); await page.waitForTimeout(180); };
 
 test('appearance previews immediately, cancels, resets, safely applies Japanese and restores on reload', async ({ page }) => {
   await ready(page); await open(page, 'キャラ設定');
