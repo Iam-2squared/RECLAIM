@@ -110,8 +110,8 @@ export class CinematicHome {
     this.lastPreview=preview;
     byId('cinematic-name').textContent=preview.appearance.name;
     byId('cinematic-gear').textContent=`${gunName(preview[preview.held])} / 日本刀`;
-    this.actors[0].dataset.palette=preview.appearance.palette;
-    ['slate','clay','olive'].forEach((p,i)=>this.actors[i+1].dataset.palette=p);
+    this.actors[0].dataset.outfit=preview.appearance.palette;
+    ['slate','clay','olive'].forEach((p,i)=>this.actors[i+1].dataset.outfit=p);
     byId('home-weapon-art').dataset.weapon=preview[preview.held];
   }
   layout(squad: boolean, panelOpen: boolean) {

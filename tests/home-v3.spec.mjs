@@ -54,7 +54,7 @@ test('changing name, palette and selected gun updates live text without granting
   await page.locator('#preview-name').fill('知床の生存者');
   await page.locator('[data-palette="clay"]').click();
   await expect(page.locator('#cinematic-name')).toHaveText('知床の生存者');
-  await expect(page.locator('.home-actor-0')).toHaveAttribute('data-palette','clay');
+  await expect(page.locator('.home-actor-0')).toHaveAttribute('data-outfit','clay');
   await page.locator('#apply-character').click();
   await page.getByRole('button',{name:'武器',exact:true}).click();
   await page.locator('[data-slot="primary"][data-gun="rifle"]').click();
