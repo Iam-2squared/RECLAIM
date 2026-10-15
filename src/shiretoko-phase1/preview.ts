@@ -122,6 +122,9 @@ async function boot() {
     if (disposed || contextLost || shaderError) return;
     if (!freeze) for (const water of waters) water.material.uniforms.uTime.value = (time-started)/1000;
     updateIntroLabels();
+    // The backdrop represents directions, not a finite sphere fixed to the
+    // world's origin. Panning to the distant terminal must not exit its shell.
+    sky.position.copy(camera.position);
     const submitted = performance.now(); renderer.render(scene,camera); renderCallsTotal++; needsRender = false;
     if (drawSubmissionMs.length < 600) drawSubmissionMs.push(performance.now()-submitted);
     if (!firstFrame && !shaderError) { firstFrame = performance.now(); $('loading').hidden = true; }

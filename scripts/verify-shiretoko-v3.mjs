@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 const out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v3');await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
 const context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1});
-const page=await context.newPage(),errors=[],network=[],checks=[],ring=[];
+const page=await context.newPage(),errors=[],network=[],checks=[],ring=[];let rearSkySamples;
 page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url());});
 const state=()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
 const artifact=pathToFileURL(resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html')).href;
@@ -29,7 +29,15 @@ try{
   const angle=i*Math.PI/4,position=[Math.sin(angle)*2650,1360,Math.cos(angle)*2650-150];
   const s=await captured(`360-main-${i*45}`,position,[0,170,-180]);ring.push({angleDegrees:i*45,camera:s.camera,triangles:s.triangles,drawCalls:s.drawCalls});
  }
- for(const [name,p,t] of [['rear-terminal',[3000,1600,-10700],[0,240,-7200]],['20-80m-join',[-1600,1000,-4200],[300,550,-4200]],['mountain-lookdown',[220,800,-1310],[10,100,320]],['wetland-close',[-110,94.8,419],[48,92,485]],['plateau-ground',[-112,171,-440],[180,153,-370]]])await captured(name,p,t);
+ for(const [name,p,t] of [['rear-terminal',[3000,1600,-10700],[0,240,-7200]],['20-80m-join',[-1600,1000,-4200],[300,550,-4200]],['mountain-lookdown',[220,800,-1310],[10,100,320]],['wetland-close',[-110,94.8,419],[48,92,485]],['plateau-ground',[-112,171,-440],[180,153,-370]]]){
+  await captured(name,p,t);
+  if(name==='rear-terminal'){
+   // The terminal camera is >11km from the origin. A fixed 11km BackSide sky
+   // used to expose the black clear buffer here even though every check passed.
+   rearSkySamples=await page.evaluate(()=>{const canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2');gl.finish();const pixels=[8,Math.floor(canvas.width/2),canvas.width-9].map(x=>{const rgba=new Uint8Array(4);gl.readPixels(x,canvas.height-9,1,1,gl.RGBA,gl.UNSIGNED_BYTE,rgba);return{x,y:8,rgba:[...rgba]};});return{pixels,glError:gl.getError()};});
+   assert.equal(rearSkySamples.glError,0);for(const sample of rearSkySamples.pixels){assert.ok(sample.rgba[0]+sample.rgba[1]+sample.rgba[2]>24,'Distant rear sky must not expose the black clear buffer');assert.equal(sample.rgba[3],255);}
+  }
+ }
  checks.push('eight 45-degree main coast views, terminal cape, 20/80m join, mountain lookdown, wetland close and plateau');
  const canvasPixels=()=>page.evaluate(()=>{const canvas=document.querySelector('canvas');canvas.getContext('webgl2').finish();return canvas.toDataURL('image/png');});
  const fresh=async action=>{const before=(await state()).renderCallsTotal;await action();await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,before);};
@@ -70,6 +78,6 @@ try{
  checks.push('WebGL unavailable has a readable error and loading state resolves');
  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
  const html=await readFile(resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),'utf8');
- const report={source:html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1],tree:html.match(/name="reclaim-terrain-tree" content="([^"]+)/)?.[1],environment:{browser:browser.version(),userAgent:await page.evaluate(()=>navigator.userAgent),node:process.version,platform:process.platform,architecture:process.arch},checks,initial,ring,afterOverlayWarmup,afterCycles,hiddenSubmissions:hidden,idleSubmissions:idle,beforeDispose,disposed,errors,network,physicalWindowsTest:false,notes:'Headless Chromium + software SwiftShader. Blur and hidden lifecycle are synthetic browser events, not an actual laptop or OS GPU test.'};
+ const report={source:html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1],tree:html.match(/name="reclaim-terrain-tree" content="([^"]+)/)?.[1],environment:{browser:browser.version(),userAgent:await page.evaluate(()=>navigator.userAgent),node:process.version,platform:process.platform,architecture:process.arch},checks,initial,ring,rearSkySamples,afterOverlayWarmup,afterCycles,hiddenSubmissions:hidden,idleSubmissions:idle,beforeDispose,disposed,errors,network,physicalWindowsTest:false,notes:'Headless Chromium + software SwiftShader. Blur and hidden lifecycle are synthetic browser events, not an actual laptop or OS GPU test.'};
  await writeFile(resolve(out,'verification-v3.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({checks,errors,network},null,2));
 }catch(e){await page.screenshot({path:resolve(out,'FAILED-v3.png')}).catch(()=>{});await writeFile(resolve(out,'FAILED-v3.txt'),String(e));throw e;}finally{await browser.close();}
