@@ -35,15 +35,28 @@ try {
  await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit');checks.push('direct start with real user-gesture pointer lock, movement and Escape');
  await open();await page.locator('#intro-fly').click();await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().intro==='landed',{}, {timeout:20000});
  assert.equal((await state()).pointerLocked,false);assert.equal((await state()).routeOverlayVisible,false);
- // A landed state is set before the frame is submitted. Wait for a stable idle frame,
- // then finish that exact GL submission before asking Chromium's compositor for pixels.
+ // A landed state is set before the frame is submitted. Wait for a stable idle
+ // frame, then read its actual WebGL framebuffer. Chromium's software-GPU page
+ // compositor can stall on a screenshot after pointer-lock/flight even when
+ // gl.finish has completed; direct readback still captures the real shader pixels.
  const stable=await page.evaluate(async()=>{
   const api=window.__SHIRETOKO_TERRAIN__;let previous=-1,same=0;
   for(let i=0;i<30&&same<3;i++){await new Promise(r=>requestAnimationFrame(r));const count=api.diagnostics().renderCallsTotal;same=count===previous?same+1:0;previous=count;}
   document.querySelector('canvas').getContext('webgl2').finish();
   return {same,state:api.diagnostics().intro};
  });assert.ok(stable.same>=3);assert.equal(stable.state,'landed');
- await page.screenshot({path:resolve(out,'02-landed.jpg'),type:'jpeg',quality:94});
+ await page.bringToFront();
+ const landedReadback=await page.evaluate(async()=>{
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  const canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2');gl.finish();
+  const rgba=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,rgba);
+  let min=255,max=0;for(let i=0;i<rgba.length;i+=4)for(let c=0;c<3;c++){min=Math.min(min,rgba[i+c]);max=Math.max(max,rgba[i+c]);}
+  return{width:canvas.width,height:canvas.height,viewport:[innerWidth,innerHeight],dpr:devicePixelRatio,preserveDrawingBuffer:Boolean(gl.getContextAttributes()?.preserveDrawingBuffer),introState:window.__SHIRETOKO_TERRAIN__.diagnostics().intro,min,max,glError:gl.getError(),image:canvas.toDataURL('image/jpeg',.94)};
+ });
+ assert.equal(landedReadback.glError,0);assert.equal(landedReadback.preserveDrawingBuffer,true);assert.equal(landedReadback.introState,'landed');assert.equal(landedReadback.dpr,1);assert.deepEqual(landedReadback.viewport,[1366,768]);assert.equal(landedReadback.width,1366);assert.equal(landedReadback.height,768);assert.ok(landedReadback.max>landedReadback.min,'Landed framebuffer is not blank');
+ assert.ok(landedReadback.image.startsWith('data:image/jpeg;base64,'));const landedJPEG=Buffer.from(landedReadback.image.split(',')[1],'base64');assert.equal(landedJPEG[0],255);assert.equal(landedJPEG[1],216);
+ await writeFile(resolve(out,'02-landed-webgl-framebuffer.jpg'),landedJPEG);
+ const {image:unusedImage,...landedCapture}=landedReadback;landedCapture.captureMethod='WebGL framebuffer (DOM overlay not included)';landedCapture.file='02-landed-webgl-framebuffer.jpg';
  await page.locator('#intro-explore').click();await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().pointerLocked);await page.keyboard.press('Escape');checks.push('optional flight ends at a new explicit click, never acquires lock asynchronously');
  await open();await page.locator('#intro-fly').click();await page.keyboard.press('Escape');assert.equal((await state()).intro,'closed');
  await open();await page.locator('#intro-cancel').click();assert.equal((await state()).intro,'closed');checks.push('Escape cancels camera travel; cancel returns to isolated overview');
@@ -57,5 +70,5 @@ try {
  await page.screenshot({path:resolve(out,'03-context-loss-recovery.jpg'),type:'jpeg',quality:92});checks.push('context loss cancels intro and shows reload guidance without save access');
  assert.deepEqual(await page.evaluate(()=>window.__storage),[]);assert.deepEqual(requests,[]);assert.deepEqual(errors,[]);
  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());const disposed=await state();assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0);assert.equal(await page.locator('canvas').count(),0);checks.push('GPU geometries / textures / canvas disposed to zero');
- await writeFile(resolve(out,'verification.json'),JSON.stringify({checks,initial,after,disposed,errors,requests},null,2));console.log(JSON.stringify({checks},null,2));
+ await writeFile(resolve(out,'verification.json'),JSON.stringify({checks,initial,after,disposed,landedCapture,errors,requests},null,2));console.log(JSON.stringify({checks,landedCapture},null,2));
 }catch(e){await page.screenshot({path:resolve(out,'FAILED.png'),timeout:60000}).catch(()=>{});await writeFile(resolve(out,'FAILED.txt'),String(e));throw e;}finally{await browser.close();}
