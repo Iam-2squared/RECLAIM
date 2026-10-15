@@ -89,8 +89,18 @@ async function boot() {
   const routeLine = new T.Line(new T.BufferGeometry().setFromPoints(routePoints), new T.LineDashedMaterial({ color: 0xf7e6b3, dashSize: 5, gapSize: 4, depthTest: true }));
   routeLine.computeLineDistances(); routeLine.visible = false; routeLine.name = 'optional route inspection overlay'; root.add(routeLine);
   const walker = new TerrainWalker(terrain), keys = new Set<string>(), frameTimes: number[] = [];
-  let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false;
+  let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
+  const drawSubmissionMs: number[] = [];
+  const cameraChanged = () => { needsRender = true; };
+  controls.addEventListener('change', cameraChanged); cleanup.push(() => controls.removeEventListener('change',cameraChanged));
   let transition: { from: T.Vector3; targetFrom: T.Vector3; to: View; start: number } | null = null;
+  function renderNow(time = performance.now()) {
+    if (disposed || contextLost || shaderError) return;
+    if (!freeze) for (const water of waters) water.material.uniforms.uTime.value = (time-started)/1000;
+    const submitted = performance.now(); renderer.render(scene,camera); renderCallsTotal++; needsRender = false;
+    if (drawSubmissionMs.length < 600) drawSubmissionMs.push(performance.now()-submitted);
+    if (!firstFrame && !shaderError) { firstFrame = performance.now(); $('loading').hidden = true; }
+  }
   const hints = [
     ['海と、崖と、<br />まだ名のない道。', '岬から湿原へ。湖を越え、内陸の山々へ。'],
     ['崖の上から、<br />旅が始まる。', '海へ張り出した岬。住宅のための平坦な敷地。'],
@@ -105,7 +115,7 @@ async function boot() {
     $('overview').classList.toggle('active', index === 0); $('overview').setAttribute('aria-pressed', String(index === 0));
     if (instant) { camera.position.fromArray(VIEWS[index].position); controls.target.fromArray(VIEWS[index].target); controls.update(); transition = null; }
     else transition = { from: camera.position.clone(), targetFrom: controls.target.clone(), to: VIEWS[index], start: performance.now() };
-    if (instant) renderer.render(scene, camera);
+    if (instant) renderNow();
   }
   function updateWalkCamera() { camera.position.set(walker.x, walker.y + walker.eyeHeight, walker.z); camera.rotation.order = 'YXZ'; camera.rotation.set(walker.pitch, walker.yaw, 0); }
   function enterWalk() {
@@ -136,15 +146,21 @@ async function boot() {
   on($('overview'), 'click', () => selectView(0));
   on($('elevation'), 'click', () => {
     const enabled = !material.uniforms.uElevation.value; material.uniforms.uElevation.value = enabled ? 1 : 0;
+    needsRender = true;
     $('elevation').classList.toggle('active', enabled); $('elevation').setAttribute('aria-pressed', String(enabled));
   });
-  on($('route'), 'click', () => { routeLine.visible = !routeLine.visible; $('route').classList.toggle('active', routeLine.visible); $('route').setAttribute('aria-pressed', String(routeLine.visible)); });
+  on($('route'), 'click', () => { routeLine.visible = !routeLine.visible; needsRender = true; $('route').classList.toggle('active', routeLine.visible); $('route').setAttribute('aria-pressed', String(routeLine.visible)); });
   on($('clean'), 'click', () => setClean(true));
   on($('walk'), 'click', () => { if (walking) selectView(selectedView); else enterWalk(); });
   document.querySelectorAll<HTMLButtonElement>('[data-location]').forEach(button => on(button, 'click', () => selectView(Number(button.dataset.location) + 1)));
   on(renderer.domElement, 'click', () => requestLock());
   on(renderer.domElement, 'pointerdown', () => { if (!walking) transition = null; });
-  on(document, 'pointerlockchange', () => { keys.clear(); walker.clearInput(); accumulator = 0; $('walk-message').hidden = document.pointerLockElement === renderer.domElement; });
+  on(document, 'pointerlockchange', () => {
+    const locked = document.pointerLockElement === renderer.domElement;
+    // Acquiring the lock must not erase a W/Space press made immediately after the click.
+    if (!locked) { keys.clear(); walker.clearInput(); accumulator = 0; if (walking) selectView(selectedView); }
+    $('walk-message').hidden = locked;
+  });
   on(document, 'mousemove', event => {
     if (walking && document.pointerLockElement === renderer.domElement) {
       const e = event as MouseEvent; walker.yaw -= e.movementX * .002; walker.pitch = clamp(walker.pitch - e.movementY * .002, -1.4, 1.4);
@@ -159,8 +175,8 @@ async function boot() {
   });
   on(document, 'keyup', event => keys.delete((event as KeyboardEvent).code));
   on(window, 'blur', () => { keys.clear(); walker.clearInput(); accumulator = 0; });
-  on(document, 'visibilitychange', () => { keys.clear(); walker.clearInput(); accumulator = 0; lastFrame = performance.now(); });
-  on(window, 'resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+  on(document, 'visibilitychange', () => { keys.clear(); walker.clearInput(); accumulator = 0; lastFrame = performance.now(); needsRender = true; });
+  on(window, 'resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); needsRender = true; });
   on(renderer.domElement, 'webglcontextlost', event => { event.preventDefault(); contextLost = true; keys.clear(); if (walking) exitWalk(); fail('描画コンテキストが失われました。ページを再読み込みして地形を再構築してください。保存データへの変更はありません。'); });
   selectView(0, true);
   function frame(time: number) {
@@ -179,10 +195,9 @@ async function boot() {
       camera.position.lerpVectors(transition.from, new T.Vector3(...transition.to.position), easing); controls.target.lerpVectors(transition.targetFrom, new T.Vector3(...transition.to.target), easing); controls.update();
       if (t === 1) transition = null;
     } else controls.update();
-    if (!freeze) for (const water of waters) water.material.uniforms.uTime.value = (time - started) / 1000;
-    renderer.render(scene, camera);
-    if (!firstFrame && !shaderError) { firstFrame = performance.now(); $('loading').hidden = true; }
-    if (rawDelta > 0 && frameTimes.length < 600) frameTimes.push(rawDelta * 1000);
+    // A terrain review has no reason to flood the GPU with identical idle overview frames.
+    if (needsRender || walking || transition) renderNow(time);
+    if (walking && document.pointerLockElement === renderer.domElement && rawDelta > 0 && frameTimes.length < 600) frameTimes.push(rawDelta * 1000);
   }
   animation = requestAnimationFrame(frame);
   const diagnostics = () => ({
@@ -191,9 +206,9 @@ async function boot() {
     generatedMs: +(generated - started).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     triangles: renderer.info.render.triangles, drawCalls: renderer.info.render.calls,
     geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures,
-    frameTimesMs: frameTimes.slice(10), viewport: [innerWidth, innerHeight], dpr: renderer.getPixelRatio(),
+    frameTimesMs: frameTimes.slice(2), drawSubmissionMs:drawSubmissionMs.slice(), renderCallsTotal, renderingPolicy:'on-demand orbit, continuous walking', viewport: [innerWidth, innerHeight], dpr: renderer.getPixelRatio(),
     player: { x: walker.x, y: walker.y, z: walker.z, grounded: walker.grounded, distance: walker.distance },
-    contextLost, shaderError, disposed, heapBytes: (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
+    pointerLocked:document.pointerLockElement===renderer.domElement, inputKeys:[...keys], hidden:document.hidden, contextLost, shaderError, disposed, heapBytes: (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
   });
   function dispose() {
     if (disposed) return; disposed = true; cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
@@ -207,7 +222,7 @@ async function boot() {
   Object.assign(window, { __SHIRETOKO_TERRAIN__: {
     diagnostics, terrain, walker, route: ROUTE, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
     setClean, freeze: (value: boolean) => { freeze = value; },
-    viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); },
+    viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
     dispose,
   } });
 }

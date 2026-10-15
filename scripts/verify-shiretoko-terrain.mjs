@@ -28,6 +28,13 @@ try {
   await page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__?.diagnostics().ready, {}, { timeout: 60000 });
   await page.evaluate(() => document.fonts.ready);
   assert.deepEqual(errors, []); checks.push('real WebGL compilation + first visible frame, no shader/page errors');
+  const idleDraws = await page.evaluate(async () => {
+    const api=window.__SHIRETOKO_TERRAIN__, start=api.diagnostics().renderCallsTotal;
+    for(let i=0;i<15;i++) await new Promise(resolve=>requestAnimationFrame(resolve));
+    return api.diagnostics().renderCallsTotal-start;
+  });
+  assert.ok(idleDraws<=1, 'An idle overview must not continually resubmit the same scene');
+  checks.push('idle overview stops GPU redraws; camera/UI changes request a fresh frame');
   const initial = await page.evaluate(() => {
     const api = window.__SHIRETOKO_TERRAIN__, gl = document.querySelector('canvas').getContext('webgl2'), ext = gl.getExtension('WEBGL_debug_renderer_info');
     api.freeze(true);
@@ -107,4 +114,8 @@ try {
   const report = { source: html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1], artifactBytes: Buffer.byteLength(html), checks, errors, network, storage, initial, passage, measurements: { frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), note:'Headless Chromium / software SwiftShader, not a physical-PC FPS guarantee', end:measured } };
   await writeFile(resolve(captures,'verification.json'), JSON.stringify(report,null,2));
   console.log(JSON.stringify({ checks, firstFrameMs:initial.firstFrameMs, renderer:initial.renderer, passage, frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), output:captures }, null, 2));
+} catch(error) {
+  console.error('Verification failed', error);
+  console.error('Runtime state',JSON.stringify(await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()).catch(()=>null)));
+  throw error;
 } finally { await browser.close(); }
