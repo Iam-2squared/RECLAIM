@@ -74,7 +74,7 @@ function frame(time:number,fromWatchdog=false){
   const visible=opacity>0;
   if(visible!==wasVisible){document.body.dataset.reveal=String(visible);wasVisible=visible;}
   if(state.screen==='mission'&&mission&&!world?.lost)mission.update(delta);
-  else if(world&&!world.lost)world.render(now,state,opacity);else fallback?.bossOpacity(opacity);
+  else if(world&&!world.lost){if(state.screen!=='home'||home.cinematic.render3D)world.render(now,state,opacity);}else fallback?.bossOpacity(opacity);
 }
 scheduleFrame();
 function announce(message:string){live.textContent=message;}

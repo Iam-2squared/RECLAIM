@@ -34,7 +34,7 @@ test('stale RAF timestamps cannot stop title expiry or HOME camera updates',asyn
  await ready(page);await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.drawCalls).toBeGreaterThan(0);
  const clock=await page.evaluate(()=>window.__RECLAIM__.snapshot().renderClock);expect(clock.rafTime).toBe(0);expect(clock.clockTime).toBeGreaterThan(0);
  await page.locator('#title-button').click();await expect(page.locator('body')).toHaveAttribute('data-reveal','true');await expect(page.locator('body')).toHaveAttribute('data-reveal','false');
- await page.locator('#home-button').click();await page.locator('#squad-button').click();
+ await page.locator('#home-button').click();await page.locator('#home-render-mode').click();await page.locator('#squad-button').click();
  await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.bounds.length).toBe(4);
  await page.locator('#menu-toggle').click();await page.getByRole('button',{name:'マップ',exact:true}).click();
  await expect.poll(async()=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).render.bounds.length).toBe(1);

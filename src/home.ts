@@ -1,4 +1,5 @@
 import './home.css';
+import { CinematicHome } from './home-cinematic';
 import { HOME_KEY, MAX_NAME, PALETTES, GUNS, RARITIES, ROUTE, defaults, parseHome, normalizeName, chooseGun, gunName, type Appearance, type HomePreview, type GunId, type PaletteId } from './home-state';
 import type { ScreenState } from './state';
 import type { WorldView } from './scene';
@@ -17,6 +18,7 @@ const features = [
 type Panel = typeof features[number][0] | 'briefing';
 
 export class Home {
+  readonly cinematic: CinematicHome;
   saved: HomePreview;
   draft: Appearance | null = null;
   panel: Panel | null = null;
@@ -30,6 +32,7 @@ export class Home {
   readonly labels = Array.from(document.querySelectorAll<HTMLElement>('.survivor-label'));
   constructor(readonly state: ScreenState, readonly world: WorldView | null, readonly announce: (s: string) => void, readonly invalidateRender: () => void, readonly campaign: CampaignStore, readonly startMission:(area:AreaId,resume?:MissionCheckpoint|null)=>void) {
     try { this.saved = parseHome(localStorage.getItem(HOME_KEY)); } catch { this.saved = defaults(); }
+    this.cinematic = new CinematicHome(campaign, () => Boolean(this.world && !this.world.lost), () => this.layout());
     el('nav-items').innerHTML = features.map(([id, name, , icon], i) => `<button type="button" class="nav-button" data-panel="${id}" aria-controls="home-panel" aria-expanded="false">${svg(icon)}<span>${name}</span><small aria-hidden="true">0${i + 1}</small></button>`).join('');
     el('nav-items').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.addEventListener('click', () => this.open(b.dataset.panel as Panel, b)));
     el('menu-toggle').addEventListener('click', () => this.drawer(el('menu-toggle').getAttribute('aria-expanded') !== 'true'));
@@ -74,7 +77,7 @@ export class Home {
     el('survivor-name').textContent = v.appearance.name;
     el('held-weapon').textContent = `${gunName(v[v.held])} / 日本刀`;
     document.body.dataset.heldWeapon = v[v.held]; document.body.dataset.palette = v.appearance.palette;
-    this.world?.preview(v);
+    this.world?.preview(v); this.cinematic.sync(v);
   }
   formationNote() {
     el('squad-note').textContent = this.state.squadPreview
@@ -111,7 +114,7 @@ export class Home {
     const view = window.visualViewport;
     document.body.style.setProperty('--home-height', `${view?.height ?? innerHeight}px`);
     document.body.style.setProperty('--home-offset-top', `${view?.offsetTop ?? 0}px`);
-    this.panelMode(); this.formationNote();
+    this.panelMode(); this.formationNote(); this.cinematic.layout(this.state.squadPreview, Boolean(this.panel));
     if (this.layoutTask) clearTimeout(this.layoutTask);
     // UI layout must settle even when the compositor delays animation frames.
     this.layoutTask = window.setTimeout(() => {
@@ -175,7 +178,7 @@ export class Home {
     }
   }
   footer(html = '') { el('panel-footer').innerHTML = html; el('panel-footer').hidden = !html; }
-  dispose() { clearTimeout(this.layoutTask); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); }
+  dispose() { clearTimeout(this.layoutTask); this.stageObserver.disconnect(); this.compact.removeEventListener('change', this.compactChanged); this.cinematic.dispose(); }
   character() {
     this.draft = { ...this.saved.appearance };
     el('panel-content').innerHTML = `<p class="panel-intro">旅に出る、自分の姿を。</p>
@@ -223,14 +226,15 @@ export class Home {
   map() {
     const route=visibleRoute(this.campaign.value),available=visibleAreas(this.campaign.value);
     const path=route.map(r=>`${r.x},${r.y}`).join(' ');
-    el('panel-content').innerHTML = `<div class="map-overview"><div class="paper-map"><span class="map-caption">JAPAN / JOURNEY</span><svg id="campaign-map" viewBox="0 0 350 360" role="group" aria-label="日本編の旅路概略図"><g class="map-grid"><path d="M0 90h350M0 180h350M0 270h350M87 0v360M175 0v360M262 0v360"/></g><g class="map-land"><path d="M252 38l23-15 15 22 43 4-18 28-30 14-23 18-29-15 12-28-21-7zM233 122l21 13-8 31 15 22-7 35 15 24 3 34-27 27-38 1-19 15-27-8-26-9-15 12-39-3-17 18-26-9 2-21 31-7 24-18 25-11 24 4 27-12 18-10 12-30 11-25 4-29-5-24zM50 315l20 18-18 25-18-4-7-17zM78 329l28-4 15 10-25 12-20-5z"/></g><polyline class="map-route" points="${path}"/>${route.map((r,i)=>`<circle data-region="${i}" cx="${r.x}" cy="${r.y}" r="${i===0?7:4}" tabindex="0" role="button" aria-label="${r.number} ${r.name}の情報を見る"/>`).join('')}<text x="281" y="35">知床</text><text x="12" y="36">N ↑</text></svg><span class="map-caption">物語の旅路概略図 / 実際の登山経路ではありません</span></div><div class="map-details"><p class="panel-intro">まだ知らない、日本の先へ。</p><label class="field-label" for="region-select">地域を閲覧</label><select id="region-select" class="region-select">${route.map((r,i)=>`<option value="${i}">${String(r.number).padStart(2,'0')} / ${r.name}</option>`).join('')}</select><div id="region-detail" class="region-detail"><h3 id="region-name"></h3><span id="region-status" class="status-tag"></span><p id="region-description"></p></div><div class="campaign-subareas" aria-label="北海道の道中"><span class="field-label">道中の記録</span>${['shiretoko','ishikari-mountains','hidaka-mountains','sapporo'].map(id=>{const a=available.find(a=>a.id===id);return`<div><span>${a?.displayName??'???'}</span><small>${a?(a.status==='playable'?'探索可能':'環境プロトタイプ'):'???'}</small></div>`;}).join('')}</div><p class="muted">実際の到達条件で、次の区間を1つずつ公開します。未制作地域の完了は付与しません。</p></div></div>`;
+    el('panel-content').innerHTML = `<div class="map-overview"><div class="paper-map"><span class="map-caption">JAPAN / JOURNEY</span><svg id="campaign-map" viewBox="0 0 350 360" role="group" aria-label="日本編の旅路概略図"><g class="map-grid"><path d="M0 90h350M0 180h350M0 270h350M87 0v360M175 0v360M262 0v360"/></g><g class="map-land"><path d="M252 38l23-15 15 22 43 4-18 28-30 14-23 18-29-15 12-28-21-7zM233 122l21 13-8 31 15 22-7 35 15 24 3 34-27 27-38 1-19 15-27-8-26-9-15 12-39-3-17 18-26-9 2-21 31-7 24-18 25-11 24 4 27-12 18-10 12-30 11-25 4-29-5-24zM50 315l20 18-18 25-18-4-7-17zM78 329l28-4 15 10-25 12-20-5z"/></g><polyline class="map-route" points="${path}"/>${route.map((r,i)=>`<circle data-region="${i}" cx="${r.x}" cy="${r.y}" r="${i===0?7:4}" tabindex="0" role="button" aria-label="${r.number} ${r.name}の情報を見る"/>`).join('')}<text x="281" y="35">知床</text><text x="12" y="36">N ↑</text></svg><span class="map-caption">物語の旅路概略図 / 実際の登山経路ではありません</span></div><div class="map-details"><p class="panel-intro">まだ知らない、日本の先へ。</p><label class="field-label" for="region-select">地域を閲覧</label><select id="region-select" class="region-select">${route.map((r,i)=>`<option value="${i}">${String(r.number).padStart(2,'0')} / ${r.name}</option>`).join('')}</select><div id="region-detail" class="region-detail"><h3 id="region-name"></h3><span id="region-status" class="status-tag"></span><p id="region-description"></p></div><div class="campaign-subareas" aria-label="北海道の道中"><span class="field-label">道中の記録</span>${['shiretoko','ishikari-mountains','hidaka-mountains','sapporo'].map(id=>{const a=available.find(a=>a.id===id);return a?`<button class="home-area-choice" type="button" data-home-area="${a.id}" aria-pressed="${this.cinematic.area===a.id}"><span>${a.displayName}</span><small>${a.status==='playable'?'探索可能':'環境プロトタイプ'}</small></button>`:'<div><span>???</span><small>???</small></div>';}).join('')}</div><p class="muted">実際の到達条件で、次の区間を1つずつ公開します。未制作地域の完了は付与しません。</p></div></div>`;
     this.footer('<div class="campaign-save-actions"><p>18訪問地点 / 未到達の情報は ???</p><button id="campaign-reset" class="text-action" type="button">進行をリセット</button></div><div id="campaign-reset-confirm" class="campaign-reset-confirm" hidden>進行だけを初期状態へ戻します。外観と武器は保持します。<div class="panel-actions"><button id="campaign-reset-yes" class="secondary-action" type="button">進行リセットを確定</button><button id="campaign-reset-no" class="text-action" type="button">キャンセル</button></div></div>');
     el('campaign-reset').addEventListener('click',()=>{el('campaign-reset-confirm').hidden=false;el('campaign-reset-yes').focus();this.layout();});
     el('campaign-reset-no').addEventListener('click',()=>{el('campaign-reset-confirm').hidden=true;el('campaign-reset').focus();this.layout();});
-    el('campaign-reset-yes').addEventListener('click',()=>{this.campaign.reset(true);this.map();this.layout();this.announce('進行をリセットしました。外観・武器は保持します。');});
+    el('campaign-reset-yes').addEventListener('click',()=>{this.campaign.reset(true);this.cinematic.refresh();this.map();this.layout();this.announce('進行をリセットしました。外観・武器は保持します。');});
+    el('panel-content').querySelectorAll<HTMLButtonElement>('[data-home-area]').forEach(b=>b.addEventListener('click',()=>{this.cinematic.choose(b.dataset.homeArea!);el('panel-content').querySelectorAll<HTMLElement>('[data-home-area]').forEach(n=>n.setAttribute('aria-pressed',String(n.dataset.homeArea===this.cinematic.area)));}));
     const select=el<HTMLSelectElement>('region-select');
-    const update=()=>{const i=Number(select.value),r=route[i];el('region-name').textContent=r.name;el('region-status').textContent=r.revealed?(r.status==='playable'?'探索可能':'環境プロトタイプ'):'???';el('region-description').textContent=r.description;el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>c.setAttribute('aria-pressed',String(Number(c.dataset.region)===i)));};
-    select.addEventListener('change',update);el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>{const choose=()=>{select.value=c.dataset.region!;update();};c.addEventListener('click',choose);c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose();}});});update();
+    const update=(changeBackground=true)=>{const i=Number(select.value),r=route[i];if(changeBackground&&r.revealed)this.cinematic.choose(r.id);el('region-name').textContent=r.name;el('region-status').textContent=r.revealed?(r.status==='playable'?'探索可能':'環境プロトタイプ'):'???';el('region-description').textContent=r.description;el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>c.setAttribute('aria-pressed',String(Number(c.dataset.region)===i)));};
+    select.addEventListener('change',()=>update());el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>{const choose=()=>{select.value=c.dataset.region!;update();};c.addEventListener('click',choose);c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose();}});});select.value=String(Math.max(0,route.findIndex(r=>r.id===this.cinematic.area)));update(false);
   }
 
   boss() {
@@ -245,9 +249,9 @@ export class Home {
     this.footer(`<div class="panel-actions"><button id="mission-launch" class="primary-action" type="button" ${this.world&&!this.world.lost?'':'disabled'} aria-describedby="combat-reason">出撃開始</button><button id="mission-resume" class="secondary-action" type="button" ${checkpoint&&this.world&&!this.world.lost?'':'hidden'}>保存位置から再開</button><button id="briefing-back" class="secondary-action" type="button">HOMEに戻る</button></div>`);
     el('briefing-name').textContent=v.appearance.name;
     const select=el<HTMLSelectElement>('mission-area-select');
-    if(checkpoint&&areas.some(a=>a.id===checkpoint.areaId))select.value=checkpoint.areaId;
+    if(areas.some(a=>a.id===this.cinematic.area))select.value=this.cinematic.area;
     const update=()=>{
-      const area=areas.find(a=>a.id===select.value)!;
+      const area=areas.find(a=>a.id===select.value)!;this.cinematic.choose(area.id);
       el('panel-title').textContent=area.id==='shiretoko'?'最初の出撃：知床':`出撃確認：${area.displayName}`;
       el('briefing-area').textContent=`${area.displayName} / 北海道`;
       el('panel-content').querySelector<HTMLElement>('.panel-intro')!.textContent=area.id==='shiretoko'?'木造の家から、北の森へ。':area.id==='sapporo'?'森を抜け、都市の入口へ。':'北の山道を徒歩で進む。';
@@ -261,5 +265,5 @@ export class Home {
     el('briefing-back').addEventListener('click',()=>this.close());
   }
 
-  snapshot() { return { panel: this.panel, preview: structuredClone(this.current) }; }
+  snapshot() { return { panel: this.panel, preview: structuredClone(this.current), presentation: this.cinematic.snapshot() }; }
 }

@@ -32,6 +32,8 @@ npm run test:e2e
 npm run package:preview
 ```
 
+HOME V3 の独立したPC向け2Dシネマティック表示と、必要に応じた従来の立体装備プレビューについては [HOME V3仕様](docs/HOME_V3.md) を参照してください。
+
 ## 操作
 
 - **RECLAIMタイトル**をクリック、タップ、またはフォーカスしてEnter/Space：東京大ボスの影を約1.75秒だけ表示。連打では延長されません。

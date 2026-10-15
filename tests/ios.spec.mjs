@@ -11,7 +11,7 @@ const ready = async page => {
   await expect(page.locator('#boot-notice')).toBeHidden();
   await expect(page.locator('#home-button')).toBeEnabled();
 };
-const home = async page => { await ready(page); await page.locator('#home-button').tap(); await expect(page.locator('#home-screen')).toBeVisible(); };
+const home = async page => { await ready(page); await page.locator('#home-button').tap(); await expect(page.locator('#home-screen')).toBeVisible(); await page.locator('#home-render-mode').tap(); };
 const open = async (page, name) => { await page.locator('#menu-toggle').tap(); await page.getByRole('button', { name, exact: true }).tap(); await expect(page.locator('#home-nav')).toBeHidden(); };
 const fullSquad = fourFits;
 
