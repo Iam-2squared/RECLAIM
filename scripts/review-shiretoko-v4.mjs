@@ -1,0 +1,17 @@
+/** Reproducible local evidence: only this terrain branch; no push/deploy/game storage. */
+import {spawn,execFileSync} from 'node:child_process';
+import {mkdir,writeFile,readdir,cp,copyFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import assert from 'node:assert/strict';
+const root=resolve(import.meta.dirname,'..'),out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v4-run');await mkdir(resolve(out,'logs'),{recursive:true});
+const git=(...args)=>execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim(),source=git('rev-parse','HEAD'),tree=git('rev-parse','HEAD^{tree}');assert.equal(git('status','--porcelain'),'','Final evidence must use a committed clean tree');
+const records=[];
+async function run(name,cmd,args){let stdout='',stderr='';const start=performance.now(),child=spawn(cmd,args,{cwd:root,env:process.env,stdio:['ignore','pipe','pipe']});child.stdout.on('data',d=>stdout+=d);child.stderr.on('data',d=>stderr+=d);const code=await new Promise((resolve,reject)=>{child.on('error',reject);child.on('close',resolve);});await writeFile(resolve(out,'logs',name+'.log'),`${cmd} ${args.join(' ')}\n\n${stdout}\nSTDERR\n${stderr}`);records.push({name,command:[cmd,...args],exitCode:code,durationMs:performance.now()-start});await writeFile(resolve(out,'run.json'),JSON.stringify({source,tree,records},null,2));console.log(name+': '+(code===0?'PASS':'FAIL'));if(code!==0)throw new Error(name+' failed; preserved log');}
+await run('npm-ci','npm',['ci']);await run('typecheck','npm',['run','typecheck']);await run('node-tests','npm',['test']);await run('build','npm',['run','build']);await run('blender-tools','npm',['run','test:blender']);await run('world-contract','node',['--experimental-strip-types','tools/blender/export_world_contract.mjs','--check']);
+await run('scope','node',['scripts/audit-shiretoko-scope.mjs',resolve(out,'scope.json')]);await run('package','node',['scripts/package-shiretoko-terrain.mjs']);
+await run('browser-terrain','node',['scripts/verify-shiretoko-terrain.mjs']);await run('browser-intro','node',['scripts/verify-shiretoko-intro.mjs']);await run('browser-v3-regression','node',['scripts/verify-shiretoko-v3.mjs',resolve(out,'extended')]);await run('browser-v4','node',['scripts/verify-shiretoko-v4.mjs',resolve(out,'interaction')]);
+await run('mesh-lod-metrics','node',['scripts/report-shiretoko-v4.mjs',resolve(out,'metrics')]);await run('build-real-v3','node',['scripts/build-shiretoko-v3-baseline.mjs',resolve(out,'baseline')]);
+await run('capture-v3','node',['scripts/capture-shiretoko-v4.mjs',resolve(out,'baseline/RECLAIM_Shiretoko_Terrain_Phase1_v3.html'),resolve(out,'comparison/v3')]);await run('capture-v4','node',['scripts/capture-shiretoko-v4.mjs','release/RECLAIM_Shiretoko_Terrain_Phase1.html',resolve(out,'comparison/v4')]);await run('compare','node',['scripts/diff-shiretoko-v4.mjs',resolve(out,'comparison')]);
+const standard=resolve(root,'release/shiretoko-phase1-review');await mkdir(resolve(out,'browser'),{recursive:true});for(const f of await readdir(standard))if(/\.jpg$|^verification\.json$/.test(f))await copyFile(resolve(standard,f),resolve(out,'browser',f));await cp(resolve(standard,'intro'),resolve(out,'intro'),{recursive:true});
+for(const [from,to]of [['RECLAIM_Shiretoko_Terrain_Phase1.html','RECLAIM_Shiretoko_Terrain_Phase1_v4.html'],['RECLAIM_Shiretoko_Intro_Demo.html','RECLAIM_Shiretoko_Intro_Demo_v4.html']])await copyFile(resolve(root,'release',from),resolve(out,to));
+console.log(JSON.stringify({source,tree,out,checks:records.length}));

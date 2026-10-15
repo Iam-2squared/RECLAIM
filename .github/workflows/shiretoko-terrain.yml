@@ -1,0 +1,47 @@
+name: Shiretoko Phase 1 terrain review
+on:
+  pull_request:
+    paths:
+      - 'src/shiretoko-phase1/**'
+      - 'shiretoko-terrain.html'
+      - 'scripts/*shiretoko-*.mjs'
+      - 'tests/shiretoko-*.test.mjs'
+      - '.github/workflows/shiretoko-terrain.yml'
+permissions:
+  contents: read
+jobs:
+  terrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # v3 geometry report compares the real v2 ancestor, not invented metrics
+          ref: ${{ github.event.pull_request.head.sha }} # package the actual reviewed HEAD
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-shiretoko-terrain.mjs
+      - run: node scripts/verify-shiretoko-intro.mjs
+      - run: node scripts/verify-shiretoko-v3.mjs
+      - run: node scripts/report-shiretoko-v3.mjs
+      - run: node scripts/verify-shiretoko-v4.mjs
+      - run: node scripts/report-shiretoko-v4.mjs
+      - run: node scripts/build-shiretoko-v3-baseline.mjs
+      - run: node scripts/capture-shiretoko-v4.mjs release/shiretoko-phase1-review/v4/baseline/RECLAIM_Shiretoko_Terrain_Phase1_v3.html release/shiretoko-phase1-review/v4/comparison/v3
+      - run: node scripts/capture-shiretoko-v4.mjs release/RECLAIM_Shiretoko_Terrain_Phase1.html release/shiretoko-phase1-review/v4/comparison/v4
+      - run: node scripts/diff-shiretoko-v4.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-terrain-phase1-${{ github.event.pull_request.head.sha }}
+          path: |
+            release/RECLAIM_Shiretoko_Terrain_Phase1.html
+            release/RECLAIM_Shiretoko_Intro_Demo.html
+            release/shiretoko-phase1-review/
+          retention-days: 14
