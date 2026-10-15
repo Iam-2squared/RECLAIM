@@ -18,9 +18,11 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: |
+      - name: Package reproducible desktop review workspace
+        run: |
           mkdir -p /tmp/reclaim-review
           git rev-parse HEAD > /tmp/reclaim-review/source-head.txt
+          git ls-tree -r HEAD > /tmp/reclaim-review/source-tree.txt
           git archive HEAD > /tmp/reclaim-review/source.tar
           tar -czf /tmp/reclaim-review/dependencies.tar.gz node_modules
       - uses: actions/upload-artifact@v4
