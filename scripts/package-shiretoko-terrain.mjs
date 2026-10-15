@@ -12,7 +12,8 @@ html = html.replace(script[0], () => `<script type="module">${js.replace(/<\/scr
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
 const dirty = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim() ? 'dirty' : 'clean';
 const license = await readFile(resolve(root, 'node_modules/three/LICENSE'), 'utf8');
-html = html.replace('</head>', () => `<meta name="reclaim-terrain-source" content="${sha}"><meta name="reclaim-terrain-tree" content="${dirty}"><!-- Three.js MIT license\n${license.replaceAll('--', '—')} -->\n</head>`);
+const fontLicense = await readFile(resolve(root, 'docs/SHIRETOKO_TERRAIN_FONT_LICENSE.txt'), 'utf8');
+html = html.replace('</head>', () => `<meta name="reclaim-terrain-source" content="${sha}"><meta name="reclaim-terrain-tree" content="${dirty}"><!-- Three.js MIT license\n${license.replaceAll('--', '—')} -->\n<!-- RECLAIM Terrain UI, subset of Noto Sans JP: SIL Open Font License\n${fontLicense.replaceAll('--', '—')} -->\n</head>`);
 await mkdir(resolve(root, 'release'), { recursive: true });
 await writeFile(resolve(root, 'release/RECLAIM_Shiretoko_Terrain_Phase1.html'), html);
 console.log(`Terrain-only standalone: ${Buffer.byteLength(html)} bytes / source ${sha} / ${dirty}`);
