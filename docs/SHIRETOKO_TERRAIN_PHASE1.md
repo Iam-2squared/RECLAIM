@@ -35,6 +35,11 @@ runnerは型/全Node/build/utility/world契約/scope/package、既存地形13/�
 
 比較は1600×900/DPR1/FOV44/水面時刻0。既存A〜H/I/J、主8方向、遠景8方向、270/315度の近接・低角度・逆・俯瞰、接合/終端/水路/高原を固定する。旧v3と同じカメラ式を使用し、原画像を保持。4地点の実W+Shift・ジャンプ・Esc後の徒歩画像はpreserved WebGL framebufferで取得し、DOM無しと明示する。
 
+既存OrbitControlsはpolar angleを0.49π以下、距離10〜6300m、極付近をepsilonへ補正する。要求座標と実カメラ座標を分けて記録し、その規則から独立計算した姿勢に10nm未満で一致すること、およびv3/v4の実姿勢同士の一致を要求する。既存の撮影要求やFOVを変更しない。実地表の歩行画像は別のFOV66で、Orbitの角度制限を受けない。
+新規の270/315追加俯瞰だけは、既存C-planと同様にtargetとZを1mずらして極の数値的不安定さを避ける。高さ2400mと注視地点は同じで、v3/v4に同一条件を適用する。既存の遠景270/315度やA〜Hの要求は変更しない。
+
+CIでWebGL不可画面の#error待機が30秒timeoutになった履歴も保存。失敗通知が最初のRAFへ依存しないよう、renderer生成をCPU地形生成/RAF待機より前に行い、非対応なら直ちにエラー表示して未使用地形を作らない。対応環境では従来どおりloadingを一度描いてからCPU生成。地形生成例外は先に作ったrendererをdisposeする。初回描画msはこの開始時点から計測（v3の開始前yield約1RAFとの定義差を明示）し、main生成msはCPU生成だけを維持する。検証の30秒期限や#errorの期待は変えない。
+
 ドラッグ直後の地点切替に残るOrbitControls慣性は、固定視点遷移の開始前に解消する。独立プレビューだけの修正。0〜4/回転/zoom/pan/H/標高/ルート/Pointer Lock/blur/hidden/context loss/reduced-motion/disposeを回帰する。静止俯瞰の要求時描画を維持し、preview10往復とintro10往復で資源を確認する。
 
 専用CIはPRの実headをcheckoutしてHTMLのsource metaと一致させる。既存ゲーム回帰CIは変更せず、同headの別結果として報告する。スクリーンショット・再build・テスト失敗の履歴も配布ZIPへ残す。テストskip/期限延長/既存閾値の緩和なし。

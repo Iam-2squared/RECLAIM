@@ -6,7 +6,7 @@ import {pathToFileURL} from 'node:url';
 const out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v3');await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
 const context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1});
-const page=await context.newPage(),errors=[],network=[],checks=[],ring=[];let rearSkySamples;
+const page=await context.newPage(),errors=[],network=[],checks=[],ring=[];let rearSkySamples,activePage=page;
 page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url());});
 const state=()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
 const artifact=pathToFileURL(resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html')).href;
@@ -70,16 +70,17 @@ try{
  const beforeDispose=await state();await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());const disposed=await state();assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0);assert.equal(await page.locator('canvas').count(),0);
  checks.push('idle overview submits zero identical frames; dispose returns GPU geometry/texture counts to zero');
  const unavailable=await context.newPage();
+ activePage=unavailable;
  // boot() first awaits RAF. Activate this page BEFORE navigation/error waiting,
  // since a background tab can otherwise stall before reaching the WebGL error.
  await unavailable.bringToFront();await unavailable.addInitScript(()=>{const native=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){return type==='webgl2'?null:native.call(this,type,...rest);};});
- await unavailable.goto(artifact);await unavailable.locator('#error').waitFor({state:'visible'});assert.ok((await unavailable.locator('#error').textContent()).includes('WebGL 2'));assert.equal(await unavailable.locator('#loading').isVisible(),false);
+ await unavailable.goto(artifact);await unavailable.bringToFront();await unavailable.locator('#error').waitFor({state:'visible'});assert.ok((await unavailable.locator('#error').textContent()).includes('WebGL 2'));assert.equal(await unavailable.locator('#loading').isVisible(),false);
  // Failed WebGL has no GL submission; synchronize the foreground DOM paint.
  await unavailable.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
- await unavailable.screenshot({path:resolve(out,'WebGL-unavailable.jpg'),type:'jpeg',quality:92});await unavailable.close();
+ await unavailable.screenshot({path:resolve(out,'WebGL-unavailable.jpg'),type:'jpeg',quality:92});await unavailable.close();activePage=page;
  checks.push('WebGL unavailable has a readable error and loading state resolves');
  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
  const html=await readFile(resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),'utf8');
  const report={source:html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1],tree:html.match(/name="reclaim-terrain-tree" content="([^"]+)/)?.[1],environment:{browser:browser.version(),userAgent:await page.evaluate(()=>navigator.userAgent),node:process.version,platform:process.platform,architecture:process.arch},checks,initial,ring,rearSkySamples,afterOverlayWarmup,afterCycles,hiddenSubmissions:hidden,idleSubmissions:idle,beforeDispose,disposed,errors,network,physicalWindowsTest:false,notes:'Headless Chromium + software SwiftShader. Blur and hidden lifecycle are synthetic browser events, not an actual laptop or OS GPU test.'};
  await writeFile(resolve(out,'verification-v3.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({checks,errors,network},null,2));
-}catch(e){await page.screenshot({path:resolve(out,'FAILED-v3.png')}).catch(()=>{});await writeFile(resolve(out,'FAILED-v3.txt'),String(e));throw e;}finally{await browser.close();}
+}catch(e){await activePage.screenshot({path:resolve(out,'FAILED-v3.png')}).catch(()=>{});await writeFile(resolve(out,'FAILED-v3-state.json'),JSON.stringify(await activePage.evaluate(()=>({hidden:document.hidden,visibility:document.visibilityState,focus:document.hasFocus(),error:document.querySelector('#error')?.outerHTML,loading:document.querySelector('#loading')?.outerHTML,state:window.__SHIRETOKO_TERRAIN__?.diagnostics()})).catch(()=>null),null,2));await writeFile(resolve(out,'FAILED-v3.txt'),String(e));throw e;}finally{await browser.close();}

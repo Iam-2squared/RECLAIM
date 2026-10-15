@@ -22,13 +22,18 @@ function on(target: EventTarget, type: string, fn: EventListener) { target.addEv
 function fail(message: string) { $('loading').hidden = true; $('error').hidden = false; $('error').textContent = message; }
 
 async function boot() {
-  // Yield once so the loading message paints before deterministic CPU generation.
-  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-  const started = performance.now(), terrain = new ShiretokoTerrain(), generated = performance.now();
+  const started = performance.now();
   let shaderError = false;
   let renderer: T.WebGLRenderer;
   try { renderer = new T.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: true }); }
   catch { fail('この地形プレビューにはPCブラウザのWebGL 2が必要です。Chrome / Edgeのハードウェアアクセラレーションを確認してください。'); return; }
+  // An unavailableWebGL error must not depend on a foreground RAF or spend a
+  // second generating unused terrain. Supported browsers still paint loading
+  // once before CPU generation; dispose the early renderer on generation error.
+  await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  const terrainStarted=performance.now();let terrain:ShiretokoTerrain;
+  try { terrain=new ShiretokoTerrain(); }catch(error){renderer.dispose();throw error;}
+  const generated=performance.now();
   renderer.debug.onShaderError = (gl, program, vertexShader, fragmentShader) => {
     shaderError = true;
     console.error('Terrain shader compilation failed', gl.getProgramInfoLog(program), gl.getShaderInfoLog(vertexShader), gl.getShaderInfoLog(fragmentShader));
@@ -263,7 +268,7 @@ async function boot() {
   const diagnostics = () => ({
     ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
-    generatedMs: +(generated - started).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
+    generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     sceneryGeneratedMs:+sceneryGeneratedMs.toFixed(1),
     triangles: renderer.info.render.triangles, drawCalls: renderer.info.render.calls,
     geometryAttributeBytes,indexBytes,terrainHeightBytes:terrain.heights.byteLength,approxTextureBytes:512*512*4*4/3+terrain.count**2*4,

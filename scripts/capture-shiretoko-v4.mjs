@@ -5,6 +5,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
+import {Vector3,Spherical} from 'three';
 const artifact=resolve(process.argv[2]??'release/RECLAIM_Shiretoko_Terrain_Phase1.html'),out=resolve(process.argv[3]??'release/shiretoko-phase1-review/v4/captures');
 await mkdir(out,{recursive:true});
 const views=[
@@ -18,11 +19,12 @@ const views=[
  ['270-close',[-3500,900,-5900],[-2200,180,-5700]],
  ['270-low',[-3600,150,-5700],[-2350,150,-5600]],
  ['270-reverse',[-600,1050,-5700],[-2700,90,-5900]],
- ['270-high',[-2100,2400,-5700],[-2100,0,-5700]],
+ // Like the originalC-plan, a1m offset avoids the exact-pole azimuth singularity.
+ ['270-high',[-2100,2400,-5699],[-2100,0,-5700]],
  ['315-close',[-3100,850,-3950],[-1900,180,-4700]],
  ['315-low',[-3000,180,-4000],[-2100,160,-4700]],
  ['315-reverse',[-600,1100,-5100],[-2200,120,-4200]],
- ['315-high',[-1700,2400,-4700],[-1700,0,-4700]],
+ ['315-high',[-1700,2400,-4699],[-1700,0,-4700]],
  ['coast-join',[-1600,1000,-4200],[300,550,-4200]],
  ['terminal',[3000,1600,-10700],[0,240,-7200]],
  ['watercourse',[114,93.5,475],[46,91.5,500]],
@@ -43,12 +45,19 @@ try{
   await page.evaluate(([p,t])=>window.__SHIRETOKO_TERRAIN__.viewFrom(p,t),[p,t]);
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,before);
   const state=await page.evaluate(()=>{const c=document.querySelector('canvas'),gl=c.getContext('webgl2');gl.finish();const top=[8,Math.floor(c.width/2),c.width-9].map(x=>{const rgba=new Uint8Array(4);gl.readPixels(x,c.height-9,1,1,gl.RGBA,gl.UNSIGNED_BYTE,rgba);return Array.from(rgba);});return{...window.__SHIRETOKO_TERRAIN__.diagnostics(),topPixels:top,glError:gl.getError()};});
-  // OrbitControls round-trips spherical coordinates (baseline v3 itself
-  // differs by ~1e-12m). Enforce <10nm drift, not impossible bit identity.
-  assert.equal(state.camera.fov,44);assert.ok(Math.hypot(...p.map((v,i)=>state.camera.position[i]-v))<1e-8);
+  // Preserve every original v3 request. Its existing OrbitControls limits
+  // polar angle to0.49*pi, distance10..6300 and makes the pole safe. Compare
+  // against that independently calculated physical pose, at the SAME10nm
+  // tolerance, then compare actual v3/v4 poses again in diff-shiretoko-v4.
+  const spherical=new Spherical().setFromVector3(new Vector3(...p).sub(new Vector3(...t)));
+  spherical.phi=Math.max(0,Math.min(Math.PI*.49,spherical.phi));spherical.makeSafe();spherical.radius=Math.max(10,Math.min(6300,spherical.radius));
+  const canonical=new Vector3().setFromSpherical(spherical).add(new Vector3(...t)).toArray();
+  assert.equal(state.camera.fov,44);const canonicalError=Math.hypot(...canonical.map((v,i)=>state.camera.position[i]-v));
+  if(canonicalError>=1e-8)await writeFile(resolve(out,'FAILED-camera.json'),JSON.stringify({name,requested:p,target:t,canonical,actual:state.camera,canonicalError},null,2));
+  assert.ok(canonicalError<1e-8);
   assert.equal(state.glError,0);for(const rgba of state.topPixels){assert.equal(rgba[3],255);assert.ok(rgba[0]+rgba[1]+rgba[2]>24,'No exposed black clear-buffer at the sky/world edge');}
   const file=name+'.jpg';await page.screenshot({path:resolve(out,file),type:'jpeg',quality:94});
-  const data=await readFile(resolve(out,file));records.push({name,file,camera:state.camera,triangles:state.triangles,drawCalls:state.drawCalls,topPixels:state.topPixels,glError:state.glError,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex')});
+  const data=await readFile(resolve(out,file));records.push({name,file,requestedPosition:p,requestedTarget:t,canonicalPosition:canonical,requestToActualMetres:Math.hypot(...p.map((v,i)=>state.camera.position[i]-v)),camera:state.camera,triangles:state.triangles,drawCalls:state.drawCalls,topPixels:state.topPixels,glError:state.glError,bytes:data.length,sha256:createHash('sha256').update(data).digest('hex')});
  }
  if(!process.env.RECLAIM_CAPTURE_FILTER){
   await page.evaluate(()=>{const a=window.__SHIRETOKO_TERRAIN__;a.setView(0);a.setClean(false);});await page.waitForFunction(()=>getComputedStyle(document.querySelector('.masthead')).opacity==='1');
