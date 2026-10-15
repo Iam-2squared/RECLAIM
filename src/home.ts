@@ -39,23 +39,23 @@ export class Home {
     el('solo-button').addEventListener('click', () => this.squad(false));
     el('squad-button').addEventListener('click', () => this.squad(true));
     document.addEventListener('keydown', e => {
-      if (e.key === 'Tab' && this.panel && this.modal && !el<HTMLDialogElement>('settings-dialog').open) {
+      if (e.key === 'Tab' && this.panel && this.modal && !document.querySelector('dialog[open]')) {
         const controls = Array.from(el('home-panel').querySelectorAll<HTMLElement>('button:not(:disabled), input, select, summary, [tabindex]')).filter(n => n.tabIndex >= 0 && n.getClientRects().length);
         const first = controls[0], last = controls.at(-1);
         if (document.activeElement === el('panel-title') || (e.shiftKey && document.activeElement === first) || (!e.shiftKey && document.activeElement === last)) {
           e.preventDefault(); (e.shiftKey ? last : first)?.focus();
         }
       }
-      if (e.key !== 'Escape' || el<HTMLDialogElement>('settings-dialog').open) return;
+      if (e.key !== 'Escape' || document.querySelector('dialog[open]')) return;
       if (this.panel) { e.preventDefault(); this.close(); }
-      else if (el('menu-toggle').getAttribute('aria-expanded') === 'true') { this.drawer(false); el('menu-toggle').focus(); }
+      else if (el('menu-toggle').getAttribute('aria-expanded') === 'true') { e.preventDefault(); this.drawer(false); el('menu-toggle').focus(); }
     });
     // Observe the reserved stage, rather than measuring the DOM on every render frame.
     this.stageObserver.observe(el('lobby-stage'));
     this.labels.forEach(label => this.stageObserver.observe(label));
     this.compact.addEventListener('change', this.compactChanged);
     document.addEventListener('focusin', e => {
-      if (this.modal && this.panel && !el<HTMLDialogElement>('settings-dialog').open && !el('home-panel').contains(e.target as Node)) el('panel-title').focus({ preventScroll: true });
+      if (this.modal && this.panel && !document.querySelector('dialog[open]') && !el('home-panel').contains(e.target as Node)) el('panel-title').focus({ preventScroll: true });
     });
     this.sync();
   }
@@ -171,7 +171,7 @@ export class Home {
     this.layout();
     if (focus) {
       const opener = this.opener;
-      (opener && opener.getClientRects().length ? opener : el('menu-toggle')).focus({ preventScroll: true });
+      (opener && opener.getClientRects().length ? opener : el('menu-toggle')).focus({ preventScroll: !this.compact.matches });
     }
   }
   footer(html = '') { el('panel-footer').innerHTML = html; el('panel-footer').hidden = !html; }

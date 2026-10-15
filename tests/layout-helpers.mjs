@@ -9,7 +9,7 @@ export const intersects = (a,b) => Boolean(a&&b&&Math.min(a.right,b.right)-Math.
 export function contained(inner,outer){expect(inner).not.toBeNull();expect(outer).not.toBeNull();expect(inner.x).toBeGreaterThanOrEqual(outer.x-1);expect(inner.y).toBeGreaterThanOrEqual(outer.y-1);expect(inner.right).toBeLessThanOrEqual(outer.right+1);expect(inner.bottom).toBeLessThanOrEqual(outer.bottom+1);}
 export async function fourFits(page) {
  const menus=(await snapshot(page)).menus;
- if(menus?.mode==='reference-2d'){
+ if(menus?.mode==='reference-2d'||menus?.mode==='mobile-reference-2d'){
   await expect(page.locator('#home-screen .reference-backplate')).toBeVisible();
   await expect(page.locator('#squad-button')).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('.sample-label:visible')).toHaveCount(3);
@@ -17,6 +17,8 @@ export async function fourFits(page) {
   const samples=await page.locator('.sample-label:visible').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
   for(const sample of samples)contained(sample,outer);
   for(let i=0;i<samples.length;i++)for(let j=i+1;j<samples.length;j++)expect(intersects(samples[i],samples[j])).toBe(false);
+  // Mobile has intentional vertical scrolling; verify the real action is reachable.
+  if(menus.mode==='mobile-reference-2d')await page.locator('#start-button').scrollIntoViewIfNeeded();
   await expect(page.locator('#start-button')).toBeInViewport({ratio:1});
   // info.render.calls describes the LAST Three frame, which may belong to the
   // unchanged narrow layout. The actual frame counter must not advance here.

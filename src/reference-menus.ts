@@ -1,4 +1,5 @@
 import './reference-menus.css';
+import './mobile-reference-menus.css';
 import titleArt from './ui-reference/title.jpeg?inline';
 import homeArt from './ui-reference/home.jpeg?inline';
 import { REFERENCE_QUERY, referencePercent, type ReferenceRect } from './reference-layout';
@@ -16,6 +17,7 @@ export class ReferenceMenus {
   readonly keydown = (event: KeyboardEvent) => {
     if (!this.active || event.defaultPrevented || document.querySelector('dialog[open]')) return;
     if (this.state.screen === 'home') {
+      if (event.key === 'Escape' && el('menu-toggle').getAttribute('aria-expanded') === 'true') return;
       if (event.key === 'Escape' && !this.home.panel) { event.preventDefault(); this.go('title'); }
       return;
     }
@@ -38,6 +40,7 @@ export class ReferenceMenus {
     for (const [id,source] of [['title-screen',titleArt],['home-screen',homeArt]]) {
       const image = new Image(); image.className = 'reference-backplate'; image.src = source;
       image.alt = ''; image.draggable = false; image.setAttribute('aria-hidden','true');
+      image.addEventListener('error',() => { el(id).dataset.artError='true'; this.announce('背景画像を読み込めませんでした。メニューは引き続き操作できます。'); });
       el(id).prepend(image); this.images.push(image);
     }
     const add = (host: HTMLElement, id: string, name: string, rect: ReferenceRect, action: () => void) => {
@@ -50,6 +53,20 @@ export class ReferenceMenus {
       'titleContinue',() => { this.go('home'); this.home.open('briefing',el('start-button')); });
     continuation.disabled = true;
     add(el('title-screen'),'reference-extras','EXTRAS — このプレビューについて','titleExtras',() => this.notice(false));
+    const mobileSettings=document.createElement('button');
+    mobileSettings.id='mobile-settings'; mobileSettings.type='button'; mobileSettings.className='mobile-only';
+    mobileSettings.textContent='SETTINGS'; mobileSettings.setAttribute('aria-label','設定を開く');
+    mobileSettings.addEventListener('click',() => el('settings-button').click()); el('title-screen').append(mobileSettings);
+    const artNote=document.createElement('p'); artNote.className='mobile-only mobile-art-note';
+    artNote.textContent='背景の人物・銃は固定イラストです。外観・装備の値のみ保存されます。'; el('home-screen').append(artNote);
+    const missionNotice=document.createElement('p'); missionNotice.id='mobile-mission-notice';
+    missionNotice.className='mobile-only'; missionNotice.setAttribute('role','status');
+    missionNotice.textContent='本編の徒歩・射撃はPCのキーボードとマウスが必要です。このスマホ版は出撃前確認まで操作できます。';
+    el('home-panel').insertBefore(missionNotice,el('panel-footer'));
+    const settingsSound=document.createElement('button'); settingsSound.id='mobile-settings-sound';
+    settingsSound.type='button'; settingsSound.className='mobile-only';
+    settingsSound.addEventListener('click',() => el('sound-button').click());
+    el('settings-dialog').querySelector('form')!.append(settingsSound);
     add(document.querySelector('.utility')!,'reference-motion','背景の動きを切り替える','titleMotion',() => {
       const motion = el<HTMLInputElement>('motion-toggle'); motion.checked = !motion.checked;
       motion.dispatchEvent(new Event('change',{bubbles:true})); this.refresh();
@@ -67,7 +84,10 @@ export class ReferenceMenus {
     this.media.addEventListener('change',this.changed); document.addEventListener('keydown',this.keydown);
     this.refresh();
   }
-  get active() { return this.media.matches; }
+  // Both menu layouts use lightweight 2D art. The old narrow-screen 3D loop is retired.
+  get active() { return true; }
+  get mobile() { return !this.media.matches; }
+  get touchOnly() { return matchMedia('(any-pointer:coarse)').matches&&!matchMedia('(any-pointer:fine)').matches; }
   place(node: HTMLElement, id: ReferenceRect) {
     node.classList.add('reference-hit');
     const box = referencePercent(id);
@@ -75,7 +95,8 @@ export class ReferenceMenus {
   }
   refresh() {
     const active = this.active && this.state.screen !== 'mission', title = this.state.screen === 'title';
-    document.body.dataset.menuPresentation = active ? 'reference-2d' : 'legacy-3d';
+    document.body.dataset.menuPresentation = active ? (this.mobile?'mobile-reference-2d':'reference-2d') : 'mission-webgl';
+    document.body.dataset.touchOnly=String(this.touchOnly);
     document.body.dataset.referenceSquad = String(this.state.squadPreview);
     document.body.dataset.referenceName = this.home.current.appearance.name === 'SURVIVOR' ? 'default' : 'custom';
     document.body.dataset.referenceWeapon = this.home.current[this.home.current.held] === 'assault' ? 'default' : 'custom';
@@ -89,6 +110,10 @@ export class ReferenceMenus {
     el('sound-button').setAttribute('data-label',this.soundEnabled() ? 'SOUND ON' : 'SOUND OFF');
     el('reference-motion').setAttribute('data-label',this.preferences().reducedMotion ? 'Ⅱ  MOTION OFF' : 'Ⅱ  MOTION ON');
     el('reference-motion').setAttribute('aria-pressed',String(!this.preferences().reducedMotion));
+    const soundLabel=this.soundEnabled()?'環境音 ON — タップでOFF':'環境音 OFF — タップでON';
+    if(el('mobile-settings-sound').textContent!==soundLabel)el('mobile-settings-sound').textContent=soundLabel;
+    el('mobile-settings-sound').setAttribute('aria-pressed',String(this.soundEnabled()));
+    el('mobile-mission-notice').hidden=this.home.panel!=='briefing';
     const continuation = el<HTMLButtonElement>('continue-button');
     continuation.disabled = !this.campaign.value.checkpoint;
     continuation.dataset.available = String(!continuation.disabled);
@@ -98,13 +123,13 @@ export class ReferenceMenus {
     }
   }
   notice(mail: boolean) {
-    el('reference-dialog-title').textContent = mail ? '通信のお知らせ' : 'RECLAIM / PC PREVIEW';
+    el('reference-dialog-title').textContent = mail ? '通信のお知らせ' : 'RECLAIM / MENU PREVIEW';
     el('reference-dialog-text').textContent = mail
       ? '受信メッセージはありません。実ネットワーク通信・オンライン機能は未接続です。'
-      : 'PC向けのタイトル・HOMEです。添付の2枚を固定イラストとして使用しています。キャラ設定と装備の選択値はこの端末に保存します。背景の人物・銃の絵自体は差し替わりません。';
+      : '承認済みの2枚を固定イラストとして使用しています。キャラ設定と装備の選択値はこの端末に保存します。背景の人物・銃の絵自体は差し替わりません。スマホ版は出撃前確認まで対応し、本編の徒歩・射撃にはPCのキーボードとマウスが必要です。';
     el<HTMLDialogElement>('reference-dialog').showModal();
   }
-  snapshot() { return { mode:this.state.screen==='mission'?'mission-webgl':this.active?'reference-2d':'legacy-3d',width:1536,height:864,
+  snapshot() { return { mode:this.state.screen==='mission'?'mission-webgl':this.mobile?'mobile-reference-2d':'reference-2d',width:1536,height:864,
     images:this.images.map(image => ({loaded:image.complete&&image.naturalWidth===1536,naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight})),
     fixedIllustration:true,formationSamples:this.state.squadPreview?3:0 }; }
   dispose() { this.observer.disconnect();this.media.removeEventListener('change',this.changed);document.removeEventListener('keydown',this.keydown); }

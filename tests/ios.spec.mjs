@@ -26,13 +26,16 @@ test('a file-viewer-like module block gives a visible Safari instruction instead
   await expect(page.locator('body')).not.toHaveAttribute('data-ready', 'true');
 });
 
-test('iPhone touch preserves the brief title reveal and travels TITLE to HOME and back', async ({ page }) => {
+test('iPhone touch uses fixed 2D art without a GPU reveal and travels TITLE to HOME and back', async ({ page }) => {
   test.setTimeout(60000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await ready(page);
-  await page.locator('#title-button').tap();
-  await expect(page.locator('body')).toHaveAttribute('data-reveal', 'true');
-  await expect(page.locator('body')).toHaveAttribute('data-reveal', 'false', { timeout: 4000 });
+  await expect(page.locator('body')).toHaveAttribute('data-menu-presentation','mobile-reference-2d');
+  await expect(page.locator('#title-button')).toHaveAttribute('tabindex','-1');
+  const frames=(await snapshot(page)).renderClock.rendererFrames;
+  await page.waitForTimeout(100);
+  expect((await snapshot(page)).renderClock.rendererFrames).toBe(frames);
+  await expect(page.locator('body')).toHaveAttribute('data-reveal','false');
   await page.locator('#home-button').tap();
   await expect(page.locator('#title-screen')).toBeHidden();
   await expect(page.locator('#home-screen')).toBeVisible();
@@ -55,7 +58,7 @@ test('Safari display dialog, reduced motion and quality remain touch operable', 
 });
 
 for (const [width, height] of [[375, 667], [390, 664], [390, 844], [430, 932]]) {
-  test(`iPhone portrait ${width}x${height} shows all four survivors, including after toolbar-height changes`, async ({ page }, info) => {
+  test(`iPhone portrait ${width}x${height} shows fixed art and three local sample cards after toolbar-height changes`, async ({ page }, info) => {
     test.setTimeout(60000); await page.setViewportSize({ width, height }); await home(page);
     await page.locator('#squad-button').tap(); await fullSquad(page);
     await expect(page.locator('#start-button')).toBeInViewport({ ratio: 1 });

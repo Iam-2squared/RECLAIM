@@ -10,7 +10,7 @@ The original 1536×864 JPEG files are copied byte-for-byte into `src/ui-referenc
 
 ## Display and interaction contract
 
-- Desktop: width ≥960px and height ≥441px. Entire 16:9 artwork fits inside the viewport without cropping/stretching. Non-16:9 windows get dark letterboxing. Existing narrow-layout fallback remains, but no mobile improvements are included.
+- Desktop: width ≥960px and height ≥441px. Entire 16:9 artwork fits inside the viewport without cropping/stretching. Non-16:9 windows get dark letterboxing. The 2026-10-16 mobile-only complement is documented separately in [MOBILE_REFERENCE_MENUS.md](MOBILE_REFERENCE_MENUS.md); this PC query and all original hit rectangles are unchanged.
 - `reference-layout.ts` defines 20 measured hit regions in source-pixel coordinates; `reference-menus.ts` maps them to percentages on the exact same stage. Buttons are native focusable elements, not a screenshot pretending that input worked.
 - TITLE START → HOME; HOME START → existing preflight. Only the existing explicit launch starts the unchanged mission. Reload always enters TITLE.
 - TITLE arrows/Enter navigate START, available CONTINUE, SETTINGS and EXTRAS. CONTINUE is disabled without a real campaign checkpoint. A valid checkpoint opens preflight, not an automatic mission or fake award.
@@ -23,13 +23,13 @@ The original 1536×864 JPEG files are copied byte-for-byte into `src/ui-referenc
 
 On desktop TITLE/HOME, the existing Three renderer is dormant: no `world.render()` and no initial title shader precompile. A renderer context/CPU scene is retained for the existing mission and narrow fallback; this is not a claim that WebGL is never allocated. When a mission starts, all reference presentation CSS is disabled. `src/world/`, `src/mission/`, `src/campaign/` and Blender tools are unchanged.
 
-Use `snapshot().menus.mode` to distinguish `reference-2d`, `legacy-3d` and `mission-webgl`. `renderClock.rendererFrames` reads the real Three renderer frame counter. `render.drawCalls` is the LAST Three frame's count and can be nonzero after visiting legacy/mission even while the 2D menus are dormant; do not reset or mislabel that counter.
+Use `snapshot().menus.mode` to distinguish `reference-2d` (PC), `mobile-reference-2d` and `mission-webgl`. `renderClock.rendererFrames` reads the real Three renderer frame counter. `render.drawCalls` is the LAST Three frame's count and can be nonzero after visiting a mission even while the 2D menus are dormant; do not reset or mislabel that counter.
 
 ## Verification
 
 - New native-size visual tests compare every RGB channel against the original JPEG on a browser canvas. The bound is **≤1/255 for every channel, zero pixels over that bound**. Canvas JPEG conversion and CSS compositing can round by one code value; this does not allow shifted layout or extra visible overlays.
 - Native-size and 1920×1080, 1366×768, 1280×720, 1024×576 real screenshots. Existing six desktop panel-fit cases remain, including low-height windows. Every five-menu panel, real preflight, arrows/Enter, settings, mail/extras, persistence, unavailable WebGL, and ten TITLE/HOME returns are exercised.
-- Previous wide-screen 3D-specific camera assertions now explicitly branch to the real 2D contract. Unchanged narrow-layout reveal/cooldown/timer tests still run; they are not skipped. The world-return test changes only its HOME detection to `menus.mode`; world traversal/combat assertions and their radii/deadlines are untouched.
+- The historical PC change replaced wide-screen 3D camera assertions with the real 2D contract. The 2026-10-16 mobile task replaces the retired narrow 3D reveal assertions with static-art/GPU-idle/native-input checks, including stalled/stale RAF cases. No tests are skipped; world traversal/combat assertions and their radii/deadlines remain untouched.
 - Initial local UI run retained failures: large-window character panels inherited `align-self:center` and shrank instead of keeping the reserved height; fixed with explicit 82% height/start alignment. A resize-through-legacy case incorrectly expected the LAST renderer draw-call value to reset to zero; now checks the actual renderer frame counter remains unchanged instead of overwriting statistics.
 - First CI WebKit run was 13/14: the unchanged blocked-module guard expected the original Safari recovery copy. Preserve that original narrow-layout copy while showing PC Chrome instructions at desktop sizes; do not skip/relax the guard. Denied saves also expose the existing error text visibly over HOME instead of hiding it with the default reference artwork's footnote.
 

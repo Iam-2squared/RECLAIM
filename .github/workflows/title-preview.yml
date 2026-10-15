@@ -28,6 +28,12 @@ jobs:
           - suite: iphone-webkit
             browser: webkit
             tests: tests/ios.spec.mjs
+          - suite: mobile-chromium
+            browser: chromium
+            tests: tests/mobile-reference.spec.mjs
+          - suite: mobile-webkit
+            browser: webkit
+            tests: tests/mobile-reference.spec.mjs
     steps:
       - uses: actions/checkout@v5
         with:
@@ -48,7 +54,31 @@ jobs:
         run: |
           npx playwright install --with-deps ${{ matrix.browser }}
           sudo apt-get install -y fonts-noto-cjk
-      - run: npm run test:e2e -- ${{ matrix.tests }} --project=${{ matrix.suite == 'iphone-webkit' && 'iphone-webkit' || 'chromium' }}
+      - name: Existing PC, world and iPhone regression suites
+        if: ${{ !startsWith(matrix.suite, 'mobile-') }}
+        run: npm run test:e2e -- ${{ matrix.tests }} --project=${{ matrix.suite == 'iphone-webkit' && 'iphone-webkit' || 'chromium' }}
+      - name: Mobile 2D touch and failure-mode gates
+        if: ${{ startsWith(matrix.suite, 'mobile-') }}
+        run: npx playwright test --config=scripts/mobile-playwright.config.mjs --project=${{ matrix.suite }}
+      - name: Read approved main PC baseline
+        if: matrix.suite == 'chromium-ui'
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          path: pc-reference-baseline
+          persist-credentials: false
+      - name: Build unchanged PC baseline
+        if: matrix.suite == 'chromium-ui'
+        working-directory: pc-reference-baseline
+        run: |
+          npm ci
+          npm run build
+          npm run package:preview
+        env:
+          RECLAIM_BUILD_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+      - name: Exact main-to-candidate PC pixels at five viewports
+        if: matrix.suite == 'chromium-ui'
+        run: node scripts/compare-pc-reference.mjs pc-reference-baseline/release/RECLAIM_PC_Menu_Preview.html release/RECLAIM_Mobile_Menu_Preview.html
       - uses: actions/upload-artifact@v4
         if: always()
         with:
