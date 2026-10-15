@@ -1,0 +1,564 @@
+{
+  "schema": "reclaim.assets.v1",
+  "dateJst": "2026-10-14",
+  "scope": "RECLAIM original world foundation; actual per-browser visible frame metrics belong in review evidence",
+  "runtimeAssets": {
+    "origin": "Original procedural shapes authored in src/world; no downloaded image, font, voice, GLB or blend file is bundled.",
+    "license": "Original authored for RECLAIM; repository licensing applies. No third-party art license is required for these generated forms.",
+    "textures": {
+      "count": 0,
+      "dimensions": []
+    },
+    "externalRequests": 0,
+    "sourceSha256": {
+      "src/world/types.ts": "467b03cee8effaa7339e50e3fff1cfdff7e27ee46a65045934929bc679a9328b",
+      "src/world/areas.ts": "354bd35efb62d6fad96aaa60b3b34e310c454999e2d9e25e4049cb4417d72b2d",
+      "src/world/random.ts": "a3cba32bccff7601d8dba8646ebf84624f78edbb89c1155df7cccebf9fbbaa72",
+      "src/world/terrain.ts": "ce2f96424de405d5634ded0d9be9f779dc3e1afdb9e1e88a6714ddfbb128cbba",
+      "src/world/assets.ts": "1b5a6d6d9ffe96cdb5d35f921800a409c23e46cfd90bcda5c344963a57190e53",
+      "src/world/vegetation.ts": "82af32b1d5070f7936d13afc24f226f514d9d3d225efdf52fb03d43ee8fd324e",
+      "src/world/landmarks.ts": "a3cda323c5545c5241efa91d48c1aa647783561bb9be27df42789a65e1ea2c29",
+      "src/world/area-loader.ts": "b7d5bbdbf486d9301f47412bcfc43cb5a5262ab170d56a29e42c4430ae16d39b",
+      "src/world/index.ts": "068c489860dd7448f078288a94285a93605cdedd4f8c08e0a985145acd6042fb"
+    },
+    "generatedAssets": [
+      {
+        "id": "procedural/heightfield-v1",
+        "source": "src/world/terrain.ts",
+        "trianglesPerPreciseChunk": 1152,
+        "trianglesPerFarChunk": 72,
+        "collisionCellMetres": 2,
+        "chunkMetres": 48
+      },
+      {
+        "id": "procedural/branched-spruce-v1",
+        "source": "src/world/vegetation.ts",
+        "components": "7-sided tapered cylinder trunk, 5-sided branches, varied horizontal icosahedral leaf masses and small tip; instanced near/far LOD"
+      },
+      {
+        "id": "procedural/broadleaf-v1",
+        "source": "src/world/vegetation.ts",
+        "components": "Original trunk, branches and icosahedral crowns; reduced crowns at distance"
+      },
+      {
+        "id": "procedural/rocks-v1",
+        "source": "src/world/vegetation.ts",
+        "baseTriangles": 20
+      },
+      {
+        "id": "procedural/sasa-v1",
+        "source": "src/world/assets.ts",
+        "baseTriangles": 6,
+        "doubleSided": true,
+        "components": "Six original asymmetric leaves per instanced tuft; no photographic/alpha texture"
+      },
+      {
+        "id": "procedural/wooden-cabin-v1",
+        "source": "src/world/landmarks.ts",
+        "dimensionsMetres": {
+          "width": 10,
+          "depth": 10,
+          "wallHeight": 3.2,
+          "roofRise": 2.15,
+          "doorOpening": 2.8
+        },
+        "components": "Plank walls with actual openings, ridge along Z, correctly inclined roof, floor, porch, open door, windows, bed and radio table"
+      },
+      {
+        "id": "procedural/radio-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Original box body, speaker grille, dial and antenna"
+      },
+      {
+        "id": "procedural/boardwalk-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Contour-following wooden bank walkway x=-13,z44..80 with rails, reachable by an optional scenery-only path; no separate physics surface"
+      },
+      {
+        "id": "procedural/forest-road-tunnel-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Two rock portal arches, open path, side colliders, broken road and inactive utility equipment"
+      },
+      {
+        "id": "procedural/stream-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Original ellipse surface above deterministic valley bed"
+      },
+      {
+        "id": "procedural/snowfield-v1",
+        "source": "src/world/landmarks.ts",
+        "triangles": 216
+      },
+      {
+        "id": "procedural/ridge-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Authored walkable ascending route, rock cairn and edge markers"
+      },
+      {
+        "id": "procedural/suburban-road-v1",
+        "source": "src/world/landmarks.ts",
+        "triangles": 180
+      },
+      {
+        "id": "procedural/wreck-nondriveable-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Original abandoned static vehicle; no input/driving/vehicle physics"
+      },
+      {
+        "id": "procedural/city-greybox-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "18 original city-edge boxes with roof/window details and building colliders"
+      },
+      {
+        "id": "procedural/atmosphere-v1",
+        "source": "src/world/landmarks.ts",
+        "components": "Eleven separate original rounded ridge grids (187 vertices/320 triangles each), seven static muted cloud clusters (five lobes each) and subdued sun; no photographs/dynamic shadow/post-processing",
+        "ridgeTriangles": 3520,
+        "cloudLobes": 35
+      }
+    ]
+  },
+  "areaMetrics": [
+    {
+      "id": "shiretoko",
+      "seed": 431071,
+      "status": "playable-introduction",
+      "assetRefs": [
+        "procedural/heightfield-v1",
+        "procedural/branched-spruce-v1",
+        "procedural/broadleaf-v1",
+        "procedural/rocks-v1",
+        "procedural/sasa-v1",
+        "procedural/wooden-cabin-v1",
+        "procedural/radio-v1",
+        "procedural/boardwalk-v1"
+      ],
+      "initialScene": {
+        "low": {
+          "areaId": "shiretoko",
+          "quality": "low",
+          "activeChunks": 9,
+          "nearChunks": 9,
+          "farChunks": 0,
+          "loadedChunks": 9,
+          "unloadedChunks": 0,
+          "trees": 151,
+          "rocks": 59,
+          "grass": 273,
+          "instances": 5086,
+          "geometries": 30,
+          "materials": 21,
+          "textures": 0,
+          "triangles": 122232,
+          "renderObjects": 89,
+          "approximateGpuBytes": 830184,
+          "colliders": 217,
+          "terrainCacheEntries": 5558,
+          "disposed": false
+        },
+        "balanced": {
+          "areaId": "shiretoko",
+          "quality": "balanced",
+          "activeChunks": 25,
+          "nearChunks": 9,
+          "farChunks": 16,
+          "loadedChunks": 25,
+          "unloadedChunks": 0,
+          "trees": 711,
+          "rocks": 163,
+          "grass": 1163,
+          "instances": 12371,
+          "geometries": 46,
+          "materials": 21,
+          "textures": 0,
+          "triangles": 278624,
+          "renderObjects": 185,
+          "approximateGpuBytes": 1425892,
+          "colliders": 881,
+          "terrainCacheEntries": 10322,
+          "disposed": false
+        }
+      }
+    },
+    {
+      "id": "ishikari-mountains",
+      "seed": 508213,
+      "status": "environment-prototype",
+      "assetRefs": [
+        "procedural/heightfield-v1",
+        "procedural/branched-spruce-v1",
+        "procedural/broadleaf-v1",
+        "procedural/rocks-v1",
+        "procedural/sasa-v1",
+        "procedural/forest-road-tunnel-v1",
+        "procedural/stream-v1"
+      ],
+      "initialScene": {
+        "low": {
+          "areaId": "ishikari-mountains",
+          "quality": "low",
+          "activeChunks": 9,
+          "nearChunks": 9,
+          "farChunks": 0,
+          "loadedChunks": 9,
+          "unloadedChunks": 0,
+          "trees": 185,
+          "rocks": 59,
+          "grass": 205,
+          "instances": 6584,
+          "geometries": 29,
+          "materials": 17,
+          "textures": 0,
+          "triangles": 149090,
+          "renderObjects": 79,
+          "approximateGpuBytes": 943888,
+          "colliders": 248,
+          "terrainCacheEntries": 5520,
+          "disposed": false
+        },
+        "balanced": {
+          "areaId": "ishikari-mountains",
+          "quality": "balanced",
+          "activeChunks": 25,
+          "nearChunks": 9,
+          "farChunks": 16,
+          "loadedChunks": 25,
+          "unloadedChunks": 0,
+          "trees": 956,
+          "rocks": 171,
+          "grass": 844,
+          "instances": 16473,
+          "geometries": 45,
+          "materials": 17,
+          "textures": 0,
+          "triangles": 348844,
+          "renderObjects": 173,
+          "approximateGpuBytes": 1737500,
+          "colliders": 1131,
+          "terrainCacheEntries": 10733,
+          "disposed": false
+        }
+      }
+    },
+    {
+      "id": "hidaka-mountains",
+      "seed": 701113,
+      "status": "environment-prototype",
+      "assetRefs": [
+        "procedural/heightfield-v1",
+        "procedural/branched-spruce-v1",
+        "procedural/broadleaf-v1",
+        "procedural/rocks-v1",
+        "procedural/sasa-v1",
+        "procedural/snowfield-v1",
+        "procedural/ridge-v1"
+      ],
+      "initialScene": {
+        "low": {
+          "areaId": "hidaka-mountains",
+          "quality": "low",
+          "activeChunks": 9,
+          "nearChunks": 9,
+          "farChunks": 0,
+          "loadedChunks": 9,
+          "unloadedChunks": 0,
+          "trees": 50,
+          "rocks": 129,
+          "grass": 87,
+          "instances": 1980,
+          "geometries": 28,
+          "materials": 15,
+          "textures": 0,
+          "triangles": 57166,
+          "renderObjects": 73,
+          "approximateGpuBytes": 589136,
+          "colliders": 179,
+          "terrainCacheEntries": 5768,
+          "disposed": false
+        },
+        "balanced": {
+          "areaId": "hidaka-mountains",
+          "quality": "balanced",
+          "activeChunks": 25,
+          "nearChunks": 9,
+          "farChunks": 16,
+          "loadedChunks": 25,
+          "unloadedChunks": 0,
+          "trees": 174,
+          "rocks": 366,
+          "grass": 354,
+          "instances": 4336,
+          "geometries": 45,
+          "materials": 15,
+          "textures": 0,
+          "triangles": 103172,
+          "renderObjects": 133,
+          "approximateGpuBytes": 817920,
+          "colliders": 540,
+          "terrainCacheEntries": 9645,
+          "disposed": false
+        }
+      }
+    },
+    {
+      "id": "sapporo",
+      "seed": 951823,
+      "status": "environment-prototype",
+      "assetRefs": [
+        "procedural/heightfield-v1",
+        "procedural/branched-spruce-v1",
+        "procedural/broadleaf-v1",
+        "procedural/rocks-v1",
+        "procedural/sasa-v1",
+        "procedural/suburban-road-v1",
+        "procedural/wreck-nondriveable-v1",
+        "procedural/city-greybox-v1"
+      ],
+      "initialScene": {
+        "low": {
+          "areaId": "sapporo",
+          "quality": "low",
+          "activeChunks": 9,
+          "nearChunks": 9,
+          "farChunks": 0,
+          "loadedChunks": 9,
+          "unloadedChunks": 0,
+          "trees": 84,
+          "rocks": 56,
+          "grass": 148,
+          "instances": 2852,
+          "geometries": 29,
+          "materials": 19,
+          "textures": 0,
+          "triangles": 77268,
+          "renderObjects": 87,
+          "approximateGpuBytes": 664120,
+          "colliders": 159,
+          "terrainCacheEntries": 5772,
+          "disposed": false
+        },
+        "balanced": {
+          "areaId": "sapporo",
+          "quality": "balanced",
+          "activeChunks": 25,
+          "nearChunks": 9,
+          "farChunks": 16,
+          "loadedChunks": 25,
+          "unloadedChunks": 0,
+          "trees": 423,
+          "rocks": 166,
+          "grass": 645,
+          "instances": 6480,
+          "geometries": 45,
+          "materials": 19,
+          "textures": 0,
+          "triangles": 166054,
+          "renderObjects": 183,
+          "approximateGpuBytes": 981896,
+          "colliders": 608,
+          "terrainCacheEntries": 9796,
+          "disposed": false
+        }
+      }
+    }
+  ],
+  "metricLimitations": [
+    "Initial scene counts include all active loaded chunks and fixed backdrop/props, not only objects drawn inside a camera frustum.",
+    "Approximate GPU bytes covers typed geometry/instance buffers only; not driver allocations or framebuffer memory.",
+    "Procedural heightfields use no texture files. Frame rate and physical PC performance are not implied by triangle counts.",
+    "Current regions are authored 480x480m local prototypes, not geospatial reproductions."
+  ],
+  "existingCodeDependencies": [
+    {
+      "name": "three",
+      "version": "0.185.1",
+      "license": "MIT",
+      "purpose": "Existing renderer and geometry/InstancedMesh API; no new dependency",
+      "licenseFile": "node_modules/three/LICENSE"
+    },
+    {
+      "name": "typescript/vite/playwright",
+      "purpose": "Existing build and test tools; no new engine/service/API",
+      "added": false
+    }
+  ],
+  "thirdPartyArt": [],
+  "fabCandidate": {
+    "name": "Trees and bush Pack LOWPOLY",
+    "creator": "EFX",
+    "reportedLocalFile": "trees_and_bush_pack_lowpoly.glb",
+    "status": "NOT AVAILABLE IN WORK; NOT INSPECTED; NOT BUNDLED; NOT COMMITTED",
+    "sourceUrl": null,
+    "acquisitionLicense": null,
+    "sha256": null,
+    "triangles": null,
+    "textures": null,
+    "requiredBeforeUse": [
+      "Supply actual file for hierarchy/transform/material/mesh/texture inspection.",
+      "Record source URL and acquired license evidence; evaluate distribution restrictions.",
+      "Preserve the original and write a separate v03 or derived output.",
+      "Do not publish the paid/source pack directly to GitHub by default."
+    ]
+  },
+  "blender": {
+    "originalV01V02Accessed": false,
+    "originalsOverwritten": false,
+    "generatedBlendOrGlbClaimed": false,
+    "tools": [
+      "tools/blender/build_shiretoko_environment.py",
+      "tools/blender/inspect_fab_pack.py",
+      "tools/blender/prepare_forest_assets.py"
+    ],
+    "actualBlender522Execution": "UNVERIFIED IN WORK unless documented by a separate completed local inspection; tools are delivered as source, not falsely claimed as user-PC execution."
+  },
+  "deferred": [
+    "Third-party Fab trees/material integration",
+    "Large-area streaming from external bundles",
+    "Vehicle movement",
+    "Online co-op/boss/shared progress",
+    "Physical Windows device certification"
+  ],
+  "optionalScenery": {
+    "id": "lakebank-spur",
+    "areaId": "shiretoko",
+    "purpose": "Walkable lake/boardwalk viewpoint with no campaign objective or exit",
+    "waypoints": [
+      {
+        "x": 0,
+        "z": 30,
+        "height": 1.3
+      },
+      {
+        "x": -8,
+        "z": 34,
+        "height": 1.8
+      },
+      {
+        "x": -13,
+        "z": 43,
+        "height": 2.2
+      },
+      {
+        "x": -13,
+        "z": 60,
+        "height": 4.2
+      },
+      {
+        "x": -13,
+        "z": 78,
+        "height": 4.2
+      }
+    ],
+    "canonicalRouteSeedAndGatesChanged": false
+  },
+  "missionAssets": {
+    "origin": "Original procedural shapes in src/mission/runtime.ts; no external model/texture/audio file",
+    "source": "src/mission/runtime.ts",
+    "sourceSha256": "c959d3a80cc247c5780ac90a883b7a9c64583e9448e1b21f491431bac6969ed7",
+    "scoutDrone": {
+      "triangles": 292,
+      "meshObjects": 12,
+      "textures": []
+    },
+    "weaponViewmodels": {
+      "assaultTriangles": 72,
+      "rifleTriangles": 72,
+      "sniperTriangles": 84,
+      "textures": []
+    },
+    "audio": "Original oscillator effects, optional sound ON only; cancelled on mission disposal",
+    "simulationClock": {
+      "source": "src/mission/clock.ts",
+      "sourceSha256": "013d8990065e1fae7c3c9cb959b52b2dc77e79047fa4bf45c165a9b069c14c96",
+      "stepSeconds": 0.016666666666666666,
+      "maxFrameSeconds": 0.25,
+      "maxStepsPerRender": 15,
+      "longDelayPolicy": "Bounded catch-up; discard remaining time immediately on pause or death"
+    },
+    "inputController": {
+      "source": "src/mission/controller.ts",
+      "sourceSha256": "64b248c14cf3209c88b36a864db284cb8a00157dc5e326b733870312347de97a",
+      "releasePolicy": "Clear held Space latch on pause and real keyup without changing position, gravity or vertical velocity"
+    }
+  },
+  "legacyProceduralTextures": [
+    {
+      "owner": "Tokyo title",
+      "asset": "facade",
+      "count": 3,
+      "width": 256,
+      "height": 512
+    },
+    {
+      "owner": "Tokyo title",
+      "asset": "road",
+      "count": 1,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "owner": "Tokyo title",
+      "asset": "road sign",
+      "count": 1,
+      "width": 512,
+      "height": 160
+    },
+    {
+      "owner": "HOME",
+      "asset": "ground",
+      "count": 1,
+      "width": 256,
+      "height": 256
+    },
+    {
+      "owner": "HOME",
+      "asset": "soft survivor shadow",
+      "count": 1,
+      "width": 64,
+      "height": 64
+    }
+  ],
+  "dependencyLicenses": [
+    {
+      "name": "three",
+      "version": "0.185.1",
+      "license": "MIT",
+      "runtime": true,
+      "addedByWorldTask": false
+    },
+    {
+      "name": "vite",
+      "version": "8.3.4",
+      "license": "MIT",
+      "runtime": false,
+      "addedByWorldTask": false
+    },
+    {
+      "name": "typescript",
+      "version": "7.0.2",
+      "license": "Apache-2.0",
+      "runtime": false,
+      "addedByWorldTask": false
+    },
+    {
+      "name": "@playwright/test",
+      "version": "1.64.0",
+      "license": "Apache-2.0",
+      "runtime": false,
+      "addedByWorldTask": false
+    },
+    {
+      "name": "@types/three",
+      "version": "0.186.0",
+      "license": "MIT",
+      "runtime": false,
+      "addedByWorldTask": false
+    }
+  ],
+  "testEnvironmentOnly": {
+    "chromium": "@sparticuz/chromium138.0.2, MIT; Linux software-WebGL testing only, not committed or bundled",
+    "fonts": "Noto Sans JP installed in the test OS only; not bundled",
+    "addedRuntimeDependencies": 0,
+    "addedPaidServices": 0
+  }
+}

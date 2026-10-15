@@ -10,8 +10,24 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    name: verify (${{ matrix.suite }})
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
+    # Each assertion still runs once with one browser worker. Separate the
+    # complete suites so software-WebGL mission walks cannot cut off Safari.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: chromium-ui
+            browser: chromium
+            tests: tests/home-v2.spec.mjs tests/home.spec.mjs tests/ui.spec.mjs
+          - suite: chromium-world
+            browser: chromium
+            tests: tests/mission.spec.mjs tests/area-preview.spec.mjs
+          - suite: iphone-webkit
+            browser: webkit
+            tests: tests/ios.spec.mjs
     steps:
       - uses: actions/checkout@v5
         with:
@@ -22,19 +38,21 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:blender
+      - run: node --experimental-strip-types tools/blender/export_world_contract.mjs --check
       - run: npm run build
       - run: npm run package:preview
         env:
           RECLAIM_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install browser and Japanese text rendering
         run: |
-          npx playwright install --with-deps chromium webkit
+          npx playwright install --with-deps ${{ matrix.browser }}
           sudo apt-get install -y fonts-noto-cjk
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- ${{ matrix.tests }} --project=${{ matrix.suite == 'iphone-webkit' && 'iphone-webkit' || 'chromium' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reclaim-preview-${{ github.sha }}-${{ github.run_attempt }}
+          name: reclaim-preview-${{ matrix.suite }}-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             test-results/
             release/

@@ -1,7 +1,7 @@
 /** UI state has no account, network or gameplay authority. Time is injected for tests. */
 export const REVEAL_MS = 1750;
 export const REVEAL_COOLDOWN_MS = 5500;
-export type Screen = 'title' | 'home';
+export type Screen = 'title' | 'home' | 'mission';
 export class ScreenState {
   screen: Screen = 'title';
   squadPreview = false;
@@ -21,6 +21,7 @@ export class ScreenState {
     return Math.min(1, elapsed / 380, (REVEAL_MS - elapsed) / 750) * 0.62;
   }
   goHome(): void { this.revealStarted = null; this.screen = 'home'; }
+  goMission(): void { this.revealStarted = null; this.screen = 'mission'; }
   goTitle(): void { this.revealStarted = null; this.screen = 'title'; }
 }
 export type Preferences = { quality: 'balanced' | 'low'; reducedMotion: boolean };

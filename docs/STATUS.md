@@ -1,4 +1,70 @@
-# RECLAIM status — HOME preview, 2026-10-14
+# RECLAIM status — 北海道ワールド基盤 / 2026-10-14
+
+最新版main `48a2fe4d43cd2f59c3087c4dcd77488ecd6a6111`から `feature/shiretoko-world-foundation` を作成。開始時にmain HEAD・open PRなし・Actions成功を再取得した。開始時main CI: [38558017694](https://github.com/Iam-2squared/RECLAIM/actions/runs/38558017694)。最終HEAD・Draft PR・そのHEADの最終CIはPRと配布review manifestに記録する。mainマージ、force-push、Vercel操作/Production公開/公開URL変更は行わない。
+
+Tokyo TITLE → HOME V2 → STARTの確認 → 明示出撃 → 木造住宅で起床 → ラジオ → 東京の親友の連絡 → 徒歩探索 → 小型ドローンへの射撃/実停止 → 道標を実装した。HOMEの大きな5パネル、外観/名前/武器保存、4人見本、戻る、音初期OFFを維持する。4人はオンラインの参加者ではない。
+
+## 各AREAの実装度
+
+全域完成・実地測量モデルではない。**知床はプレイ可能な導入プロトタイプ、残り3つはプレイ可能な環境プロトタイプ**。同じ480×480mの局所AREA/48mチャンク規約を使用し、同時に複数AREAを生成しない。
+
+| 項目 | 知床 | 石狩山地 | 日高山脈 | 札幌入口 |
+| --- | --- | --- | --- | --- |
+| Terrain | 実装済: seed付き起伏/湖/湿地/湖岸寄り道 | 実装済: 深い谷/沢/山道 | 実装済: 険しい尾根/谷/標高帯 | 実装済: 森から都市入口への地形 |
+| Props | 自作プロトタイプ: 正しい切妻家/床/窓/寝床/ラジオ/樹木/遊歩道 | 自作プロトタイプ: 密林/岩/沢/壊れた山岳トンネル | 自作プロトタイプ: 岩場/植生減少/雪渓 | グレーボックス＋自作美術: 道路/廃車/設備/遠景ビル |
+| Navigation | 実装済: FPS徒歩/主経路/湖岸寄り道/安全起点 | 実装済: 徒歩経路/2POI/出口 | 実装済: 徒歩経路/2POI/出口 | 実装済: 徒歩道路/任務候補POI/制作範囲終端 |
+| Collisions | 実装済: 地形と同じ高さ/家/木/岩/水域/斜面 | 実装済: 地形/幹/岩/トンネル | 実装済: 地形/幹/岩/急斜面/場外復帰 | 実装済: 地形/幹/岩/建物/廃車 |
+| Story | 実装済: 順序付き起床/報道/連絡/退出。正式名/声/局/日時は未確定 | 未実装: 正式ストーリー。実徒歩の通過のみ | 未実装: 正式ストーリー。実徒歩の通過のみ | 未実装: 正式任務。終端は「プレイ可能な範囲はここまで」 |
+| Enemies | 実装済: 弱い偵察ドローン1種/索敵/移動/攻撃/命中/HP0停止/被弾/再挑戦 | 未実装 | 未実装 | 未実装 |
+| Performance | 計測済: チャンク/インスタンス/Low/Balanced/破棄。実PC FPS未測定 | 同じ計測規約・実ロード/破棄 | 同じ計測規約・実ロード/破棄 | 同じ計測規約・実ロード/破棄 |
+| Evidence | 実WebGLの4PC寸法/室内/報道/連絡/家外/林道/敵/湖岸 | 実WebGL/POIまで実歩行/環境画像 | 実WebGL/POIまで実歩行/環境画像 | 実WebGL/道路の実歩行/環境画像 |
+
+PROVISIONALな通過条件は実際の位置・接地・歩行距離・経路POI・出口で判定する。知床には順序付き導入と実ドローン停止も必要。石狩→日高→札幌を1区間ずつ公開する。18主要訪問地点は元の順番を保持し、初期は知床だけ、未来の名称/説明/東京の展開は???。札幌を正式クリアにしたり函館を自動解放したりしない。開発専用 `?dev-area=` はproduction buildで無効。
+
+## 検証と実測
+
+- `npm ci`、typecheck、build、standalone package: PASS。依存/lockfile追加なし、外部runtime通信なし。
+- JSテスト **91 PASS / 0 FAIL / 0 skip**（既存15、campaign26、mission16、world34）。Blender安全ツールPythonテスト **27 PASS**。4AREAの本物のControllerでLow/Balanced両方の徒歩経路と破棄を検証。固定時計の追加5件は5fps時の実歩行/ジャンプ、遅延時の壁衝突、時刻異常、pause/死亡直後の残り更新破棄を含む。Spaceを保持した着地→pause→release→復帰直後の新しいジャンプも実Controllerで回帰確認。
+- Blender/ゲームの51座標の高さを1e-9以内で照合、world contract `--check`: PASS。
+- ローカルChromium全58件: **58 PASS / 0 FAIL / 0 skip**（12.4分）。後続の出撃確認文言を選択中の区域に合わせる調整は単独HTMLでも確認。最初のCI [38597322051](https://github.com/Iam-2squared/RECLAIM/actions/runs/38597322051)は4件失敗、25分で残りWebKitを中断。実入力を観測する試験helperと到着/死亡/敵移動の観測タイミングを修正し、既存UI41・ワールド17・WebKit14の3jobへ分割。全**72件**と通常5秒の判定を保持し、最終HEADのURL/件数はPRと配布manifestに記録する。ローカルWebKitは今回未実行。
+- helper修正後の対象12件は**12 PASS / 0 FAIL / 0 skip**（7.0分）：4AREAの実歩行、4PCのマウス/移動/ジャンプ/着地、4AREA通しの実戦/解放/保存再開、10回往復、hidden停止、実被弾/HP0/再挑戦。射撃試験は実シミュレーションのcooldown満了を読取確認してから次の実クリックを行う。ゲームの射撃判定/intervalは変更しない。
+- 続くCI [38606977966](https://github.com/Iam-2squared/RECLAIM/actions/runs/38606977966)はUI41/WebKit14/製品MISSION13 PASS、dev AREA3件 FAIL（合計69/72）。開発プレビューのLow試験で不要なBalanced初期生成を避け、boot前のユーザー表示設定を復元してから初期9チャンクと実歩行を検証する。通常の表示設定の復元規約を使い、ゲームの挙動や到達/時間判定は変えない。最終CIの結果はPR/配布manifestを参照。
+- Low直接起動にそろえた開発4AREAの実ブラウザ確認は**4 PASS / 0 FAIL**（1.9分）。初期9load/0unloadと、その後の実歩行によるunload>0を確認し、品質切替によるunloadを徒歩の証拠へ混ぜない。
+- 次のCI [38611531084](https://github.com/Iam-2squared/RECLAIM/actions/runs/38611531084)は69/72 PASS。TITLE再訪1件、石狩徒歩1件、1920×1080の着地1件が期限切れ。TITLE再訪は同じsourceの単独再確認でPASSしたがCI成功とは扱わない。MISSIONは遅延RAF時の更新上限を0.1秒/6から0.25秒/15へ改め、1/60秒の衝突判定・地形・武器・HP・進行条件を維持する。実入力helperは途中観測中もWを保持し、実到達後に離して最終位置を再確認する。通常5秒/徒歩50秒/到達半径は維持し、最終HEADで全CIを再検証する。
+- その時計/連続入力版のCI [38616990897](https://github.com/Iam-2squared/RECLAIM/actions/runs/38616990897)は66/72 PASS（UI41/WebKit14/ワールド11）。4つの短いジャンプ観測、近目標での自動操作の行き過ぎ、既に移動済みの敵baselineがFAIL。ローカル17件は16PASS/1FAIL、独立した1366×768の3回は実air→接地を記録して元判定もPASSしたため、初回失敗の原因は未確定として残す。最終helperは実Space入力の前から読取専用RAFで浮上と後続接地を記録し、Wを連続保持するのは遠距離だけ、近距離では実際に走行キーを離し徒歩で再照準する。敵の比較元は導入pause中へ移し、実移動のZ減少を維持する。判定半径/5秒/50秒は変えない。
+- 次のCI [38621155506](https://github.com/Iam-2squared/RECLAIM/actions/runs/38621155506)は**71/72 PASS**。UI41/WebKit14、全製品MISSION13、dev3区域がPASS。dev石狩だけ50秒で目標(8,45)から2.252m（元半径2m）に停止しFAIL、架空の到達として扱わない。ローカルは同sourceで17/17 PASS（412.273秒）、4PCの実浮上/接地と1366の保持Space→pause→解除→新ジャンプ、4区域の実通過、10回帰還を確認。helperの短い入力を最終半径+2mだけへ限定し、8mからは実Shiftを離して徒歩を連続保持する。アプリ/地形/速度/半径/5秒/50秒を変えず最終CIで再確認する。
+- ローカル環境: Linux / Node24.19 / Chromium138.0.7204.0 / SwiftShader / テスト用日本語OSフォント。Playwright browser156/151取得の失敗と途中の修正は `VERIFICATION_NOTES.md` とreview failure-historyに保持。テストをskipしていない。
+- 実PC viewport: 1920×1080、1366×768、1280×720、1024×576のMISSION。HOMEは6PC寸法と既存モバイル導線も確認。WebGL画像を目視し、家の切妻裏面、遠景の尖った山、扁平な雲、低画面の地図見切れを修正した。
+- 既存東京TITLEと同一browser/フォント/reduced-motionの1920×1080、1366×768画像比較は**0差分pixel**。`src/scene.ts` / `src/lobby-scene.ts` / title CSS / title演出値は変更しない。
+
+以下は時計/入力修正前の実WebGL撮影位置（source `72b9603`と同じアプリ）、Low品質、1366×768、pixelRatio0.75の読取専用snapshot。最終sourceの画像と同時測定値は配布reviewのPERFORMANCE.jsonへ記録する。初期scene構築時間はCPU測定、描画送信時間はGPUのframe time/FPSではない。機器保証ではなく再現用の観測値。
+
+| AREA / 撮影位置 | 初期構築ms | 実draw calls / triangles | render CPU中央値 / p95 ms | active / 累計load / unload |
+| --- | ---: | ---: | ---: | ---: |
+| 知床・湖岸 | 60.2 | 58 / 59,424 | 0.8 / 1.5 | 9 / 18 / 9 |
+| 石狩・トンネル前 | 60.8 | 51 / 79,398 | 0.9 / 3.4 | 9 / 15 / 6 |
+| 日高・尾根 | 52.3 | 30 / 14,240 | 0.5 / 0.9 | 9 / 15 / 6 |
+| 札幌・道路 | 47.2 | 60 / 42,822 | 0.8 / 1.6 | 9 / 12 / 3 |
+
+毎秒60Hzの固定シミュレーションと描画は別。MISSIONにHOMEの30fps capを流用しない。時計遅延は1フレーム最大0.25秒/15固定ステップに制限し、hidden/blur/Esc/ロック喪失/死亡で停止して残りを破棄する。10回HOME往復のrenderer資源は**geometry24 / texture7のまま一定**。ブラウザ証拠へ保存した。60fps保証・物理PCのGPU時間/メモリを計測済みとはしない。
+
+時計修正前source `72b9603`の追加実描画cadence計測は1366×768、各AREA/品質ごとに新しいChromium138/SwiftShader、shader/ロック準備後の起点で3秒以上を観測した。平均実描画FPSはLowで知床10.8/石狩10.6/日高19.1/札幌13.2、Balancedで6.8/6.7/13.4/7.6。RAF間隔の中央値/p95、simulated seconds、CPU送信時間を分けてJSON保存した。最終sourceの再計測は配布reviewのJSONへsourceとともに記録する。クラウドのsoftware GPU・静止起点の値であり、物理Windows性能や全視点の保証ではない。
+
+## 納品・未検証・次工程
+
+`RECLAIM_World_Preview.html` はTITLE/HOME/4AREA/進行保存/日本語操作表示を含む単独HTML。HTML内のsource SHAとreview manifestからGit HEADを確認できる。review ZIPには実画面・JSON計測・テストログ・使用説明・manifest・Blenderツールをまとめる。未検証の完成宣言や架空のオンライン状態を含めない。
+
+Blender5.2.2用の標準bpyツール3本を用意した。元v01/v02を上書きせず、別v03出力、タグ/設定hashによる再実行、安全なhierarchy整理、第三者exportの権利gateを実装。元.blend/Fab GLBは未提供、実物を読んだりFabの権利/ポリゴン数を認定したりしていない。自作形状のみの `RECLAIM_Shiretoko_Procedural_v03.glb` はThree.jsで実出力し、GLTFLoaderの頂点/色/instance/bounds読み戻しを検証。**実Blenderでのスクリプト実行・GLB import・.blend生成は未検証**。Fabは根拠URL/取得ライセンス/実ファイル確認後に別工程で差し替える。
+
+物理Windows PC、物理iPhone/Safari、Production Vercel、タッチMISSIONは未検証/今回の対象外。日本刀近接/リロード/弾薬/副武器切替、正式な3AREAストーリー・敵・札幌全市街、乗り物、オンライン4人協力/共有ボス/認証/DB/ランキングは未実装。ユーザーのPCでのプレイと美術承認が次の停止地点。許可済みのDraft PR保存まで進め、main/Vercel公開は行わない。
+
+報告手順とキー一覧は `SHIRETOKO_LEVEL_SPEC.md`、拡張規約は `WORLD_ARCHITECTURE.md`、モデル使用は `BLENDER_WORKFLOW.md`、素材/容量/権利は `ASSET_MANIFEST.json` を参照。
+
+---
+
+## 以前のTITLE / HOME / iPhone対応の履歴（今回の検証結果とは別）
+
+# HOME preview archive — 2026-10-14
 
 | Category | State |
 | --- | --- |

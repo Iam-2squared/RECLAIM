@@ -94,7 +94,7 @@ body[data-screen="home"] .panel-content details{border-bottom:1px solid #b6c2ad3
 body[data-screen="home"] .panel-content summary{cursor:pointer;min-height:44px;padding:10px 0;font-size:14px}
 body[data-screen="home"] .map-overview{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(180px,1fr);gap:20px;align-items:start}
 body[data-screen="home"] .paper-map{background:#b8b59d;color:#374838;padding:12px 10px 8px;position:relative;box-shadow:inset 0 0 35px #4d533b33}
-body[data-screen="home"] .paper-map svg{width:100%;height:clamp(190px,calc(var(--home-height,100vh) - 326px),500px);display:block}
+body[data-screen="home"] .paper-map svg{width:100%;height:min(clamp(190px,calc(var(--home-height,100vh) - 326px),500px),var(--home-map-svg-height,500px));display:block}
 body[data-screen="home"] .map-caption{font-family:monospace;font-size:11px;letter-spacing:.02em;line-height:1.6;display:block}
 body[data-screen="home"] .map-grid path{fill:none;stroke:#4e67421f;stroke-width:1}
 body[data-screen="home"] .map-land path{fill:#9a9f82;stroke:#65765b;stroke-width:1}
@@ -206,7 +206,7 @@ body[data-screen="home"] button:focus-visible,body[data-screen="home"] input:foc
  body[data-screen="home"] .panel-actions{flex-wrap:wrap;gap:8px}
  body[data-screen="home"] .panel-actions .text-action{flex-basis:100%}
  body[data-screen="home"] .map-overview{grid-template-columns:minmax(0,1fr);gap:16px}
- body[data-screen="home"] .paper-map svg{height:clamp(170px,calc(var(--home-height,100vh) - 320px),430px)}
+ body[data-screen="home"] .paper-map svg{height:min(clamp(170px,calc(var(--home-height,100vh) - 320px),430px),var(--home-map-svg-height,430px))}
  body[data-screen="home"] .gun-options{gap:7px}
  body[data-screen="home"] .gun-option{font-size:15px}
  body[data-screen="home"] .gun-option small{font-size:11px}
@@ -235,7 +235,7 @@ body[data-screen="home"] button:focus-visible,body[data-screen="home"] input:foc
  body[data-screen="home"] .panel-header .overline{display:none}
  body[data-screen="home"] .panel-header h2{margin:0;font-size:20px}
  body[data-screen="home"] .map-overview{grid-template-columns:minmax(0,1.15fr) minmax(240px,1fr)}
- body[data-screen="home"] .paper-map svg{height:170px}
+ body[data-screen="home"] .paper-map svg{height:min(170px,var(--home-map-svg-height,170px))}
  body[data-screen="home"] .panel-actions .text-action{flex-basis:auto}
  body[data-screen="home"] .weapon-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 }

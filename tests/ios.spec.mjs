@@ -81,11 +81,11 @@ test('iPhone touch operates every left-menu item, saves appearance, changes guns
   await page.locator('#hold-secondary').tap(); await page.locator('[data-slot="secondary"][data-gun="rifle"]').tap();
   await expect(page.locator('body')).toHaveAttribute('data-held-weapon', 'rifle'); await page.locator('#panel-close').tap();
   await open(page, 'マップ'); await page.locator('#region-select').selectOption('17');
-  await expect(page.locator('#region-name')).toHaveText('東京［再突入］'); await page.locator('#panel-close').tap();
+  await expect(page.locator('#region-name')).toHaveText('???'); await page.locator('#panel-close').tap();
   await open(page, '今のボス状況'); await expect(page.locator('.unknown-hp strong')).toHaveText('—'); await page.locator('#panel-close').tap();
   await open(page, 'ランキング'); await expect(page.locator('.empty-records')).toContainText('未接続'); await page.locator('#panel-close').tap();
   await page.locator('#start-button').tap(); await expect(page.locator('.mission-boundary')).toBeInViewport({ ratio: 1 });
-  await expect(page.locator('.combat-disabled')).toBeDisabled(); await page.locator('#briefing-back').tap();
+  await expect(page.locator('#mission-launch')).toBeEnabled(); await page.locator('#briefing-back').tap();
   await page.reload(); await page.locator('#home-button').tap();
   await expect(page.locator('#survivor-name')).toHaveText('知床の生存者');
   await expect(page.locator('body')).toHaveAttribute('data-palette', 'slate');

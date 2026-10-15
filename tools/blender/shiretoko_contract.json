@@ -1,0 +1,309 @@
+{
+  "schema": "reclaim.blender-world-contract.v1",
+  "area": {
+    "id": "shiretoko",
+    "displayName": "知床",
+    "version": 1,
+    "seed": 431071,
+    "status": "playable-introduction",
+    "bounds": {
+      "minX": -240,
+      "maxX": 240,
+      "minZ": -192,
+      "maxZ": 288
+    },
+    "terrainProfile": {
+      "baseHeight": 14,
+      "amplitude": 22,
+      "frequency": 0.011,
+      "ruggedness": 0.18,
+      "pathWidth": 3.6,
+      "pathBlendWidth": 9,
+      "cabinPlateau": true,
+      "water": [
+        {
+          "id": "lake",
+          "x": -46,
+          "z": 62,
+          "radiusX": 29,
+          "radiusZ": 35,
+          "surfaceHeight": 0.3,
+          "depth": 2.6,
+          "kind": "lake"
+        }
+      ]
+    },
+    "biome": {
+      "treeDensity": 31,
+      "broadleafFraction": 0.22,
+      "minTreeHeight": 5.8,
+      "maxTreeHeight": 12.5,
+      "timberline": 110,
+      "grassDensity": 115,
+      "groundColors": [
+        5396294,
+        3755319,
+        7695957
+      ],
+      "foliageColors": [
+        2639929,
+        3757373,
+        5464893
+      ],
+      "rockColor": 6909282
+    },
+    "climate": {
+      "skyColor": 10201513,
+      "fogColor": 9806496,
+      "morningLight": 15785405,
+      "ambientLight": 13819864,
+      "fogNear": 40,
+      "fogFar": 186,
+      "cloudHeight": 94
+    },
+    "spawn": {
+      "x": 0,
+      "z": -1.5,
+      "yaw": 3.141592653589793
+    },
+    "route": [
+      {
+        "x": 0,
+        "z": 0,
+        "height": 0
+      },
+      {
+        "x": 0,
+        "z": 16,
+        "height": 0
+      },
+      {
+        "x": 0,
+        "z": 30,
+        "height": 1.3
+      },
+      {
+        "x": 12,
+        "z": 64,
+        "height": 5.5
+      },
+      {
+        "x": 4,
+        "z": 104,
+        "height": 10
+      },
+      {
+        "x": -4,
+        "z": 140,
+        "height": 13
+      }
+    ],
+    "explorationRoutes": [
+      {
+        "id": "lakebank-spur",
+        "width": 2,
+        "blendWidth": 6,
+        "waypoints": [
+          {
+            "x": 0,
+            "z": 30,
+            "height": 1.3
+          },
+          {
+            "x": -8,
+            "z": 34,
+            "height": 1.8
+          },
+          {
+            "x": -13,
+            "z": 43,
+            "height": 2.2
+          },
+          {
+            "x": -13,
+            "z": 60,
+            "height": 4.2
+          },
+          {
+            "x": -13,
+            "z": 78,
+            "height": 4.2
+          }
+        ]
+      }
+    ],
+    "exitTriggers": [
+      {
+        "id": "shiretoko-exit",
+        "position": {
+          "x": 4,
+          "z": 104
+        },
+        "radius": 5,
+        "targetAreaId": "ishikari-mountains",
+        "provisional": true
+      }
+    ],
+    "landmarks": [
+      {
+        "id": "cabin",
+        "type": "cabin",
+        "position": {
+          "x": 0,
+          "z": 0
+        },
+        "radius": 7,
+        "provisional": true
+      },
+      {
+        "id": "cabin-spawn",
+        "type": "bed",
+        "position": {
+          "x": 0,
+          "z": -1.5
+        },
+        "radius": 2,
+        "provisional": true
+      },
+      {
+        "id": "radio",
+        "type": "radio",
+        "position": {
+          "x": -3,
+          "z": -3
+        },
+        "radius": 2.6,
+        "provisional": true
+      },
+      {
+        "id": "cabin-door",
+        "type": "door",
+        "position": {
+          "x": 0,
+          "z": 5
+        },
+        "radius": 2,
+        "provisional": true
+      },
+      {
+        "id": "drone",
+        "type": "drone",
+        "position": {
+          "x": 0,
+          "z": 25
+        },
+        "radius": 12,
+        "provisional": true
+      },
+      {
+        "id": "trail-checkpoint",
+        "type": "checkpoint",
+        "position": {
+          "x": 12,
+          "z": 64
+        },
+        "radius": 5,
+        "provisional": true
+      },
+      {
+        "id": "shiretoko-exit",
+        "type": "exit",
+        "position": {
+          "x": 4,
+          "z": 104
+        },
+        "radius": 5,
+        "provisional": true
+      },
+      {
+        "id": "lake",
+        "type": "lake",
+        "position": {
+          "x": -46,
+          "z": 62
+        },
+        "radius": 35,
+        "provisional": true
+      },
+      {
+        "id": "boardwalk",
+        "type": "boardwalk",
+        "position": {
+          "x": -13,
+          "z": 60
+        },
+        "radius": 4,
+        "provisional": true
+      }
+    ],
+    "objectiveIds": [
+      "wake",
+      "radio",
+      "friend-contact",
+      "leave-cabin",
+      "scout-drone",
+      "trail-checkpoint",
+      "shiretoko-exit"
+    ],
+    "allowedEnemyTypes": [
+      "scout-drone"
+    ],
+    "assetRefs": [
+      "procedural/heightfield-v1",
+      "procedural/branched-spruce-v1",
+      "procedural/broadleaf-v1",
+      "procedural/rocks-v1",
+      "procedural/sasa-v1",
+      "procedural/wooden-cabin-v1",
+      "procedural/radio-v1",
+      "procedural/boardwalk-v1"
+    ],
+    "lodSettings": {
+      "chunkSize": 48,
+      "collisionCellSize": 2,
+      "nearRadius": 1,
+      "lowRadius": 1,
+      "balancedRadius": 2,
+      "farCellSize": 8
+    },
+    "qualityOverrides": {
+      "low": {
+        "vegetationScale": 0.58,
+        "grassScale": 0.28,
+        "pixelRatio": 0.75
+      },
+      "balanced": {
+        "vegetationScale": 1,
+        "grassScale": 1,
+        "pixelRatio": 1.15
+      }
+    }
+  },
+  "sourceFiles": [
+    {
+      "path": "src/world/areas.ts",
+      "sha256": "354bd35efb62d6fad96aaa60b3b34e310c454999e2d9e25e4049cb4417d72b2d"
+    },
+    {
+      "path": "src/world/terrain.ts",
+      "sha256": "ce2f96424de405d5634ded0d9be9f779dc3e1afdb9e1e88a6714ddfbb128cbba"
+    },
+    {
+      "path": "src/world/random.ts",
+      "sha256": "a3cba32bccff7601d8dba8646ebf84624f78edbb89c1155df7cccebf9fbbaa72"
+    }
+  ],
+  "coordinates": {
+    "runtime": "Y-up metres",
+    "blender": "Z-up metres",
+    "runtimeToBlender": "[x,-z,y]",
+    "glbExport": "standard Y-up [x,z,-y]; round trip preserves runtime coordinates"
+  },
+  "collision": {
+    "cellSize": 2,
+    "diagonal": "b-c",
+    "source": "src/world/terrain.ts"
+  },
+  "authoringOnly": true,
+  "note": "The game keeps its procedural terrain. This snapshot does not replace runtime collision data."
+}

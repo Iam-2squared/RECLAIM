@@ -8,3 +8,6 @@ playwright-report/
 .env.*
 !.env.example
 *.log
+
+review/
+__pycache__/
