@@ -79,6 +79,7 @@ export class ReferenceMenus {
     document.body.dataset.referenceSquad = String(this.state.squadPreview);
     document.body.dataset.referenceName = this.home.current.appearance.name === 'SURVIVOR' ? 'default' : 'custom';
     document.body.dataset.referenceWeapon = this.home.current[this.home.current.held] === 'assault' ? 'default' : 'custom';
+    document.body.dataset.referenceSave = el('local-save-status').textContent?.includes('保存できません') ? 'error' : 'normal';
     document.body.dataset.referenceMotion = this.preferences().reducedMotion ? 'off' : 'on';
     document.body.dataset.referenceSound = this.soundEnabled() ? 'on' : 'off';
     el<HTMLButtonElement>('title-button').tabIndex = active ? -1 : 0;

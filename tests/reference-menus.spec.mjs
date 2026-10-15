@@ -51,4 +51,8 @@ test('saved names/equipment remain real data while fixed illustration is explici
  await page.locator('#preview-name').fill('知床の旅人');await page.locator('[data-palette="slate"]').click();await page.locator('#apply-character').click();await expect(page.locator('#survivor-name')).toBeVisible();
  await page.getByRole('button',{name:'武器',exact:true}).click();await expect(page.locator('.panel-intro')).toContainText('装備の絵は固定');await page.locator('[data-slot="primary"][data-gun="sniper"]').click();await page.locator('#weapon-done').click();await expect(page.locator('#held-weapon')).toHaveText('スナイパー / 日本刀');
  await page.reload();await page.locator('#home-button').click();await expect(page.locator('#survivor-name')).toHaveText('知床の旅人');await expect(page.locator('body')).toHaveAttribute('data-palette','slate');await expect(page.locator('#held-weapon')).toHaveText('スナイパー / 日本刀');
+ await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new Error('quota');};});
+ await page.getByRole('button',{name:'キャラ設定',exact:true}).click();await page.locator('#preview-name').fill('保存不可でも表示');await page.locator('#apply-character').click();
+ await expect(page.locator('#local-save-status')).toBeVisible();await expect(page.locator('#local-save-status')).toContainText('保存できません');
+ await page.reload();await page.locator('#home-button').click();await expect(page.locator('#survivor-name')).toHaveText('知床の旅人');
 });

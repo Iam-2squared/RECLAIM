@@ -1,7 +1,9 @@
 /* The original JPEGs, not a reconstruction. All desktop hit boxes use the
    same uncropped 1536:864 stage. Existing small-screen layout is untouched. */
-.reference-only,.reference-backplate,.reference-panel-copy{display:none}
+.reference-only,.reference-backplate,.reference-panel-copy,.reference-boot-note{display:none}
+.legacy-boot-note{display:block}
 @media(min-width:960px) and (min-height:441px){
+  .reference-boot-note{display:block}.legacy-boot-note{display:none}
   body[data-menu-presentation="reference-2d"]{--ref-w:min(100vw,calc(100svh * 16 / 9));--ref-h:calc(var(--ref-w) * 9 / 16)}
   body[data-menu-presentation="reference-2d"]:not([data-screen="mission"]){background:#080b0d;overflow:hidden}
   body[data-menu-presentation="reference-2d"]:not([data-screen="mission"]) :is(#scene,.vignette,.grain,.frame-corner,.renderer-notice){display:none!important}
@@ -25,6 +27,7 @@
   body[data-menu-presentation="reference-2d"][data-reference-name="custom"] #survivor-name{opacity:1;background:#182422e8;padding:3px 8px;border-left:1px solid #c6d0ba}
   body[data-menu-presentation="reference-2d"] #held-weapon{position:absolute;left:18.4%;top:76.2%;width:12.8%;font-size:calc(var(--ref-w)*.0104);line-height:1.7;z-index:3;opacity:0}
   body[data-menu-presentation="reference-2d"][data-reference-weapon="custom"] #held-weapon{opacity:1;background:#15191af5;padding:4px}
+  body[data-menu-presentation="reference-2d"][data-reference-save="error"] .home-footnote>#local-save-status{display:block!important;position:absolute;left:2.6%;bottom:6.1%;width:29.3%;padding:6px 8px;background:#241a13fa;border:1px solid #bc9561;color:#ffdbb0;font-size:clamp(11px,calc(var(--ref-w)*.0078),13px);line-height:1.5;z-index:4}
   body[data-menu-presentation="reference-2d"] .sample-label{position:absolute!important;left:auto!important;right:5.8%!important;top:20%!important;width:13%;height:7.4%;max-width:none;transform:none!important;background:#14211df0;padding:12px;border:1px solid #c6d0ba70;font-size:clamp(11px,calc(var(--ref-w)*.009),15px);white-space:normal;text-align:left;z-index:4}
   body[data-menu-presentation="reference-2d"] .sample-label::after{content:'編成の見本 / 未接続';display:block;margin-top:6px;color:#b6c5b6;font-size:10px}
   body[data-menu-presentation="reference-2d"] .sample-label[data-reference-index="1"]{top:29%!important}
