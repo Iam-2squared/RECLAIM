@@ -56,6 +56,7 @@ async function boot() {
     geometry.setIndex(new T.BufferAttribute(data.indices, 1)); geometry.computeBoundingSphere();
     const mesh = new T.Mesh(geometry, material); mesh.name = `terrain/${cx}/${cz}/5m`; root.add(mesh); chunks.push(mesh);
   }
+  const sceneryStarted=performance.now();
   for (const band of ['near','far'] as const) {
     const data=sceneryMesh(terrain,band), geometry=new T.BufferGeometry();
     geometry.setAttribute('position',new T.BufferAttribute(data.positions,3));
@@ -67,6 +68,7 @@ async function boot() {
     const mesh=new T.Mesh(geometry,material);mesh.name=`${band} inland continuation / stitched`;
     root.add(mesh);
   }
+  const sceneryGeneratedMs=performance.now()-sceneryStarted;
 
   const waters: T.Mesh<T.BufferGeometry, T.ShaderMaterial>[] = [];
   // The old 24km plane exposed a trapezoidal END OF THE SEA in reverse aerial
@@ -138,6 +140,9 @@ async function boot() {
   ];
   function selectView(index: number, instant = false) {
     closeIntro(); exitWalk(); selectedView = index; activeLocation = index - 1;
+    // Finish pending user orbit deltas before defining a fixed-camera move.
+    // Otherwise a0–4 shortcut immediately after a drag drifts off its target.
+    const damping=controls.enableDamping;controls.enableDamping=false;controls.update();controls.enableDamping=damping;
     document.querySelectorAll<HTMLButtonElement>('[data-location]').forEach(button => button.classList.toggle('active', Number(button.dataset.location) === activeLocation));
     $('scene-title').innerHTML = hints[index][0]; $('scene-description').textContent = hints[index][1];
     $('overview').classList.toggle('active', index === 0); $('overview').setAttribute('aria-pressed', String(index === 0));
@@ -256,9 +261,10 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 3, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
+    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - started).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
+    sceneryGeneratedMs:+sceneryGeneratedMs.toFixed(1),
     triangles: renderer.info.render.triangles, drawCalls: renderer.info.render.calls,
     geometryAttributeBytes,indexBytes,terrainHeightBytes:terrain.heights.byteLength,approxTextureBytes:512*512*4*4/3+terrain.count**2*4,
     camera:{position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov},

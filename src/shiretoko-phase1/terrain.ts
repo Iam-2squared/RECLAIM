@@ -52,16 +52,20 @@ export function coastDistance(x: number, z: number): number {
   const center = -110 + 112 * Math.sin((850 - z) * .0012) - 60 * smooth(500, 1000, z);
   let width = interpolate(WIDTH, z);
   const side = x > center ? 1 : -1;
+  // Distant20m shore vertices cannot resolve the old17m ripple. Remove only
+  // that geometric frequency and attenuate the60m detail beyond the frozen
+  // join. The270m cove scale remains; main and near coasts are bit unchanged.
+  const shoreFilter=smooth(-4240,-4560,z);
   // Non-periodic, differently sized coves and rock noses. The two coasts do NOT
   // share an extruded outline or a sinusoidal sequence of identical scallops.
-  width += (noise(z * .0037, side * 31) - .5) * 61 + (noise(z * .017, side * 43) - .5) * 21;
+  width += (noise(z * .0037, side * 31) - .5) * 61 + (noise(z * .017, side * 43) - .5) * 21*(1-shoreFilter*.8);
   const sectors = side > 0 ? [[910, 39, 24], [740, 72, 46], [610, 31, -30], [390, 86, 29], [190, 61, -43], [-140, 104, 26], [-580, 79, -27], [-930, 135, 45]] : [[940, 38, -19], [790, 56, 32], [615, 88, -45], [410, 51, 46], [210, 41, -23], [-75, 107, 34], [-470, 75, -46], [-900, 148, 31]];
   for (const [at, size, offset] of sectors) width += offset * Math.exp(-(((z - at) / size) ** 2));
   // Real plateau shoulders beneath the authored water basins. A lake cannot
   // remain a high horizontal sheet above a collapsing coastal slope.
   const shoulders=side>0?[[435,150,150],[70,180,80],[-325,180,90]]:[[302,140,75]];
   for(const [at,size,offset]of shoulders)width+=offset*Math.exp(-(((z-at)/size)**2));
-  width += (noise(z * .059, side * 19) - .5) * 7;
+  width += (noise(z * .059, side * 19) - .5) * 7*(1-shoreFilter);
   return width - Math.abs(x - center);
 }
 export function basinDistance(b: Basin, x: number, z: number): number {
@@ -264,11 +268,13 @@ export function rawHeight(x: number, z: number): number {
       height = Math.max(height,-29+(stack.h*.28+29)*foot+(stack.h*.72+strata)*core);
     }
   }
-  // Far scenery uses 80m cells. A 15-40m headwall collapses to one tall grid
-  // edge there, producing a picket-fence coast. Beyond the untouched 20/80m
-  // join, gradually replace it with a resolved 3-5-cell coastal hillside.
-  // Only z < -4800 changes; the main grid, route, water and join stay identical.
-  const distantCoast=smooth(-4800,-6400,z);
+  // v4 resolves the shore at 20m inside the 80m scenery. The old transition
+  // still left a 270m headwall mostly intact between z=-4200 and -5800.
+  // Distribute that rise into the existing broad talus/shore shelf immediately
+  // behind the joined row. The first 40m (including ±5m normal probes) stays
+  // identical. Main/near remain unchanged; far coast frequencies are filtered
+  // above as well. No display-only displacement or denser fog is involved.
+  const distantCoast=smooth(-4240,-4560,z);
   if(distantCoast>0){
     const slopeWidth=300+noise(z*.0011,coastalSide*137)*100;
     const lowCoastalSlope=mix(seabed,land,smooth(-110,slopeWidth,coast));

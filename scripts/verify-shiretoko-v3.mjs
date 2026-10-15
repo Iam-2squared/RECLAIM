@@ -22,7 +22,7 @@ try{
  await page.goto(artifact);await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,{}, {timeout:60000});await page.evaluate(()=>document.fonts.ready);
  await page.evaluate(()=>{const a=window.__SHIRETOKO_TERRAIN__;a.freeze(true);a.setClean(true);});
  await page.waitForFunction(()=>getComputedStyle(document.querySelector('.masthead')).opacity==='0');
- const initial=await state();assert.equal(initial.revision,3);
+ const initial=await state();assert.equal(initial.revision,4);
  // Rotate around the full main peninsula, then the distant naturally closed
  // terminal cape. Geometry remains visible: this is NOT a fog-only boundary test.
  for(let i=0;i<8;i++){
