@@ -57,6 +57,10 @@ export function coastDistance(x: number, z: number): number {
   width += (noise(z * .0037, side * 31) - .5) * 61 + (noise(z * .017, side * 43) - .5) * 21;
   const sectors = side > 0 ? [[910, 39, 24], [740, 72, 46], [610, 31, -30], [390, 86, 29], [190, 61, -43], [-140, 104, 26], [-580, 79, -27], [-930, 135, 45]] : [[940, 38, -19], [790, 56, 32], [615, 88, -45], [410, 51, 46], [210, 41, -23], [-75, 107, 34], [-470, 75, -46], [-900, 148, 31]];
   for (const [at, size, offset] of sectors) width += offset * Math.exp(-(((z - at) / size) ** 2));
+  // Real plateau shoulders beneath the authored water basins. A lake cannot
+  // remain a high horizontal sheet above a collapsing coastal slope.
+  const shoulders=side>0?[[435,150,150],[70,180,80],[-325,180,90]]:[[302,140,75]];
+  for(const [at,size,offset]of shoulders)width+=offset*Math.exp(-(((z-at)/size)**2));
   width += (noise(z * .059, side * 19) - .5) * 7;
   return width - Math.abs(x - center);
 }
@@ -198,6 +202,12 @@ export function rawHeight(x: number, z: number): number {
       const shoreBand=Math.exp(-(((d-1.29)/.27)**2));
       land += shoreBand*((noise(x*.068,z*.051)-.5)*1.3 + mountainShore*(noise(x*.024,z*.037)-.5)*4.2);
     }
+    // Raise ONLY missing low bank sections. Otherwise a level 113/149m water
+    // sheet can spill down an adjacent lower plateau even with perfect mesh
+    // clipping. Existing high mountain/rock banks remain entirely unchanged.
+    const bank=smooth(.88,1.13,d)*(1-smooth(1.46,1.95,d));
+    const minimumBank=b.level+1.4+(noise(x*.019,z*.023)-.5)*.8;
+    land=mix(land,Math.max(land,minimumBank),bank);
   }
   const channel = channelSample(x,z);
   if (channel) land = mix(land, Math.min(land,channel.level - 1.2 + .12 * noise(x*.1,z*.1)), 1-smooth(channel.width*.52,channel.width+8,channel.distance));
@@ -229,11 +239,17 @@ export function rawHeight(x: number, z: number): number {
   const bench = smooth(11+dip, 27+dip+sector*8, faceDistance);
   const upper = smooth(wallEnd+3, 91 + sector*19, coast);
   const seabed = -34 - Math.max(0, -coast) * .055 + (fbm(x * .025, z * .025) - .5) * 5;
-  const failure = smooth(.45,.79,noise(z*.008,coastalSide*71)) * (1-Math.exp(-(((z-850)/85)**2)));
+  const collapses=coastalSide<0?[[620,88,.98],[55,112,1],[-640,137,.96]]:[[650,100,.98],[-705,140,.97]];
+  let structuralCollapse=0;for(const [at,size,strength]of collapses)structuralCollapse=Math.max(structuralCollapse,strength*Math.exp(-(((z-at)/size)**2)));
+  const siteProtection=1-Math.exp(-(((z-850)/85)**2));
+  const failure = Math.max(smooth(.45,.79,noise(z*.008,coastalSide*71))*.72,structuralCollapse)*siteProtection;
   const lowerWeight=.08+sector*.10, benchWeight=(1-capeHeadwall)*(.10+sector*.12), upperWeight=.10;
   const intact=lowerWeight*lower+benchWeight*bench+(1-lowerWeight-benchWeight-upperWeight)*wall+upperWeight*upper;
-  const fallen=smooth(-31-sector*24,102+sector*66,coast);
-  let height = seabed*(1-apron) + (3+sector*4)*apron + (land-(3+sector*4))*mix(intact,fallen,failure*.9);
+  const fallen=smooth(-38-sector*22,127+sector*29,coast);
+  let height = seabed*(1-apron) + (3+sector*4)*apron + (land-(3+sector*4))*mix(intact,fallen,failure);
+  // Large scars retreat the upper edge as well as replacing the headwall by a
+  // wide debris fan. These sectors are separated from the site and lake rims.
+  height-=structuralCollapse*siteProtection*(land*.11+3)*smooth(6,40,coast)*(1-smooth(105,190,coast));
   const exposure = smooth(-25,5,coast)*(1-smooth(65,115,coast));
   // Diagonal strata are subordinate to the large rock masses. Their displacement
   // is geometric; no display-only cliff or floating collision-free stones.

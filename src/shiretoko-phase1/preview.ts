@@ -185,7 +185,7 @@ async function boot() {
     flight={from:camera.position.clone(),target:controls.target.clone(),start:matchMedia('(prefers-reduced-motion: reduce)').matches?performance.now()-3200:performance.now()};
     controls.enabled=false;$('intro-fly').hidden=true;$('intro-explore').hidden=true;
   });
-  function setClean(value: boolean) { document.body.classList.toggle('clean', value);routeLine.visible=!value&&(intro.state==='overview'||$('route').getAttribute('aria-pressed')==='true'); }
+  function setClean(value: boolean) { document.body.classList.toggle('clean', value);routeLine.visible=!value&&(intro.state==='overview'||$('route').getAttribute('aria-pressed')==='true'); needsRender=true; }
   on($('overview'), 'click', () => selectView(0));
   on($('elevation'), 'click', () => {
     const enabled = !material.uniforms.uElevation.value; material.uniforms.uElevation.value = enabled ? 1 : 0;

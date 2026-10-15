@@ -47,6 +47,7 @@ test('all lake and pond water polygons clip against actual rendered triangles in
       const x=mesh.positions[i],y=mesh.positions[i+1],z=mesh.positions[i+2];
       assert.equal(y,basin.level);
       assert.ok(terrain.heightAt(x,z)<=basin.level+.0002,`Water floats over bank ${basin.id}: ${x},${z}`);
+      assert.ok(basin.level-terrain.heightAt(x,z)<=basin.depth+.6,`A high lake sheet must not spill over a coastal cliff ${basin.id}: ${x},${z}`);
     }
     for(let i=0;i<mesh.indices.length;i+=3){
       const [a,b,c]=mesh.indices.slice(i,i+3).map(v=>v*3);
@@ -83,4 +84,14 @@ test('coastal rock profiles vary by sector and have real shelves beneath the lar
   }
   assert.equal(new Set(signatures).size,signatures.length,'No periodic duplicated coast profile');
   let shelf=0;for(let x=-450;x<150;x+=5){const y=terrain.heightAt(x,850);if(y>2&&y<40)shelf++;}assert.ok(shelf>=5);
+});
+
+test('large authored collapse sectors replace the narrow headwall rather than merely recolouring it',()=>{
+  function section(z){
+    let coastX=-1100,best=Infinity;for(let x=-1100;x<-110;x++){const d=Math.abs(coastDistance(x,z));if(d<best){coastX=x;best=d;}}
+    let maxStep=0;for(let d=-10;d<180;d+=5)maxStep=Math.max(maxStep,Math.abs(terrain.heightAt(coastX+d+5,z)-terrain.heightAt(coastX+d,z)));
+    return maxStep/terrain.heightAt(coastX+195,z);
+  }
+  const intact=section(850);assert.ok(intact>.2,'Cape retains its dangerous real headwall');
+  for(const z of [55,620])assert.ok(section(z)<intact*.45,`Collapse at z=${z} must form a broad fan, not the same extruded wall`);
 });

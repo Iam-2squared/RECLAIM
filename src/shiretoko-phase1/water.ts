@@ -35,5 +35,7 @@ export function basinWaterMesh(terrain:ShiretokoTerrain,basin:Basin){
 
 export const basinWaterCounts=(terrain:ShiretokoTerrain)=>BASINS.map(b=>{
   const mesh=basinWaterMesh(terrain,b);
-  return{id:b.id,vertices:mesh.positions.length/3,triangles:mesh.indices.length/3};
+  let maxDepthMetres=0;
+  for(let i=0;i<mesh.positions.length;i+=3)maxDepthMetres=Math.max(maxDepthMetres,b.level-terrain.heightAt(mesh.positions[i],mesh.positions[i+2]));
+  return{id:b.id,vertices:mesh.positions.length/3,triangles:mesh.indices.length/3,designedDepthMetres:b.depth,maxDepthMetres};
 });

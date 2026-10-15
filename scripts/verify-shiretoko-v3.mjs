@@ -31,13 +31,25 @@ try{
  }
  for(const [name,p,t] of [['rear-terminal',[3000,1600,-10700],[0,240,-7200]],['20-80m-join',[-1600,1000,-4200],[300,550,-4200]],['mountain-lookdown',[220,800,-1310],[10,100,320]],['wetland-close',[-110,94.8,419],[48,92,485]],['plateau-ground',[-112,171,-440],[180,153,-370]]])await captured(name,p,t);
  checks.push('eight 45-degree main coast views, terminal cape, 20/80m join, mountain lookdown, wetland close and plateau');
+ const canvasPixels=()=>page.evaluate(()=>{const canvas=document.querySelector('canvas');canvas.getContext('webgl2').finish();return canvas.toDataURL('image/png');});
+ const fresh=async action=>{const before=(await state()).renderCallsTotal;await action();await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,before);};
+ await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.setView(0));
+ await fresh(()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.setClean(false)));
+ const withoutRoute=await canvasPixels();
+ await fresh(()=>page.locator('#route').click());const withRoute=await canvasPixels();assert.notEqual(withRoute,withoutRoute);
+ await fresh(()=>page.keyboard.press('h'));assert.equal((await state()).routeOverlayVisible,false);assert.equal(await canvasPixels(),withoutRoute,'H must actually remove the line pixels, not only change a visible flag');
+ await page.screenshot({path:resolve(out,'clean-route-hidden.jpg'),type:'jpeg',quality:94});
+ await fresh(()=>page.keyboard.press('h'));assert.equal(await canvasPixels(),withRoute,'H restores the route pixels at the same frozen camera');
+ await fresh(()=>page.locator('#route').click());assert.equal(await canvasPixels(),withoutRoute);
+ const afterOverlayWarmup=await state();assert.equal(afterOverlayWarmup.geometries,initial.geometries+1,'Exactly one first-upload route-line geometry');assert.equal(afterOverlayWarmup.textures,initial.textures);
+ checks.push('H invalidates the GL frame: exact frozen canvas pixels lose/restore the route, then return to the original image');
  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.setClean(false));await page.keyboard.press('1');await page.locator('#walk').click();await page.waitForFunction(()=>document.pointerLockElement===document.querySelector('canvas'));
  await page.keyboard.down('w');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().inputKeys.includes('KeyW'));
  await page.evaluate(()=>window.dispatchEvent(new Event('blur')));
  let s=await state();assert.deepEqual(s.inputKeys,[]);await page.keyboard.up('w');
  await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit');
  for(let i=0;i<3;i++){await page.locator('#walk').click();await page.waitForFunction(()=>document.pointerLockElement===document.querySelector('canvas'));await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit');}
- const afterCycles=await state();assert.equal(afterCycles.geometries,initial.geometries);assert.equal(afterCycles.textures,initial.textures);
+ const afterCycles=await state();assert.equal(afterCycles.geometries,afterOverlayWarmup.geometries);assert.equal(afterCycles.textures,afterOverlayWarmup.textures);
  checks.push('real repeated pointer-lock entry/ESC exit; synthetic blur clears held input; no geometry/texture growth');
  const hidden=await page.evaluate(async()=>{
   const a=window.__SHIRETOKO_TERRAIN__,before=a.diagnostics().renderCallsTotal;
@@ -50,10 +62,14 @@ try{
  const beforeDispose=await state();await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());const disposed=await state();assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0);assert.equal(await page.locator('canvas').count(),0);
  checks.push('idle overview submits zero identical frames; dispose returns GPU geometry/texture counts to zero');
  const unavailable=await context.newPage();await unavailable.addInitScript(()=>{const native=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){return type==='webgl2'?null:native.call(this,type,...rest);};});
- await unavailable.goto(artifact);await unavailable.locator('#error').waitFor({state:'visible'});assert.ok((await unavailable.locator('#error').textContent()).includes('WebGL 2'));assert.equal(await unavailable.locator('#loading').isVisible(),false);await unavailable.screenshot({path:resolve(out,'WebGL-unavailable.jpg'),type:'jpeg',quality:92});await unavailable.close();
+ await unavailable.goto(artifact);await unavailable.locator('#error').waitFor({state:'visible'});assert.ok((await unavailable.locator('#error').textContent()).includes('WebGL 2'));assert.equal(await unavailable.locator('#loading').isVisible(),false);
+ // A second page with failed WebGL has no GL submission to synchronize. Bring
+ // its DOM compositor to the foreground and await actual paint opportunities.
+ await unavailable.bringToFront();await unavailable.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+ await unavailable.screenshot({path:resolve(out,'WebGL-unavailable.jpg'),type:'jpeg',quality:92});await unavailable.close();
  checks.push('WebGL unavailable has a readable error and loading state resolves');
  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
  const html=await readFile(resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),'utf8');
- const report={source:html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1],tree:html.match(/name="reclaim-terrain-tree" content="([^"]+)/)?.[1],environment:{browser:browser.version(),userAgent:await page.evaluate(()=>navigator.userAgent),node:process.version,platform:process.platform,architecture:process.arch},checks,initial,ring,afterCycles,hiddenSubmissions:hidden,idleSubmissions:idle,beforeDispose,disposed,errors,network,physicalWindowsTest:false,notes:'Headless Chromium + software SwiftShader. Blur and hidden lifecycle are synthetic browser events, not an actual laptop or OS GPU test.'};
+ const report={source:html.match(/name="reclaim-terrain-source" content="([^"]+)/)?.[1],tree:html.match(/name="reclaim-terrain-tree" content="([^"]+)/)?.[1],environment:{browser:browser.version(),userAgent:await page.evaluate(()=>navigator.userAgent),node:process.version,platform:process.platform,architecture:process.arch},checks,initial,ring,afterOverlayWarmup,afterCycles,hiddenSubmissions:hidden,idleSubmissions:idle,beforeDispose,disposed,errors,network,physicalWindowsTest:false,notes:'Headless Chromium + software SwiftShader. Blur and hidden lifecycle are synthetic browser events, not an actual laptop or OS GPU test.'};
  await writeFile(resolve(out,'verification-v3.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({checks,errors,network},null,2));
 }catch(e){await page.screenshot({path:resolve(out,'FAILED-v3.png')}).catch(()=>{});await writeFile(resolve(out,'FAILED-v3.txt'),String(e));throw e;}finally{await browser.close();}
