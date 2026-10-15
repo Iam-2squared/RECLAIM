@@ -143,8 +143,12 @@ test('HOME V2 safe-area substitutes keep the header, four models and sheet actio
   await page.setViewportSize({width:view.width,height:view.height});
   // These CSS inset substitutes exercise geometry, not a physical notch/Safari UI.
   await page.evaluate(v=>{for(const [edge,px] of Object.entries(v).filter(([k])=>['top','bottom','left','right'].includes(k)))document.body.style.setProperty(`--home-safe-${edge}`,`${px}px`);document.body.style.setProperty('--sheet-safe-top',`${v.top}px`);document.body.style.setProperty('--sheet-safe-bottom',`${v.bottom}px`);},view);
+  // Check the header at the top of the page, BEFORE the intentional START
+  // scroll. Read both rectangles in one layout sample (WebKit rotation may
+  // settle between separate protocol reads). Keep and strengthen the bounds.
+  await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
+  await expect.poll(()=>page.evaluate(v=>{const r=document.querySelector('.topbar').getBoundingClientRect(),h=document.querySelector('.home-location').getBoundingClientRect();return r.top>=v.top&&r.left>=v.left&&r.right<=innerWidth-v.right+1&&h.top>=r.bottom+8;},view)).toBe(true);
   await fullSquad(page);
-  const r=await page.locator('.topbar').boundingBox(),heading=await page.locator('.home-location').boundingBox();expect(heading.y).toBeGreaterThanOrEqual(r.y+r.height+8);
   const start=await page.locator('#start-button').boundingBox();expect(start.x+start.width).toBeLessThanOrEqual(view.width-view.right+1);expect(start.y+start.height).toBeLessThanOrEqual(view.height-view.bottom+1);
   await open(page,'キャラ設定');
   // Linux mobile WebKit can retain the old IntersectionObserver root after
