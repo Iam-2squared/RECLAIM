@@ -5,7 +5,6 @@ import { makeFallback } from './fallback';
 import { Atmosphere } from './audio';
 import { Home } from './home';
 import { ReferenceMenus } from './reference-menus';
-import { REFERENCE_QUERY } from './reference-layout';
 import { CampaignStore, isAreaUnlocked, type MissionCheckpoint } from './campaign/index';
 import { AREA_DEFINITIONS, AREA_IDS, type AreaId } from './world/index';
 import { Mission } from './mission/runtime';
@@ -30,12 +29,7 @@ function enableFallback(){
 }
 try{
  world=new WorldView(sceneHost,enableFallback);world.preferences(prefs);
- // Precompile the hidden boss shader without drawing it; the first click stays brief.
- if(!matchMedia(REFERENCE_QUERY).matches){
-  world.title.boss.visible=true;
-  world.renderer.compile(world.title.scene,world.camera);
-  world.title.boss.visible=false;
- }
+ // TITLE/HOME are 2D on every viewport; never precompile the retired mobile boss reveal.
  document.body.dataset.renderer='webgl';
 }catch{enableFallback();}
 // Entry always starts at the title. No previous session is ever resumed straight into a mission.
@@ -99,12 +93,18 @@ function switchScreen(target:'title'|'home'){
  titleScreen.hidden=target!=='title';homeScreen.hidden=target!=='home';document.body.dataset.screen=target;document.body.dataset.reveal='false';wasVisible=false;
  home.screenChanged();
  referenceMenus?.refresh();
+ if(referenceMenus?.mobile)window.scrollTo({top:0,left:0,behavior:'instant'});
  invalidateRender();
  if(target==='home'){element<HTMLButtonElement>('start-button').focus({preventScroll:true});announce('ホーム。外観と装備を準備し、知床の探索へ出撃できます。オンライン未接続です。');}
  else{homeButton.focus({preventScroll:true});announce('タイトル画面に戻りました。');}
 }
 
 function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,debug=false){
+ if(!debug&&referenceMenus&&(referenceMenus.mobile||referenceMenus.touchOnly)){
+  const message='本編の徒歩・射撃はPCのキーボードとマウスが必要です。スマホでは出撃を開始しません。保存位置・進行は変更していません。';
+  element('mobile-mission-notice').textContent=message;element('mobile-mission-notice').hidden=false;
+  announce(message);return;
+ }
  if(!world||world.lost){announce('3Dを表示できないため出撃できません。HOMEは操作できます。');return;}
  if(!debug&&!isAreaUnlocked(campaign.value,areaId))return;
  endReveal();mission?.dispose();mission=null;home.close(false);home.drawer(false);state.goMission();
@@ -118,17 +118,18 @@ element('back-title').addEventListener('click',()=>switchScreen('title'));
 element('settings-button').addEventListener('click',()=>{mission?.pause();settings.showModal();});
 settings.addEventListener('close',()=>{if(home.modal&&home.panel)element('panel-title').focus({preventScroll:true});});
 const quality=element<HTMLSelectElement>('quality-select'),motion=element<HTMLInputElement>('motion-toggle');quality.value=prefs.quality;motion.checked=prefs.reducedMotion;
-function savePrefs(){world?.preferences(prefs);mission?.preferences(prefs.quality);referenceMenus?.refresh();invalidateRender();try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));}catch{/* Storage is optional; browsing in private mode still works. */}}
+function savePrefs(){world?.preferences(prefs);mission?.preferences(prefs.quality);referenceMenus?.refresh();invalidateRender();try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));element('settings-save-status').hidden=true;}catch{element('settings-save-status').hidden=false;announce('表示設定を保存できませんでした。この画面では変更を維持します。');}}
 quality.addEventListener('change',()=>{prefs.quality=quality.value==='low'?'low':'balanced';savePrefs();});
 motion.addEventListener('change',()=>{prefs.reducedMotion=motion.checked;savePrefs();});
 const off=icon('<path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/>');
 const on=icon('<path d="M4 9h4l5-4v14l-5-4H4zM17 8a6 6 0 010 8M20 5a10 10 0 010 14"/>');
 element('sound-icon').innerHTML=off;
-soundButton.addEventListener('click',async()=>{const enabled=await atmosphere.setEnabled(!atmosphere.enabled);soundButton.setAttribute('aria-pressed',String(enabled));soundButton.setAttribute('aria-label',enabled?'環境音をオフにする':'環境音をオンにする');element('sound-icon').innerHTML=enabled?on:off;referenceMenus?.refresh();announce(enabled?'環境音をオンにしました。':'環境音はオフです。');});
-function resize(){world?.resize();mission?.resize();referenceMenus?.refresh();home.layout();invalidateRender();}
+soundButton.addEventListener('click',async()=>{try{const enabled=await atmosphere.setEnabled(!atmosphere.enabled);soundButton.setAttribute('aria-pressed',String(enabled));soundButton.setAttribute('aria-label',enabled?'環境音をオフにする':'環境音をオンにする');element('sound-icon').innerHTML=enabled?on:off;referenceMenus?.refresh();announce(enabled?'環境音をオンにしました。':'環境音はオフです。');}catch{announce('環境音を開始できませんでした。音はオフのままメニューを操作できます。');}});
+function syncMenuViewport(){const view=window.visualViewport;document.body.style.setProperty('--menu-height',`${view?.height??innerHeight}px`);document.body.style.setProperty('--menu-offset-top',`${view?.offsetTop??0}px`);}
+function resize(){syncMenuViewport();world?.resize();mission?.resize();referenceMenus?.refresh();home.layout();invalidateRender();}
 function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;if(state.screen==='title'&&!prefs.reducedMotion)invalidateRender();}}
 function visibility(){frameTicket++;cancelAnimationFrame(frameId);clearTimeout(watchdogTimer);if(document.hidden){endReveal();mission?.pause();}else{lastFrame=0;invalidateRender();scheduleFrame();}void atmosphere.visibility(document.hidden);}
-const viewportScroll=()=>home.layout();
+const viewportScroll=()=>{syncMenuViewport();home.layout();};
 addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
 const enforceMissionPointerLock=()=>{if(state.screen!=='mission'&&document.pointerLockElement)document.exitPointerLock();};
 document.addEventListener('pointerlockchange',enforceMissionPointerLock);
@@ -137,7 +138,7 @@ function dispose(){if(disposed)return;disposed=true;endReveal();frameTicket++;ca
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.
 Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,menus:referenceMenus?.snapshot()??null,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount,fallbackFrames,rendererFrames:world?.renderer.info.render.frame??0},home:home.snapshot(),campaign:campaign.value,mission:mission?.snapshot()??null,render:world?.stats()??null})}),writable:false});
-document.body.dataset.ready='true';
+syncMenuViewport();document.body.dataset.ready='true';
 for(const button of [titleButton,homeButton,soundButton,element<HTMLButtonElement>('settings-button')])button.disabled=false;
 element('boot-notice').hidden=true;
 

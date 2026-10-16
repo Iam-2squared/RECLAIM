@@ -9,7 +9,7 @@ export const intersects = (a,b) => Boolean(a&&b&&Math.min(a.right,b.right)-Math.
 export function contained(inner,outer){expect(inner).not.toBeNull();expect(outer).not.toBeNull();expect(inner.x).toBeGreaterThanOrEqual(outer.x-1);expect(inner.y).toBeGreaterThanOrEqual(outer.y-1);expect(inner.right).toBeLessThanOrEqual(outer.right+1);expect(inner.bottom).toBeLessThanOrEqual(outer.bottom+1);}
 export async function fourFits(page) {
  const menus=(await snapshot(page)).menus;
- if(menus?.mode==='reference-2d'){
+ if(menus?.mode==='reference-2d'||menus?.mode==='mobile-reference-2d'){
   await expect(page.locator('#home-screen .reference-backplate')).toBeVisible();
   await expect(page.locator('#squad-button')).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('.sample-label:visible')).toHaveCount(3);
@@ -17,7 +17,14 @@ export async function fourFits(page) {
   const samples=await page.locator('.sample-label:visible').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom};}));
   for(const sample of samples)contained(sample,outer);
   for(let i=0;i<samples.length;i++)for(let j=i+1;j<samples.length;j++)expect(intersects(samples[i],samples[j])).toBe(false);
-  await expect(page.locator('#start-button')).toBeInViewport({ratio:1});
+  // Mobile has intentional vertical scrolling; verify the real action is reachable.
+  if(menus.mode==='mobile-reference-2d'){
+   // WebKit can retain a stale IntersectionObserver root after viewport/inset
+   // changes. Demand complete REAL viewport containment and a live hit target,
+   // not a reduced IO threshold or a forced click. The touch suite taps START.
+   await page.locator('#start-button').evaluate(n=>n.scrollIntoView({block:'center',behavior:'instant'}));
+   await expect.poll(()=>page.locator('#start-button').evaluate(n=>{const r=n.getBoundingClientRect(),v=visualViewport;const left=v?.offsetLeft??0,top=v?.offsetTop??0,right=left+(v?.width??innerWidth),bottom=top+(v?.height??innerHeight);return r.width>=44&&r.height>=44&&r.left>=left&&r.top>=top&&r.right<=right+1&&r.bottom<=bottom+1&&n.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));})).toBe(true);
+  }else await expect(page.locator('#start-button')).toBeInViewport({ratio:1});
   // info.render.calls describes the LAST Three frame, which may belong to the
   // unchanged narrow layout. The actual frame counter must not advance here.
   const frameCount=(await snapshot(page)).renderClock.rendererFrames;

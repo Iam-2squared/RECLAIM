@@ -16,6 +16,7 @@ html=html.replace('</head>',()=>`<meta name="reclaim-source-commit" content="${s
 await mkdir(resolve(root,'release'),{recursive:true});
 await writeFile(resolve(root,'release/RECLAIM_World_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_PC_Menu_Preview.html'),html);
+await writeFile(resolve(root,'release/RECLAIM_Mobile_Menu_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Title_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Home_Preview.html'),html);
 await writeFile(resolve(root,'release/RECLAIM_Home_V2_Preview.html'),html);
