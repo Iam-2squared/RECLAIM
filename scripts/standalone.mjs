@@ -47,7 +47,7 @@ try {
   if (!/^[a-f0-9]{40}$/.test(sourceCommit)) throw new Error('Expected a full source commit SHA');
   html = html.replace('</head>', () => `<meta name="reclaim-source-commit" content="${sourceCommit}">\n<meta name="reclaim-working-tree" content="${workingTree}">\n<!-- Three.js MIT license\n${license.replaceAll('--', '—')}-->\n</head>`);
   await mkdir(resolve(root, 'release'), { recursive: true });
-  for (const filename of ['RECLAIM_World_Preview.html','RECLAIM_PC_Menu_Preview.html','RECLAIM_Title_Preview.html','RECLAIM_Home_Preview.html','RECLAIM_Home_V2_Preview.html']) {
+  for (const filename of ['RECLAIM_World_Preview.html','RECLAIM_PC_Menu_Preview.html','RECLAIM_Mobile_Menu_Preview.html','RECLAIM_Title_Preview.html','RECLAIM_Home_Preview.html','RECLAIM_Home_V2_Preview.html']) {
     await writeFile(resolve(root, 'release', filename), html);
   }
   console.log(`Standalone world: release/RECLAIM_World_Preview.html (source ${sourceCommit}; compatible aliases retained; no runtime CDN or API)`);
