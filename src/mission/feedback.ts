@@ -39,23 +39,31 @@ export class WeaponFeedback {
 export type DroneCrashPose=Readonly<{y:number;bank:number;stopped:boolean;settled:boolean}>;
 /** Ground-aware damped fall: used only after the authoritative HP==0 transition. */
 export class DroneCrashRig {
- private verticalSpeed=0;private bank=0;private bankSpeed=1.5;
+ private elapsed=0;
+ private bank=0;
  private settled=false;
- private constGround=0;
+ private groundAtStart=0;
+ private startY=0;
  private started=false;
- private visualY:number|null=null;
+ private readonly acceleration=11;
+ private readonly terminalSpeed=8;
+ /** Analytic travel prevents fall speed/bank from depending on render FPS. */
+ private fallDistance(t:number):number {
+  const toTerminal=this.terminalSpeed/this.acceleration;
+  if(t<=toTerminal)return .5*this.acceleration*t*t;
+  return .5*this.acceleration*toTerminal*toTerminal+this.terminalSpeed*(t-toTerminal);
+ }
  step(dt:number,currentY:number,groundY:number):DroneCrashPose {
-  if(!finite(dt)||dt<=0||!finite(currentY)||!finite(groundY))return{y:currentY,bank:this.bank,stopped:true,settled:this.settled};
-  if(!this.started){this.started=true;this.constGround=groundY;this.visualY=currentY;}
-  const floor=Math.max(this.constGround,groundY)+.25;
+  if(!finite(dt)||dt<=0||!finite(currentY)||!finite(groundY))
+   return{y:currentY,bank:this.bank,stopped:true,settled:this.settled};
+  if(!this.started){this.started=true;this.groundAtStart=groundY;this.startY=currentY;}
+  const floor=Math.max(this.groundAtStart,groundY)+.25;
   if(this.settled)return{y:floor,bank:this.bank,stopped:true,settled:true};
-  const step=Math.min(.1,dt);
-  this.verticalSpeed=Math.min(8,this.verticalSpeed+11*step);
-  const y=Math.max(floor,(this.visualY??currentY)-this.verticalSpeed*step);
-  this.visualY=y;
-  this.bank=Math.min(.95,this.bank+this.bankSpeed*step);
-  if(y<=floor+1e-5){this.verticalSpeed=0;this.bankSpeed=0;this.settled=true;}
+  this.elapsed+=dt;
+  this.bank=Math.min(.95,1.5*this.elapsed);
+  const y=Math.max(floor,this.startY-this.fallDistance(this.elapsed));
+  if(y<=floor+1e-5)this.settled=true;
   return{y,bank:this.bank,stopped:true,settled:this.settled};
  }
- reset():void {this.verticalSpeed=0;this.bank=0;this.bankSpeed=1.5;this.settled=false;this.started=false;this.visualY=null;}
+ reset():void {this.elapsed=0;this.bank=0;this.settled=false;this.started=false;this.groundAtStart=0;this.startY=0;}
 }
