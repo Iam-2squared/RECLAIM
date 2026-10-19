@@ -104,9 +104,12 @@ export class ProjectilePool {
     if(!finite(dt)||dt<=0||dt>PROJECTILE_RULES.fixedStep+1e-8)throw new RangeError('invalid fixed step');
     const next:ProjectileState[]=[],events:ProjectileEvent[]=[];
     for(const s of this.active){
-      const age=Math.min(PROJECTILE_RULES.maxAge,s.age+dt);
-      const newVelocity={...s.velocity,y:s.velocity.y-PROJECTILE_RULES.gravity*dt};
-      const target={x:s.position.x+s.velocity.x*dt,y:s.position.y+s.velocity.y*dt-PROJECTILE_RULES.gravity*dt*dt/2,z:s.position.z+s.velocity.z*dt};
+      // The final partial tick may not travel beyond the projectile lifespan.
+      // Collision sweeps and visual tracer endpoints share this clipped path.
+      const travelDt=Math.min(dt,Math.max(0,PROJECTILE_RULES.maxAge-s.age));
+      const age=s.age+travelDt;
+      const newVelocity={...s.velocity,y:s.velocity.y-PROJECTILE_RULES.gravity*travelDt};
+      const target={x:s.position.x+s.velocity.x*travelDt,y:s.position.y+s.velocity.y*travelDt-PROJECTILE_RULES.gravity*travelDt*travelDt/2,z:s.position.z+s.velocity.z*travelDt};
       const length=dist(s.position,target);
       const allowed=Math.min(1,(PROJECTILE_RULES.maxDistance-s.distance)/Math.max(length,1e-12));
       const endpoint=add(s.position,{x:target.x-s.position.x,y:target.y-s.position.y,z:target.z-s.position.z},allowed);
