@@ -10,8 +10,12 @@ export type TileDetail='low'|'balanced';
 export type TileCoord=Readonly<{code:string;x:number;z:number;key:string}>;
 export type TilePlan=Readonly<{desired:readonly TileCoord[];load:readonly TileCoord[];evict:readonly string[];retained:readonly string[]}>;
 const key=(code:string,x:number,z:number)=>code+':'+x+':'+z;
+// Focus bounds are not permission to create tiles beyond the configured domain.
+const minTile=Math.floor(-REGION_TILE_RULES.maxCoordinate/REGION_TILE_RULES.sizeMetres);
+const maxTile=Math.floor(REGION_TILE_RULES.maxCoordinate/REGION_TILE_RULES.sizeMetres);
+const inTileBounds=(x:number,z:number)=>x>=minTile&&x<=maxTile&&z>=minTile&&z<=maxTile;
 export function tileKey(code:string,x:number,z:number):string {
- if(!prefectureByCode(code)||!Number.isSafeInteger(x)||!Number.isSafeInteger(z))throw new RangeError('invalid tile address');
+ if(!prefectureByCode(code)||!Number.isSafeInteger(x)||!Number.isSafeInteger(z)||!inTileBounds(x,z))throw new RangeError('invalid tile address');
  return key(code,x,z);
 }
 /**
@@ -25,7 +29,7 @@ export function planRegionTiles(code:string,xMetres:number,zMetres:number,detail
  const radius=detail==='low'?REGION_TILE_RULES.lowRadius:REGION_TILE_RULES.balancedRadius;
  const tx=Math.floor(xMetres/REGION_TILE_RULES.sizeMetres),tz=Math.floor(zMetres/REGION_TILE_RULES.sizeMetres);
  const desired:TileCoord[]=[];
- for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++)desired.push({code,x:tx+dx,z:tz+dz,key:key(code,tx+dx,tz+dz)});
+ for(let dz=-radius;dz<=radius;dz++)for(let dx=-radius;dx<=radius;dx++)if(inTileBounds(tx+dx,tz+dz))desired.push({code,x:tx+dx,z:tz+dz,key:key(code,tx+dx,tz+dz)});
  desired.sort((a,b)=>((a.x-tx)**2+(a.z-tz)**2)-((b.x-tx)**2+(b.z-tz)**2)||a.z-b.z||a.x-b.x);
  const expected=new Set(desired.map(t=>t.key));
  const unique=[...new Set(loadedKeys)];
