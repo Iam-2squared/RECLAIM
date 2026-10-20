@@ -1,6 +1,7 @@
 import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { BASINS, CHANNELS, LOCATIONS, ROUTE, TERRAIN, ShiretokoTerrain, clamp } from './terrain.ts';
+import { BASINS, CHANNELS, LOCATIONS, ROUTE, TERRAIN, ShiretokoTerrain, clamp, routeSample, wetnessAt } from './terrain.ts';
+import { createFloraReview } from './flora-review.ts';
 import { TerrainIntro } from './intro.ts';
 import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
@@ -74,6 +75,18 @@ async function boot() {
     root.add(mesh);
   }
   const sceneryGeneratedMs=performance.now()-sceneryStarted;
+
+  // Explicit review-only opt-in. The original terrain-only page and its legacy
+  // screenshot/geometry baselines are unchanged without ?flora=review.
+  const flora = new URLSearchParams(location.search).get('flora') === 'review'
+    ? createFloraReview({
+        height:(x,z)=>terrain.heightAt(x,z),
+        slope:(x,z)=>terrain.slopeAt(x,z),
+        wetness:(x,z,y)=>wetnessAt(x,z,y),
+        routeDistance:(x,z)=>routeSample(x,z).distance,
+        water:(x,z)=>terrain.inWater(x,z),
+      }) : null;
+  if (flora) { root.add(flora.group); root.name = 'Shiretoko Phase 1 / opt-in flora review'; }
 
   const waters: T.Mesh<T.BufferGeometry, T.ShaderMaterial>[] = [];
   // The old 24km plane exposed a trapezoidal END OF THE SEA in reverse aerial
@@ -266,7 +279,7 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
+    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: flora === null, floraReview: flora !== null, floraInstances: flora?.count ?? 0, floraDrawCalls: flora?.drawCalls ?? 0, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     sceneryGeneratedMs:+sceneryGeneratedMs.toFixed(1),
