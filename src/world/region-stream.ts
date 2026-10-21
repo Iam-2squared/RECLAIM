@@ -76,6 +76,9 @@ export class RegionTileStream<T> {
       void Promise.resolve().then(async () => {
         if (controller.signal.aborted) return;
         const resource = await this.load(coord, controller.signal);
+        // A loader returning no mesh is a failed load, never a resident tile.
+        // The next explicit focus may safely retry without any ghost geometry.
+        if (resource === null || resource === undefined) return;
         const current = this.pending.get(coord.key);
         if (this.shutDown || controller.signal.aborted || current?.controller !== controller ||
             generation !== this.generation || !this.wanted.has(coord.key) || this.region !== code) {
