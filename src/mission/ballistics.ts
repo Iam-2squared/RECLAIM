@@ -91,9 +91,15 @@ export function nearestSweep(from: Vector3,to: Vector3,id:number,sweeps:readonly
 export class ProjectilePool {
   private nextId=1;
   private active:ProjectileState[]=[];
+  // External impact callbacks can close a session or trigger another tick.
+  // Never resurrect cleared shots or count a nested hit twice.
+  private inStep=false;
+  private revision=0;
   get size():number{return this.active.length;}
   get states():readonly ProjectileState[]{return this.active;}
   spawn(position:Vector3,direction:Vector3,speed=PROJECTILE_RULES.speed):number|null {
+    // Follow-up shots must be queued by the host for a later fixed tick.
+    if(this.inStep)throw new Error('cannot spawn during projectile step');
     if(!fvec(position)||!finite(speed)||speed<=0||speed>300)throw new RangeError('invalid projectile launch');
     if(this.active.length>=PROJECTILE_RULES.maxActive)return null;
     const u=unitDirection(direction),id=this.nextId++;
@@ -101,8 +107,12 @@ export class ProjectilePool {
     return id;
   }
   step(dt:number,sweep:Sweep):readonly ProjectileEvent[] {
+    if(this.inStep)throw new Error('reentrant projectile step');
     if(!finite(dt)||dt<=0||dt>PROJECTILE_RULES.fixedStep+1e-8)throw new RangeError('invalid fixed step');
     const next:ProjectileState[]=[],events:ProjectileEvent[]=[];
+    const revision=this.revision;
+    this.inStep=true;
+    try {
     for(const s of this.active){
       // The final partial tick may not travel beyond the projectile lifespan.
       // Collision sweeps and visual tracer endpoints share this clipped path.
@@ -114,6 +124,7 @@ export class ProjectilePool {
       const allowed=Math.min(1,(PROJECTILE_RULES.maxDistance-s.distance)/Math.max(length,1e-12));
       const endpoint=add(s.position,{x:target.x-s.position.x,y:target.y-s.position.y,z:target.z-s.position.z},allowed);
       const contact=sweep(s.position,endpoint,s.id);
+      if(revision!==this.revision)return []; // session cleared during callback
       if(contact&&(!finite(contact.fraction)||contact.fraction<0||contact.fraction>1))throw new RangeError('invalid collision fraction');
       const valid=contact?contact.fraction:null;
       const hit=valid!==null;
@@ -125,6 +136,7 @@ export class ProjectilePool {
     }
     this.active=next;
     return events;
+    } finally {this.inStep=false;}
   }
-  clear():void{this.active=[];}
+  clear():void{this.revision++;this.active=[];}
 }
