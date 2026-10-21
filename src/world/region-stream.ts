@@ -47,10 +47,16 @@ export class RegionTileStream<T> {
         request.controller.abort(); cancelled.push(key);
       }
       this.pending.clear();
-      for (const [key, resource] of this.resident) {
-        this.dispose(resource); evicted.push(key);
+      // Clear ownership before invoking external disposers. A partially lost
+      // graphics context must not leave previously-disposed resident handles.
+      const obsolete = [...this.resident];
+      this.resident.clear(); this.wanted.clear(); this.region = code;
+      const failures: unknown[] = [];
+      for (const [key, resource] of obsolete) {
+        evicted.push(key);
+        try { this.dispose(resource); } catch (error) { failures.push(error); }
       }
-      this.resident.clear(); this.region = code;
+      if (failures.length) throw new AggregateError(failures, 'region switch disposal failed');
     }
     this.wanted = new Set(initial.desired.map(t => t.key));
     for (const [key, request] of this.pending) {
@@ -60,11 +66,15 @@ export class RegionTileStream<T> {
     }
 
     let plan = planRegionTiles(code, x, z, detail, [...this.resident.keys(), ...this.pending.keys()]);
+    const evictionFailures: unknown[] = [];
     for (const key of plan.evict) {
       if (this.resident.has(key)) {
-        this.dispose(this.resident.get(key)!); this.resident.delete(key); evicted.push(key);
+        const resource = this.resident.get(key)!;
+        this.resident.delete(key); evicted.push(key);
+        try { this.dispose(resource); } catch (error) { evictionFailures.push(error); }
       }
     }
+    if (evictionFailures.length) throw new AggregateError(evictionFailures, 'region tile disposal failed');
     // Obsolete unresolved operations still occupy real loader slots.
     const available = Math.max(0, REGION_TILE_RULES.loadLimit - this.unsettled.size);
     plan = planRegionTiles(code, x, z, detail, [...this.resident.keys(), ...this.pending.keys()]);
@@ -104,9 +114,17 @@ export class RegionTileStream<T> {
     this.generation++;
     for (const request of this.pending.values()) request.controller.abort();
     this.pending.clear();
-    for (const resource of this.resident.values()) this.dispose(resource);
+    const resources = [...this.resident.values()];
     this.resident.clear(); this.wanted.clear(); this.region = '';
+    const failures: unknown[] = [];
+    for (const resource of resources) {
+      try { this.dispose(resource); } catch (error) { failures.push(error); }
+    }
     // Do NOT clear unsettled. Old loaders must settle before freeing real slots.
+    if (failures.length) throw new AggregateError(failures, 'region clear disposal failed');
   }
-  close(): void { if (!this.shutDown) { this.clear(); this.shutDown = true; } }
+  close(): void {
+    if (this.shutDown) return;
+    try { this.clear(); } finally { this.shutDown = true; }
+  }
 }
