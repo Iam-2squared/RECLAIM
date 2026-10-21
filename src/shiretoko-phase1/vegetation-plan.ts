@@ -4,7 +4,7 @@
  * collision can continue sharing their canonical height surface.
  * No geometry, textures, land-use claims or external assets in this module.
  */
-export const FLORA_RULES=Object.freeze({extent:1200,chunkMetres:300,cellMetres:10,seed:431071,maxSlope:.9,trailClearance:8});
+export const FLORA_RULES=Object.freeze({extent:1200,chunkMetres:300,cellMetres:10,seed:431071,maxSlope:.9,trailClearance:8,structureClearance:7});
 export type FloraKind='spruce'|'birch'|'alpine-shrub'|'sedge'|'sasa'|'stone';
 export type FloraInstance=Readonly<{kind:FloraKind;x:number;y:number;z:number;rotation:number;scale:number}>;
 export type FloraSurface=Readonly<{
@@ -13,6 +13,8 @@ export type FloraSurface=Readonly<{
  wetness:(x:number,z:number,y:number)=>number;
  routeDistance:(x:number,z:number)=>number;
  water:(x:number,z:number)=>boolean;
+ /** Optional world-space distance to the closest house/deck/support footprint (metres). */
+ structureDistance?:(x:number,z:number)=>number;
 }>;
 const clamp=(n:number)=>Math.max(0,Math.min(1,n));
 function random(x:number,z:number,salt:number):number {
@@ -33,9 +35,21 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   if(choose> (quality==='low'?.23:.54))continue;
   const x=x0+(ix+.22+.56*random(gx,gz,2))*FLORA_RULES.cellMetres;
   const z=z0+(iz+.22+.56*random(gx,gz,3))*FLORA_RULES.cellMetres;
-  if(surface.water(x,z)||surface.routeDistance(x,z)<FLORA_RULES.trailClearance)continue;
-  const y=surface.height(x,z),slope=surface.slope(x,z),wet=clamp(surface.wetness(x,z,y));
-  if(![y,slope,wet].every(Number.isFinite)||slope<0)continue;
+  // Unloaded/ambiguous terrain classification must not grow vegetation into a
+  // path, lake, house or missing tile. One bad candidate cannot block a chunk.
+  let y:number,slope:number,wet:number;
+  try {
+   const water=surface.water(x,z),route=surface.routeDistance(x,z);
+   if(water!==false||!Number.isFinite(route)||route<0||route<FLORA_RULES.trailClearance)continue;
+   if(surface.structureDistance){
+    const distance=surface.structureDistance(x,z);
+    if(!Number.isFinite(distance)||distance<FLORA_RULES.structureClearance)continue;
+   }
+   y=surface.height(x,z);slope=surface.slope(x,z);
+   const rawWet=surface.wetness(x,z,y);
+   if(![y,slope,rawWet].every(Number.isFinite)||slope<0)continue;
+   wet=clamp(rawWet);
+  } catch { continue; }
   let kind:FloraKind;
   const species=random(gx,gz,4);
   if(slope>FLORA_RULES.maxSlope)kind='stone';
