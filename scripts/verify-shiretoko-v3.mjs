@@ -69,15 +69,28 @@ try{
  const idle=await page.evaluate(async()=>{const a=window.__SHIRETOKO_TERRAIN__;for(let i=0;i<30;i++)await new Promise(r=>requestAnimationFrame(r));const n=a.diagnostics().renderCallsTotal;for(let i=0;i<20;i++)await new Promise(r=>requestAnimationFrame(r));return a.diagnostics().renderCallsTotal-n;});assert.equal(idle,0);
  const beforeDispose=await state();await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());const disposed=await state();assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0);assert.equal(await page.locator('canvas').count(),0);
  checks.push('idle overview submits zero identical frames; dispose returns GPU geometry/texture counts to zero');
- const unavailable=await context.newPage();
- activePage=unavailable;
- // boot() first awaits RAF. Activate this page BEFORE navigation/error waiting,
- // since a background tab can otherwise stall before reaching the WebGL error.
- await unavailable.bringToFront();await unavailable.addInitScript(()=>{const native=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){return type==='webgl2'?null:native.call(this,type,...rest);};});
- await unavailable.goto(artifact);await unavailable.bringToFront();await unavailable.locator('#error').waitFor({state:'visible'});assert.ok((await unavailable.locator('#error').textContent()).includes('WebGL 2'));assert.equal(await unavailable.locator('#loading').isVisible(),false);
- // Failed WebGL has no GL submission; synchronize the foreground DOM paint.
- await unavailable.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
- await unavailable.screenshot({path:resolve(out,'WebGL-unavailable.jpg'),type:'jpeg',quality:92});await unavailable.close();activePage=page;
+
+ // The WebGL-unavailable screenshot is mandatory, not an optional smoke.
+ // A fresh Chromium process isolates capture from the heavy positive GL tests.
+ const unavailableBrowser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
+ try{
+  const unavailableContext=await unavailableBrowser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1});
+  const unavailable=await unavailableContext.newPage();
+  activePage=unavailable;
+  await unavailable.bringToFront();
+  await unavailable.addInitScript(()=>{const native=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(type,...rest){return type==='webgl2'?null:native.call(this,type,...rest);};});
+  await unavailable.goto(artifact);await unavailable.bringToFront();
+  await unavailable.locator('#error').waitFor({state:'visible'});
+  assert.ok((await unavailable.locator('#error').textContent()).includes('WebGL 2'));
+  assert.equal(await unavailable.locator('#loading').isVisible(),false);
+  await unavailable.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+  try{await unavailable.screenshot({path:resolve(out,'WebGL-unavailable.jpg'),type:'jpeg',quality:92});}
+  catch(error){
+   const state=await unavailable.evaluate(()=>({error:document.querySelector('#error')?.textContent,loadingHidden:document.querySelector('#loading')?.hidden,readyState:document.readyState})).catch(()=>null);
+   await writeFile(resolve(out,'WebGL-unavailable-failure-context.json'),JSON.stringify(state,null,2));
+   throw error;
+  }
+ }finally{await unavailableBrowser.close();activePage=page;}
  checks.push('WebGL unavailable has a readable error and loading state resolves');
  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
  const html=await readFile(resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),'utf8');
