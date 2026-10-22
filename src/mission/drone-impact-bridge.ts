@@ -20,12 +20,12 @@ export const DAMAGE_BRIDGE_LIMITS = Object.freeze({ maxSeen: 256, maxImpactsPerF
 /** Bound duplicate detection: the authoritative enemy still rejects hits after HP reaches zero. */
 export class DroneImpactBridge {
   private seen = new Set<number>();
-  private readonly fifo: number[] = [];
+
   // Projectile IDs are session-local and monotonically allocated, but their
   // impact order can differ. Reject IDs older than the bounded replay window
   // even after their original receipts have been evicted from seen.
   private highestSeenId = 0;
-  reset(): void { this.seen.clear(); this.fifo.length = 0; this.highestSeenId = 0; }
+  reset(): void { this.seen.clear(); this.highestSeenId = 0; }
   apply(frame: ShotFrame, target: DroneHitTarget | null, onDefeated: (enemy: DroneHitTarget) => void): DamageBridgeResult {
     if (frame.impacts.length > DAMAGE_BRIDGE_LIMITS.maxImpactsPerFrame)
       throw new RangeError('projectile impact frame exceeds active projectile budget');
@@ -34,11 +34,14 @@ export class DroneImpactBridge {
       const id = receipt.projectileId;
       if (!Number.isSafeInteger(id) || id <= 0 || this.seen.has(id) ||
           id <= this.highestSeenId - DAMAGE_BRIDGE_LIMITS.maxSeen) { absorbed++; continue; }
-      this.highestSeenId = Math.max(this.highestSeenId, id);
-      this.seen.add(id); this.fifo.push(id);
-      if (this.fifo.length > DAMAGE_BRIDGE_LIMITS.maxSeen) {
-        this.seen.delete(this.fifo.shift()!);
+      if (id > this.highestSeenId) {
+        this.highestSeenId = id;
+        // Preserve the bounded numerical replay window even when flight times
+        // make impacts arrive out of launch order.
+        const cutoff = id - DAMAGE_BRIDGE_LIMITS.maxSeen;
+        for (const seenId of this.seen) if (seenId <= cutoff) this.seen.delete(seenId);
       }
+      this.seen.add(id);
       if (!target || receipt.owner !== 'player' || receipt.impact.material !== 'drone' ||
         receipt.impact.targetId !== target.id || !Number.isFinite(receipt.damage) || receipt.damage <= 0) {
         absorbed++; continue;
