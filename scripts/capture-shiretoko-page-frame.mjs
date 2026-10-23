@@ -1,7 +1,9 @@
+import {readLiveWebGLCanvasJPEG} from './webgl-canvas-jpeg.mjs';
 /**
- * CI-only, non-invasive real WebGL compositor screenshot through Chromium's page path.
- * The PBO/getBufferSubData path can leave SwiftShader's main thread unresponsive.
- * No input, player pose, graphics settings, scene nodes or save data are written.
+ * CI-only, non-invasive JPEG of the real, already rendered WebGL canvas.
+ * SwiftShader's page-compositor screenshot can hang after pointer-lock
+ * walking even though original orbit screenshots and rendering pass.
+ * No synthetic image, input, pose, scene or save data is written.
  */
 export async function captureTerrainScreenshot(page) {
   const readState = () => page.evaluate(() => {
@@ -25,13 +27,11 @@ export async function captureTerrainScreenshot(page) {
   });
   const before = await readState();
   if (before.glError !== 0) throw new Error(`WebGL before screenshot error: ${before.glError}`);
-  // Use the same compositor capture path that succeeded for all 76
-  // unmodified V3/V4 camera screenshots. Suppress only transient DOM overlay
-  // pixels, not live WebGL/camera/material/scene/physics data.
-  const jpeg = await page.screenshot({
-    type: 'jpeg', quality: 92, timeout: 20000,
-    style: '.terrain-ui, #walk-overlay, #intro-panel, #loading, #error, #terrain-app::before {visibility:hidden !important}',
-  });
+  // Read the already rendered 1600x1000 WebGL drawing buffer from the
+  // original canvas, not the stalled page compositor. Overlay DOM pixels
+  // are outside that canvas. Preserve the original strict 20s capture limit.
+  const encoded = await readLiveWebGLCanvasJPEG(page);
+  const jpeg = Buffer.from(encoded.slice('data:image/jpeg;base64,'.length),'base64');
   if (!jpeg || jpeg.length < 4 || jpeg[0] !== 255 || jpeg[1] !== 216)
     throw new Error('WebGL page compositor did not return JPEG pixels');
   const after = await readState();
@@ -46,7 +46,7 @@ export async function captureTerrainScreenshot(page) {
     throw new Error('Compositor capture viewport, camera or input changed');
   const base64 = jpeg.toString('base64');
   const pixels = await page.evaluate(async payload => {
-    // Decode the compositor screenshot *of the original WebGL canvas* through CPU-only 2D,
+    // Decode the original canvas JPEG through CPU-only 2D,
     // rather than ask the active WebGL context for a second synchronous readback.
     const image = new Image();
     image.src = `data:image/jpeg;base64,${payload}`;
@@ -64,8 +64,8 @@ export async function captureTerrainScreenshot(page) {
     return { width: view.width, height: view.height, min, max };
   }, base64);
   if (pixels.width !== before.width || pixels.height !== before.height)
-    throw new Error('Compositor screenshot resolution differs from WebGL framebuffer');
-  if (!(pixels.max > pixels.min)) throw new Error('Actual WebGL compositor screenshot is blank');
+    throw new Error('Live canvas JPEG resolution differs from WebGL framebuffer');
+  if (!(pixels.max > pixels.min)) throw new Error('Actual WebGL canvas JPEG is blank');
   return { ...before, min: pixels.min, max: pixels.max,
     image: `data:image/jpeg;base64,${base64}` };
 }

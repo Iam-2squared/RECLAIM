@@ -7,9 +7,11 @@ on:
       - 'shiretoko-terrain.html'
       - 'scripts/*shiretoko-*.mjs'
       - 'scripts/capture-terrain-framebuffer.mjs'
+      - 'scripts/webgl-canvas-jpeg.mjs'
       - 'scripts/close-review-browser.mjs'
       - 'tests/shiretoko-*.test.mjs'
       - 'tests/coast-relief-v5.test.mjs'
+      - 'tests/webgl-canvas-jpeg.test.mjs'
       - '.github/workflows/shiretoko-terrain.yml'
   pull_request:
     paths:
@@ -17,9 +19,11 @@ on:
       - 'shiretoko-terrain.html'
       - 'scripts/*shiretoko-*.mjs'
       - 'scripts/capture-terrain-framebuffer.mjs'
+      - 'scripts/webgl-canvas-jpeg.mjs'
       - 'scripts/close-review-browser.mjs'
       - 'tests/shiretoko-*.test.mjs'
       - 'tests/coast-relief-v5.test.mjs'
+      - 'tests/webgl-canvas-jpeg.test.mjs'
       - '.github/workflows/shiretoko-terrain.yml'
 permissions:
   contents: read
@@ -60,7 +64,7 @@ jobs:
       - run: npm run typecheck
       - name: Full terrain contract tests
         if: matrix.lane == 'core'
-        run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs tests/coast-relief-v5.test.mjs
+        run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs tests/coast-relief-v5.test.mjs tests/webgl-canvas-jpeg.test.mjs
       - run: node scripts/package-shiretoko-terrain.mjs
       - name: Record exact package identity
         run: |
