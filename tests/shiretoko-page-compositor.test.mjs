@@ -8,7 +8,15 @@ function fixtures({after={},pixels={width:1600,height:1000,min:0,max:252},jpeg=B
  const calls=[];let reads=0;
  const page={evaluate:async(fn,arg)=>{const name=fn.toString();if(name.includes('const api = window.__SHIRETOKO_TERRAIN__')){
   calls.push('state');reads++;return reads===1?{...original}:{...original,...after};
- }if(name.includes('canvas.toBlob(')){calls.push('webgl-canvas');assert.ok(name.includes("'image/jpeg',0.92"));return 'data:image/jpeg;base64,'+jpeg.toString('base64');}calls.push('decode');assert.ok(name.includes('getImageData'));assert.ok(arg?.startsWith('/9j'));return pixels;},
+ }if(name.includes('canvas.toBlob(')){
+  calls.push('webgl-canvas');
+  // The encoder receives the requested quality as the real evaluate argument.
+  // Assert both that the live JPEG path uses the parameter and that this
+  // original walking capture still sends exactly 0.92, never a weaker mock.
+  assert.ok(name.includes("'image/jpeg',quality"));
+  assert.equal(arg,0.92);
+  return 'data:image/jpeg;base64,'+jpeg.toString('base64');
+ }calls.push('decode');assert.ok(name.includes('getImageData'));assert.ok(arg?.startsWith('/9j'));return pixels;},
  screenshot:async()=>{throw new Error('Walking capture must not resubmit the page compositor');}};
  return{page,calls};
 }

@@ -16,8 +16,10 @@ export async function withCanvasCaptureDeadline(operation, timeoutMs=20_000) {
   } finally {clearTimeout(timer);}
 }
 
-export async function readLiveWebGLCanvasJPEG(page) {
-  return withCanvasCaptureDeadline(()=>page.evaluate(async()=>{
+export async function readLiveWebGLCanvasJPEG(page, quality=0.92) {
+  if (!Number.isFinite(quality) || quality < 0 || quality > 1)
+    throw new RangeError('invalid real WebGL JPEG quality');
+  return withCanvasCaptureDeadline(()=>page.evaluate(async(quality)=>{
     const canvas=document.querySelector('canvas');
     const gl=canvas?.getContext('webgl2');
     if(!gl || gl.isContextLost?.() || canvas.width<=0 || canvas.height<=0)
@@ -31,7 +33,7 @@ export async function readLiveWebGLCanvasJPEG(page) {
       throw new Error('Live WebGL canvas cannot encode JPEG asynchronously');
     const blob=await new Promise((resolve,reject)=>{
       try {
-        canvas.toBlob(result=>result?resolve(result):reject(new Error('Live WebGL canvas did not encode actual JPEG pixels')),'image/jpeg',0.92);
+        canvas.toBlob(result=>result?resolve(result):reject(new Error('Live WebGL canvas did not encode actual JPEG pixels')),'image/jpeg',quality);
       } catch(error) {reject(error);}
     });
     if(blob.type!=='image/jpeg' || blob.size<4)
@@ -45,5 +47,5 @@ export async function readLiveWebGLCanvasJPEG(page) {
     if(typeof encoded!=='string' || !encoded.startsWith('data:image/jpeg;base64,'))
       throw new Error('Live WebGL canvas did not encode actual JPEG pixels');
     return encoded;
-  }),20_000);
+  },quality),20_000);
 }

@@ -3,6 +3,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
+import {readLiveWebGLCanvasJPEG} from './webgl-canvas-jpeg.mjs';
 const out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v4/interaction');await mkdir(out,{recursive:true});
 const file=resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),browser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
 const context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1}),page=await context.newPage(),errors=[],network=[],checks=[],walks=[];
@@ -54,9 +55,23 @@ try{
   // the existing freeze invalidation; never move the player or relax the gate.
   const tick=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,n=api.diagnostics().renderCallsTotal;api.freeze(true);return n;});
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,tick);
-  const frame=await page.evaluate(()=>{const a=window.__SHIRETOKO_TERRAIN__,c=document.querySelector('canvas'),gl=c.getContext('webgl2');gl.finish();const d=a.diagnostics();return{...d,groundError:Math.abs(d.player.y-a.terrain.heightAt(d.player.x,d.player.z)),water:a.terrain.inWater(d.player.x,d.player.z),glError:gl.getError(),image:c.toDataURL('image/jpeg',.94)};});
+  // The previous synchronous gl.finish() + toDataURL() can wedge SwiftShader
+  // after several real walking frames (main 8f3c508, run 40014252955:
+  // cape/wetland/lake captured; mountain step hung until job cancellation).
+  // Preserve the exact live WebGL scene, native movement, input, geometry and
+  // original 0.94 JPEG quality, but encode the already rendered buffer async.
+  const frame=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,c=document.querySelector('canvas'),gl=c?.getContext('webgl2');
+    if(!gl||gl.isContextLost())throw Error('Real V4 WebGL context unavailable');
+    const d=a.diagnostics();
+    return {...d,groundError:Math.abs(d.player.y-a.terrain.heightAt(d.player.x,d.player.z)),
+      water:a.terrain.inWater(d.player.x,d.player.z),glError:gl.getError(),canvasSize:[c.width,c.height]};
+  });
+  assert.deepEqual(frame.canvasSize,[1600,900]);
+  const imageData=await readLiveWebGLCanvasJPEG(page,.94);
+  assert.equal(await page.evaluate(()=>document.querySelector('canvas').getContext('webgl2').getError()),0);
   assert.equal(frame.mode,'walk');assert.ok(frame.pointerLocked&&frame.player.grounded);assert.equal(frame.water,false);assert.ok(frame.groundError<.001);assert.equal(frame.glError,0);assert.deepEqual(frame.inputKeys,[]);assert.ok(frame.player.distance-before.distance>.8);
-  const image=`walk-${['cape','wetland','lake','mountain'][i-1]}-webgl-framebuffer.jpg`;await writeFile(resolve(out,image),Buffer.from(frame.image.split(',')[1],'base64'));delete frame.image;walks.push({location:i,file:image,method:'Actual preserved WebGL framebuffer after real W+Shift and Space input; DOM overlay excluded',...frame});
+  const image=`walk-${['cape','wetland','lake','mountain'][i-1]}-webgl-framebuffer.jpg`;await writeFile(resolve(out,image),Buffer.from(imageData.split(',')[1],'base64'));walks.push({location:i,file:image,method:'Actual preserved WebGL framebuffer after real W+Shift and Space input; DOM overlay excluded',...frame});
   await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit'&&!document.pointerLockElement);
  }
  checks.push('All four actual first-person starts accept W+Shift, jump/land, enforce dry shared grounding and release onEscape');
