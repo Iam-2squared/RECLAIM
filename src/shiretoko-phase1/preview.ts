@@ -6,6 +6,7 @@ import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
 import { TerrainFrameDemand } from './frame-demand.ts';
+import { TerrainGpuFrameGate } from './gpu-frame-gate.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
 import './preview.css';
 
@@ -110,6 +111,10 @@ async function boot() {
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
   const frameDemand = new TerrainFrameDemand();
+  // Real WebGL2 GPU fences prevent RAF from queuing dozens of software-GL
+  // frames whose eventual completion blocks the original V4 capture deadline.
+  // Physics and pointer/keyboard input still run each RAF regardless of GPU load.
+  const gpuFrameGate = new TerrainGpuFrameGate(renderer.getContext() as WebGL2RenderingContext);
   const cameraChanged = () => { needsRender = true; };
   controls.addEventListener('change', cameraChanged); cleanup.push(() => controls.removeEventListener('change',cameraChanged));
   let transition: { from: T.Vector3; targetFrom: T.Vector3; to: View; start: number } | null = null;
@@ -129,12 +134,13 @@ async function boot() {
   LOCATIONS.forEach((p,i)=>{const label=document.createElement('span');label.id=`intro-location-${i}`;label.className='intro-marker';label.innerHTML=`<b>0${i+1}</b>${p.name}`;$('intro-labels').append(label);});
   function renderNow(time = performance.now()) {
     if (disposed || contextLost || shaderError) return;
+    if (!gpuFrameGate.canSubmit()) { needsRender = true; return; }
     if (!freeze) for (const water of waters) water.material.uniforms.uTime.value = (time-started)/1000;
     updateIntroLabels();
     // The backdrop represents directions, not a finite sphere fixed to the
     // world's origin. Panning to the distant terminal must not exit its shell.
     sky.position.copy(camera.position);
-    const submitted = performance.now(); renderer.render(scene,camera); frameDemand.submitted(camera); renderCallsTotal++; needsRender = false;
+    const submitted = performance.now(); renderer.render(scene,camera); gpuFrameGate.submitted(); frameDemand.submitted(camera); renderCallsTotal++; needsRender = false;
     if (drawSubmissionMs.length < 600) drawSubmissionMs.push(performance.now()-submitted);
     if (!firstFrame && !shaderError) { firstFrame = performance.now(); $('loading').hidden = true; }
   }
@@ -287,6 +293,7 @@ async function boot() {
     const geometries = new Set<T.BufferGeometry>(), materials = new Set<T.Material>();
     scene.traverse(object => { if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose();
+    gpuFrameGate.dispose();
     renderer.dispose();
     // This *standalone* preview owns its WebGL context (unlike the game
     // renderer shared by Mission). Releasing it before detaching the canvas
