@@ -127,10 +127,10 @@ try {
   // Keep only the review image's heading reproducible after the real inputs.
   // Never move the walker or replace the W/jump/Escape assertions above/below.
   const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;api.freeze(true);return api.diagnostics().renderCallsTotal;});
-  // Capture a genuine freshly drawn WebGL walking pose through Chromium's
-  // compositor (the same path proven by all 76 v3/v4 scene screenshots).
-  // Exclude only temporary DOM overlays and verify unchanged input, camera,
-  // collision, 1600x1000 pixels and WebGL context before and after capture.
+  // Capture the original freshly drawn 1600x1000 WebGL canvas pixels in
+  // walking mode, avoiding a separate SwiftShader page-compositor redraw.
+  // The unrelated DOM overlays are absent from the source canvas; verify
+  // unchanged input, camera, collision, pixels and context across capture.
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeWalkingCapture);
   const walkingReadback=await stage('walking-framebuffer',()=>captureTerrainScreenshot(page));
   assert.equal(walkingReadback.glError,0);assert.equal(walkingReadback.preserveDrawingBuffer,true);assert.equal(walkingReadback.dpr,1);assert.deepEqual(walkingReadback.viewport,[1600,1000]);assert.equal(walkingReadback.width,1600);assert.equal(walkingReadback.height,1000);assert.ok(walkingReadback.max>walkingReadback.min,'Walking framebuffer is not blank');
@@ -138,7 +138,7 @@ try {
   assert.equal(walkingReadback.yaw,0);assert.equal(walkingReadback.pitch,-.06);assert.equal(walkingReadback.fov,66);
   assert.ok(walkingReadback.image.startsWith('data:image/jpeg;base64,'));const walkingJPEG=Buffer.from(walkingReadback.image.split(',')[1],'base64');assert.equal(walkingJPEG[0],255);assert.equal(walkingJPEG[1],216);
   await writeFile(resolve(captures,'08-first-person-cape-webgl-framebuffer.jpg'),walkingJPEG);
-  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='Actual WebGL page compositor screenshot with transient DOM overlay exclusion';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
+  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='Actual 1600x1000 WebGL drawing-buffer JPEG from original canvas (not page compositor)';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
   await stage('native-Escape',()=>page.keyboard.press('Escape'));
   await stage('orbit-after-Escape',()=>page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().mode === 'orbit'));
   checks.push('Space jump settles; Escape releases the pointer and returns to orbit');
