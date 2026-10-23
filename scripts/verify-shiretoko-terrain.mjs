@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { captureTerrainFramebuffer } from './capture-terrain-framebuffer.mjs';
 const root = resolve(import.meta.dirname, '..'), release = resolve(root, 'release'), captures = resolve(release, 'shiretoko-phase1-review');
 await mkdir(captures, { recursive: true });
 const artifact = resolve(release, 'RECLAIM_Shiretoko_Terrain_Phase1.html');
@@ -122,22 +123,17 @@ try {
   // Keep only the review image's heading reproducible after the real inputs.
   // Never move the walker or replace the W/jump/Escape assertions above/below.
   const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;return api.diagnostics().renderCallsTotal;});
-  // Walking continuously submits frames. The software-GPU page compositor can
-  // stall on screenshot synchronization while that valid WebGL loop is active.
-  // Wait for a real new submission, then read its preserved shader framebuffer.
+  // Capture the same full-size real frame through a PBO/fence. The browser
+  // remains responsive; neither gl.finish nor a second WebGL toDataURL read
+  // can stall the main thread. Camera, scene and all assertions stay unchanged.
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeWalkingCapture);
-  const walkingReadback=await stage('walking-framebuffer',()=>page.evaluate(()=>{
-    const api=window.__SHIRETOKO_TERRAIN__,canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2');gl.finish();
-    const d=api.diagnostics(),rgba=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,rgba);
-    let min=255,max=0;for(let i=0;i<rgba.length;i+=4)for(let c=0;c<3;c++){min=Math.min(min,rgba[i+c]);max=Math.max(max,rgba[i+c]);}
-    return{width:canvas.width,height:canvas.height,viewport:[innerWidth,innerHeight],dpr:devicePixelRatio,preserveDrawingBuffer:Boolean(gl.getContextAttributes()?.preserveDrawingBuffer),mode:d.mode,pointerLocked:d.pointerLocked,grounded:d.player.grounded,inputKeys:d.inputKeys,contextLost:d.contextLost,shaderError:d.shaderError,renderCallsTotal:d.renderCallsTotal,groundError:Math.abs(d.player.y-api.terrain.heightAt(d.player.x,d.player.z)),yaw:api.walker.yaw,pitch:api.walker.pitch,cameraPosition:d.camera.position,fov:d.camera.fov,min,max,glError:gl.getError(),image:canvas.toDataURL('image/jpeg',.92)};
-  }));
+  const walkingReadback=await stage('walking-framebuffer',()=>page.evaluate(captureTerrainFramebuffer));
   assert.equal(walkingReadback.glError,0);assert.equal(walkingReadback.preserveDrawingBuffer,true);assert.equal(walkingReadback.dpr,1);assert.deepEqual(walkingReadback.viewport,[1600,1000]);assert.equal(walkingReadback.width,1600);assert.equal(walkingReadback.height,1000);assert.ok(walkingReadback.max>walkingReadback.min,'Walking framebuffer is not blank');
   assert.equal(walkingReadback.mode,'walk');assert.equal(walkingReadback.pointerLocked,true);assert.equal(walkingReadback.grounded,true);assert.deepEqual(walkingReadback.inputKeys,[]);assert.equal(walkingReadback.contextLost,false);assert.equal(walkingReadback.shaderError,false);assert.ok(walkingReadback.renderCallsTotal>beforeWalkingCapture);assert.ok(walkingReadback.groundError<.001);
   assert.equal(walkingReadback.yaw,0);assert.equal(walkingReadback.pitch,-.06);assert.equal(walkingReadback.fov,66);
   assert.ok(walkingReadback.image.startsWith('data:image/jpeg;base64,'));const walkingJPEG=Buffer.from(walkingReadback.image.split(',')[1],'base64');assert.equal(walkingJPEG[0],255);assert.equal(walkingJPEG[1],216);
   await writeFile(resolve(captures,'08-first-person-cape-webgl-framebuffer.jpg'),walkingJPEG);
-  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='WebGL framebuffer (DOM overlay not included)';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
+  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='Asynchronous WebGL PBO framebuffer (DOM overlay not included)';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
   await stage('native-Escape',()=>page.keyboard.press('Escape'));
   await stage('orbit-after-Escape',()=>page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().mode === 'orbit'));
   checks.push('Space jump settles; Escape releases the pointer and returns to orbit');
