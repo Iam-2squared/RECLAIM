@@ -6,11 +6,30 @@ export class TerrainWalker {
   yaw = 0; pitch = 0; velocity = 0; grounded = true; jumpHeld = false; distance = 0;
   readonly eyeHeight = 1.68;
   readonly terrain: ShiretokoTerrain;
-  constructor(terrain: ShiretokoTerrain) { this.terrain = terrain; this.y = terrain.heightAt(this.x, this.z); }
+  // Optional review-only indexed deck. The default campaign-independent walker
+  // remains on the canonical 5m terrain and is byte-for-byte behavior-compatible.
+  private readonly platformHeightAt: ((x: number, z: number) => number | null) | undefined;
+  constructor(terrain: ShiretokoTerrain, platformHeightAt?: (x: number, z: number) => number | null) {
+    this.terrain = terrain; this.platformHeightAt = platformHeightAt;
+    this.y = this.surfaceAt(this.x, this.z);
+  }
+  private surfaceAt(x: number, z: number): number {
+    const deck = this.platformHeightAt?.(x, z);
+    if (deck !== null && deck !== undefined && Number.isFinite(deck)) return deck;
+    return this.terrain.heightAt(x, z);
+  }
+  private waterAt(x: number, z: number): boolean {
+    return this.platformHeightAt?.(x, z) == null && this.terrain.inWater(x, z);
+  }
+  private slopeAt(x: number, z: number): number {
+    if (this.platformHeightAt?.(x, z) == null) return this.terrain.slopeAt(x, z);
+    return Math.hypot(this.surfaceAt(x + .35, z) - this.surfaceAt(x - .35, z),
+      this.surfaceAt(x, z + .35) - this.surfaceAt(x, z - .35)) / .7;
+  }
   place(x: number, z: number): boolean {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
-    if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.terrain.inWater(x, z) || this.terrain.slopeAt(x, z) > .8) return false;
-    this.x = x; this.z = z; this.y = this.terrain.heightAt(x, z); this.velocity = 0; this.grounded = true; this.jumpHeld = false; return true;
+    if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.waterAt(x, z) || this.slopeAt(x, z) > .8) return false;
+    this.x = x; this.z = z; this.y = this.surfaceAt(x, z); this.velocity = 0; this.grounded = true; this.jumpHeld = false; return true;
   }
   clearInput() { this.jumpHeld = false; }
   step(input: WalkInput, seconds: number): void {
@@ -24,8 +43,8 @@ export class TerrainWalker {
       const oldX = this.x, oldZ = this.z;
       for (const axis of ['x', 'z'] as const) {
         const x = this.x + (axis === 'x' ? dx / pieces : 0), z = this.z + (axis === 'z' ? dz / pieces : 0);
-        if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.terrain.inWater(x, z)) continue;
-        if (this.terrain.slopeAt(x, z) > .85 || this.terrain.heightAt(x, z) - this.terrain.heightAt(this.x, this.z) > .4) continue;
+        if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.waterAt(x, z)) continue;
+        if (this.slopeAt(x, z) > .85 || this.surfaceAt(x, z) - this.surfaceAt(this.x, this.z) > .4) continue;
         this[axis] = axis === 'x' ? x : z;
       }
       this.distance += Math.hypot(this.x - oldX, this.z - oldZ);
@@ -33,7 +52,7 @@ export class TerrainWalker {
     if (input.jump && !this.jumpHeld && this.grounded) { this.velocity = 6; this.grounded = false; }
     this.jumpHeld = input.jump;
     this.velocity -= 20 * dt; this.y += this.velocity * dt;
-    const ground = this.terrain.heightAt(this.x, this.z);
+    const ground = this.surfaceAt(this.x, this.z);
     if (this.y <= ground || (this.velocity < 0 && this.y - ground < .35)) { this.y = ground; this.velocity = 0; this.grounded = true; }
   }
 }
