@@ -19,7 +19,8 @@ export async function withCanvasCaptureDeadline(operation, timeoutMs=20_000) {
 export async function readLiveWebGLCanvasJPEG(page) {
   return withCanvasCaptureDeadline(()=>page.evaluate(async()=>{
     const canvas=document.querySelector('canvas');
-    if(!canvas || !canvas.getContext('webgl2') || canvas.width<=0 || canvas.height<=0)
+    const gl=canvas?.getContext('webgl2');
+    if(!gl || gl.isContextLost?.() || canvas.width<=0 || canvas.height<=0)
       throw new Error('Live WebGL canvas not available for capture');
     // The source is still the original already-rendered WebGL framebuffer.
     // toBlob keeps JPEG encoding asynchronous instead of toDataURL's
