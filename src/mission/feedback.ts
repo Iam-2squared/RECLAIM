@@ -72,7 +72,15 @@ export class DroneCrashRig {
   // *drawn* position; returning scene y would resurrect a falling wreck.
   if(!finite(currentY)||!finite(groundY))
    return{y:this.started?this.lastSafeY:(finite(currentY)?currentY:0),bank:this.bank,stopped:true,settled:false};
-  if(!this.started){this.started=true;this.groundAtStart=groundY;this.contactGround=groundY;this.startY=currentY;this.lastSafeY=currentY;}
+  if(!this.started){
+   // An initial sampled floor above the disabled drone is not a trustworthy
+   // contact point: transient LOD/probe mismatches must never launch a wreck
+   // upward or make it permanently settle above its last displayed altitude.
+   // Hold the drawable pose without consuming fall time; retry next tick.
+   if(groundY+.25>currentY+1e-7)
+    return{y:currentY,bank:this.bank,stopped:true,settled:false};
+   this.started=true;this.groundAtStart=groundY;this.contactGround=groundY;this.startY=currentY;this.lastSafeY=currentY;
+  }
   // The drone stops moving in X/Z once disabled. Never accept a later
   // ground sample that sits ABOVE the already-rendered wreck: that sample
   // is inconsistent with a stationary world and would pop the wreck upward.
