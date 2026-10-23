@@ -31,8 +31,12 @@ async function boot() {
   // second generating unused terrain. Supported browsers still paint loading
   // once before CPU generation; dispose the early renderer on generation error.
   await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  // Opt-in far-coast experimental geometry is exclusively on the standalone
+  // review page. Default v4, approved HOME/TITLE and campaign are untouched.
+  const reliefProfile=new URLSearchParams(location.search).get('coastRelief')==='v5'?'v5':'v4';
+  document.documentElement.dataset.coastRelief=reliefProfile;
   const terrainStarted=performance.now();let terrain:ShiretokoTerrain;
-  try { terrain=new ShiretokoTerrain(); }catch(error){renderer.dispose();throw error;}
+  try { terrain=new ShiretokoTerrain(reliefProfile); }catch(error){renderer.dispose();throw error;}
   const generated=performance.now();
   renderer.debug.onShaderError = (gl, program, vertexShader, fragmentShader) => {
     shaderError = true;
