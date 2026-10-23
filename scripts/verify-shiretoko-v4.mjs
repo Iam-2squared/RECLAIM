@@ -41,7 +41,15 @@ try{
   await page.evaluate(i=>window.__SHIRETOKO_TERRAIN__.setView(i),i);await page.locator('#walk').click();await page.waitForFunction(()=>document.pointerLockElement===document.querySelector('canvas'));
   const before=(await state()).player;await page.keyboard.down('Shift');await page.keyboard.down('w');
   await page.waitForFunction(start=>{const d=window.__SHIRETOKO_TERRAIN__.diagnostics();return d.inputKeys.includes('ShiftLeft')&&Math.hypot(d.player.x-start.x,d.player.z-start.z)>.8;},before,{timeout:15000});
-  await page.keyboard.up('w');await page.keyboard.up('Shift');await page.keyboard.down('Space');// Poll the true airborne state on an independent CPU interval, not requestAnimationFrame.\n  // SwiftShader can starve RAF after a real Space keydown and land before the\n  // next RAF callback; retain the exact !grounded assertion and 15s limit.\n  await page.waitForFunction(()=>!window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded,{}, {timeout:15000,polling:50});await page.keyboard.up('Space');// Do not capture before the native Space keyup has reached the actual\n  // preview's input state. Under a busy compositor the player may have\n  // grounded on a prior simulation step while the delivered keyup is pending.\n  // Preserve the same 15s deadline and require BOTH original grounding and\n  // true key release; a stuck key must still fail this check.\n  await page.waitForFunction(()=>{const d=window.__SHIRETOKO_TERRAIN__.diagnostics();return d.player.grounded&&!d.inputKeys.includes('Space');},{},{timeout:15000,polling:50});
+  await page.keyboard.up('w');await page.keyboard.up('Shift');await page.keyboard.down('Space');// Poll the true airborne state on an independent CPU interval, not requestAnimationFrame.
+  // SwiftShader can starve RAF after a real Space keydown and land before the
+  // next RAF callback; retain the exact !grounded assertion and 15s limit.
+  await page.waitForFunction(()=>!window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded,{}, {timeout:15000,polling:50});await page.keyboard.up('Space');// Do not capture before the native Space keyup has reached the actual
+  // preview's input state. Under a busy compositor the player may have
+  // grounded on a prior simulation step while the delivered keyup is pending.
+  // Preserve the same 15s deadline and require BOTH original grounding and
+  // true key release; a stuck key must still fail this check.
+  await page.waitForFunction(()=>{const d=window.__SHIRETOKO_TERRAIN__.diagnostics();return d.player.grounded&&!d.inputKeys.includes('Space');},{},{timeout:15000,polling:50});
   // Frozen, grounded walking is now on-demand. Request one real frame using
   // the existing freeze invalidation; never move the player or relax the gate.
   const tick=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,n=api.diagnostics().renderCallsTotal;api.freeze(true);return n;});
