@@ -1,0 +1,116 @@
+name: Shiretoko Phase 1 terrain review
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/shiretoko-phase1/**'
+      - 'shiretoko-terrain.html'
+      - 'scripts/*shiretoko-*.mjs'
+      - 'tests/shiretoko-*.test.mjs'
+      - 'tests/coast-relief-v5.test.mjs'
+      - '.github/workflows/shiretoko-terrain.yml'
+  pull_request:
+    paths:
+      - 'src/shiretoko-phase1/**'
+      - 'shiretoko-terrain.html'
+      - 'scripts/*shiretoko-*.mjs'
+      - 'tests/shiretoko-*.test.mjs'
+      - 'tests/coast-relief-v5.test.mjs'
+      - '.github/workflows/shiretoko-terrain.yml'
+permissions:
+  contents: read
+concurrency:
+  group: shiretoko-review-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+jobs:
+  review:
+    name: terrain-review (${{ matrix.lane }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    # Run 39950471480 passed the geometry and interaction checks, but exhausted
+    # the job budget while capturing V4. Keep the 12-minute limit and every
+    # existing test/camera; separate independent work instead of deleting gates.
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [core, v4]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ env.SOURCE_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Full terrain contract tests
+        if: matrix.lane == 'core'
+        run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs tests/coast-relief-v5.test.mjs
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - name: Record exact package identity
+        run: |
+          mkdir -p release
+          git rev-parse HEAD > release/ci-source-${{ matrix.lane }}.txt
+          (cd release && sha256sum RECLAIM_Shiretoko_Terrain_Phase1.html RECLAIM_Shiretoko_Intro_Demo.html) > release/ci-package-${{ matrix.lane }}.sha256
+      - run: npx playwright install --with-deps chromium
+      - name: Original terrain, intro and V3 review gates
+        if: matrix.lane == 'core'
+        run: |
+          node scripts/verify-shiretoko-terrain.mjs
+          node scripts/verify-shiretoko-intro.mjs
+          node scripts/verify-shiretoko-v3.mjs
+          node scripts/report-shiretoko-v3.mjs
+      - name: Original V4 interaction, geometry and all 76 comparison captures
+        if: matrix.lane == 'v4'
+        run: |
+          node scripts/verify-shiretoko-v4.mjs
+          node scripts/report-shiretoko-v4.mjs
+          node scripts/build-shiretoko-v3-baseline.mjs
+          node scripts/capture-shiretoko-v4.mjs release/shiretoko-phase1-review/v4/baseline/RECLAIM_Shiretoko_Terrain_Phase1_v3.html release/shiretoko-phase1-review/v4/comparison/v3
+          node scripts/capture-shiretoko-v4.mjs release/RECLAIM_Shiretoko_Terrain_Phase1.html release/shiretoko-phase1-review/v4/comparison/v4
+          node scripts/diff-shiretoko-v4.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-ci-${{ matrix.lane }}-${{ env.SOURCE_SHA }}-${{ github.run_attempt }}
+          path: |
+            release/RECLAIM_Shiretoko_Terrain_Phase1.html
+            release/RECLAIM_Shiretoko_Intro_Demo.html
+            release/shiretoko-phase1-review/
+            release/ci-source-*.txt
+            release/ci-package-*.sha256
+          retention-days: 14
+          if-no-files-found: error
+  terrain:
+    name: terrain
+    needs: review
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every review job to finish successfully
+        env:
+          REVIEW_RESULT: ${{ needs.review.result }}
+        run: test "$REVIEW_RESULT" = success
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shiretoko-ci-*-${{ env.SOURCE_SHA }}-${{ github.run_attempt }}
+          merge-multiple: true
+          path: release
+      - name: Verify both jobs tested the identical source and HTML bytes
+        working-directory: release
+        run: |
+          test "$(cat ci-source-core.txt)" = "$SOURCE_SHA"
+          test "$(cat ci-source-v4.txt)" = "$SOURCE_SHA"
+          diff -u ci-package-core.sha256 ci-package-v4.sha256
+          sha256sum -c ci-package-core.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shiretoko-terrain-phase1-${{ env.SOURCE_SHA }}-${{ github.run_attempt }}
+          path: release/
+          retention-days: 14
+          if-no-files-found: error
