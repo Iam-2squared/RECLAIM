@@ -16,7 +16,7 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert.equal(boardwalk.group.children.length,2);
   const [deck,posts]=boardwalk.group.children;
   assert.equal(deck.type,'Mesh');
-  assert.equal(posts.type,'Mesh'); // InstancedMesh has type 'Mesh' in Three.js
+  assert.equal(posts.type,'InstancedMesh');
   assert(posts.isInstancedMesh);
   assert.equal(posts.count,boardwalk.supports);
   assert.equal(deck.geometry.getIndex().count,boardwalk.indexedTriangles*3);
