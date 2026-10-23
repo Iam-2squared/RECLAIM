@@ -34,6 +34,10 @@ export class RegionTileStream<T> {
   private refillQueued=false;
   private readonly autoRefill:boolean;
   private lastRefillFailure:string|null=null;
+  // A rejected/empty tile is retried only after an explicit user focus.
+  // Successful siblings must not turn a permanently failing loader into a loop.
+  private readonly failedAutoKeys=new Set<string>();
+  private refilling=false;
   readonly load: TileLoader<T>;
   readonly dispose: TileDisposer<T>;
   constructor(load: TileLoader<T>, dispose: TileDisposer<T>, options:Readonly<{autoRefill?:boolean}>={}) {
@@ -53,15 +57,17 @@ export class RegionTileStream<T> {
        this.unsettled.size>=REGION_TILE_RULES.loadLimit)return;
     let missing=false;
     for(const key of this.wanted)
-      if(!this.resident.has(key)&&!this.pending.has(key)){missing=true;break;}
+      if(!this.resident.has(key)&&!this.pending.has(key)&&!this.failedAutoKeys.has(key)){missing=true;break;}
     if(!missing)return;
     this.refillQueued=true;
     queueMicrotask(()=>{
       this.refillQueued=false;
       if(this.shutDown||!this.lastFocus)return;
       const spec=this.lastFocus;
+      this.refilling=true;
       try { this.focus(spec.code,spec.x,spec.z,spec.detail); }
       catch(error) {this.lastRefillFailure=String(error);}
+      finally {this.refilling=false;}
     });
   }
 
@@ -69,6 +75,8 @@ export class RegionTileStream<T> {
     if (this.shutDown) throw new Error('region stream disposed');
     // Validate *before* modifying the active scene or aborting any request.
     const initial = planRegionTiles(code, x, z, detail, []);
+    // New explicit focus is the only authorization to retry a failed loader.
+    if(!this.refilling)this.failedAutoKeys.clear();
     const revision = ++this.revision;
     this.lastFocus={code,x,z,detail};
     this.lastRefillFailure=null;
@@ -119,7 +127,7 @@ export class RegionTileStream<T> {
     // Obsolete unresolved operations still occupy real loader slots.
     const available = Math.max(0, REGION_TILE_RULES.loadLimit - this.unsettled.size);
     plan = planRegionTiles(code, x, z, detail, [...this.resident.keys(), ...this.pending.keys()]);
-    for (const coord of plan.load.slice(0, available)) {
+    for (const coord of plan.load.filter(coord=>!this.refilling||!this.failedAutoKeys.has(coord.key)).slice(0, available)) {
       const controller = new AbortController(), generation = this.generation;
       this.pending.set(coord.key, { generation, controller });
       this.unsettled.add(controller); started.push(coord.key);
@@ -130,7 +138,11 @@ export class RegionTileStream<T> {
         const resource = await this.load(coord, controller.signal);
         // A loader returning no mesh is a failed load, never a resident tile.
         // The next explicit focus may safely retry without any ghost geometry.
-        if (resource === null || resource === undefined) return;
+        if (resource === null || resource === undefined) {
+          if(this.pending.get(coord.key)?.controller===controller&&!controller.signal.aborted)
+            this.failedAutoKeys.add(coord.key);
+          return;
+        }
         const current = this.pending.get(coord.key);
         if (this.shutDown || controller.signal.aborted || current?.controller !== controller ||
             generation !== this.generation || !this.wanted.has(coord.key) || this.region !== code) {
@@ -141,7 +153,10 @@ export class RegionTileStream<T> {
         else this.resident.set(coord.key, resource);
         completedOrObsolete=true;
       }).catch(() => {
-        // A loader failure remains eligible for a subsequent explicit focus().
+        // Failed loads are blocked only for automatic refills of this focus.
+        // A subsequent explicit focus may retry after its inputs have changed.
+        if(this.pending.get(coord.key)?.controller===controller&&!controller.signal.aborted)
+          this.failedAutoKeys.add(coord.key);
       }).finally(() => {
         if (this.pending.get(coord.key)?.controller === controller) this.pending.delete(coord.key);
         this.unsettled.delete(controller);
@@ -160,6 +175,7 @@ export class RegionTileStream<T> {
 
   clear(): void {
     this.lastFocus=null;
+    this.failedAutoKeys.clear();
     this.revision++;
     this.generation++;
     const pending = [...this.pending.values()];
