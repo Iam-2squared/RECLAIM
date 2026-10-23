@@ -1,4 +1,5 @@
 import {test,expect} from './browser-fixtures.mjs';
+import {arrowSteps} from './native-arrow-input.mjs';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {enter,lock,snapshot,walkTo,turnToward,holdForward,observedJump} from './mission-helpers.mjs';
 const evidence='test-results/world-evidence';
@@ -113,7 +114,11 @@ test('visibility pause clears input, freezes enemy/movement and requires explici
 });
 
 test('a restored low-health checkpoint takes actual drone damage, reaches HP0 and retries safely',async({page})=>{
- test.setTimeout(60000);await page.addInitScript(()=>{localStorage.setItem('reclaim.campaign.v1',JSON.stringify({version:1,introStep:4,droneDefeated:false,completedAreaIds:[],passages:[],checkpoint:{areaId:'shiretoko',x:0,y:0,z:8,yaw:Math.PI,pitch:0,hp:4},traversal:{areaId:'shiretoko',distance:9.5,lastPosition:{x:0,y:0,z:8},passedCheckpointIds:[]}}));});
+ // A checkpoint inside the house is outside the scout's leash plus attack reach.
+ // At the old z=8 fixture the scout could kill the stationary four-HP player
+ // during protocol setup, before any W input. Keep all real approach/death/
+ // retry assertions, HP and timeouts; start safely and walk into the same fight.
+ test.setTimeout(60000);await page.addInitScript(()=>{localStorage.setItem('reclaim.campaign.v1',JSON.stringify({version:1,introStep:4,droneDefeated:false,completedAreaIds:[],passages:[],checkpoint:{areaId:'shiretoko',x:0,y:0,z:0,yaw:Math.PI,pitch:0,hp:4},traversal:{areaId:'shiretoko',distance:9.5,lastPosition:{x:0,y:0,z:0},passedCheckpointIds:[]}}));});
  await page.goto('/');await page.locator('#settings-button').click();await page.locator('#quality-select').selectOption('low');await page.keyboard.press('Escape');await page.locator('#home-button').click();await page.locator('#start-button').click();await page.locator('#mission-resume').click();await lock(page);const initial=(await snapshot(page)).mission.player;expect(initial.hp).toBe(4);
  // A real four-HP player may die during the approach. Accept only that precise
  // expected terminal state, then assert actual damage/death/retry as before.
@@ -126,6 +131,65 @@ test('story/pause buttons accept Space; storage quota updates the idle save stat
  await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new Error('quota');};});await expect(page.locator('#mission-save')).toContainText('このセッション');await page.keyboard.press('Escape');await page.locator('#mission-home').click();
 });
 
-test('a delayed pointer-lock request cannot lock HOME after mission disposal',async({page})=>{
- await page.addInitScript(()=>{const request=HTMLCanvasElement.prototype.requestPointerLock;HTMLCanvasElement.prototype.requestPointerLock=function(...args){return new Promise((resolve,reject)=>setTimeout(()=>{try{Promise.resolve(request.apply(this,args)).then(resolve,reject);}catch(e){reject(e);}},250));};});await enter(page);await page.locator('#mission-skip').click();await page.locator('#mission-lock').click();await page.locator('#mission-home').click();await page.waitForTimeout(400);await expect(page.locator('body')).toHaveAttribute('data-screen','home');expect(await page.evaluate(()=>document.pointerLockElement)).toBeNull();expect((await snapshot(page)).mission).toBeNull();await expect(page.locator('#start-button')).toBeEnabled();
+test('a delayed pointer-lock request cannot lock HOME after mission disposal', async ({page}) => {
+  await page.addInitScript(() => {
+    const native = HTMLCanvasElement.prototype.requestPointerLock;
+    window.__reclaimPendingLock = undefined;
+    HTMLCanvasElement.prototype.requestPointerLock = function(...args) {
+      const canvas = this;
+      return new Promise((resolve, reject) => {
+        const pending = {
+          released: false,
+          settled: false,
+          release() {
+            if (pending.released) throw new Error('double release of deferred pointer lock');
+            pending.released = true;
+            try {
+              Promise.resolve(native.apply(canvas, args)).then(
+                value => { pending.settled = true; resolve(value); },
+                error => { pending.settled = true; reject(error); },
+              );
+            } catch (error) { pending.settled = true; reject(error); }
+          },
+        };
+        window.__reclaimPendingLock = pending;
+      });
+    };
+  });
+  await enter(page);
+  await page.locator('#mission-skip').click();
+  await page.locator('#mission-lock').click();
+  await expect.poll(async () => page.evaluate(() => Boolean(window.__reclaimPendingLock))).toBe(true);
+  // Deliberately dispatch to test a lifecycle race after the lock overlay hides.
+  // Separate tests cover the visible Escape -> HOME path.
+  await page.locator('#mission-home').dispatchEvent('click');
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
+  expect((await snapshot(page)).mission).toBeNull();
+  await page.evaluate(() => window.__reclaimPendingLock.release());
+  await expect.poll(async () => page.evaluate(() => window.__reclaimPendingLock.settled)).toBe(true);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => document.pointerLockElement)).toBeNull();
+  await expect(page.locator('#start-button')).toBeEnabled();
+});
+
+
+test('bounded aiming emits trusted native keydowns and leaves no held arrow',async({page})=>{
+ await page.setContent('<button autofocus>Native input probe</button>');
+ await page.locator('button').focus();
+ await page.evaluate(()=>{
+  window.__nativeArrowEvents=[];
+  for(const type of ['keydown','keyup'])document.addEventListener(type,e=>{
+   window.__nativeArrowEvents.push({type:e.type,code:e.code,trusted:e.isTrusted,repeat:e.repeat});
+  });
+ });
+ await arrowSteps(page.keyboard,'ArrowLeft',65);
+ const events=await page.evaluate(()=>window.__nativeArrowEvents);
+ expect(events).toHaveLength(66);
+ expect(events.every(e=>e.trusted&&e.code==='ArrowLeft')).toBe(true);
+ expect(events.filter(e=>e.type==='keydown')).toHaveLength(65);
+ expect(events[0].repeat).toBe(false);
+ expect(events.slice(1,65).every(e=>e.repeat)).toBe(true);
+ expect(events[65].type).toBe('keyup');
+ await page.keyboard.down('ArrowLeft');await page.keyboard.up('ArrowLeft');
+ expect(await page.evaluate(()=>window.__nativeArrowEvents[66].repeat)).toBe(false);
 });

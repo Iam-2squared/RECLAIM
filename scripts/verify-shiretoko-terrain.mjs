@@ -4,6 +4,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { captureTerrainFramebuffer } from './capture-terrain-framebuffer.mjs';
+import { closeReviewBrowser } from './close-review-browser.mjs';
 const root = resolve(import.meta.dirname, '..'), release = resolve(root, 'release'), captures = resolve(release, 'shiretoko-phase1-review');
 await mkdir(captures, { recursive: true });
 const artifact = resolve(release, 'RECLAIM_Shiretoko_Terrain_Phase1.html');
@@ -17,6 +18,7 @@ const browser = await chromium.launch({
 });
 const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
 const page = await context.newPage(), errors = [], network = [], checks = [];
+let renderingContext;
 // The previous CI emitted the real walking framebuffer, then exhausted the
 // entire job without identifying the stalled protocol operation. Previously
 // unbounded keyboard/evaluate operations now fail with stage evidence; no
@@ -42,6 +44,8 @@ await page.addInitScript(() => {
 try {
   await page.goto(pathToFileURL(artifact).href);
   await page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__?.diagnostics().ready, {}, { timeout: 60000 });
+  // Retain only for fixture teardown AFTER all scene-disposal assertions.
+  renderingContext = await page.evaluateHandle(() => document.querySelector('canvas').getContext('webgl2'));
   await page.evaluate(() => document.fonts.ready);
   assert.deepEqual(errors, []); checks.push('real WebGL compilation + first visible frame, no shader/page errors');
   const idleDraws = await page.evaluate(async () => {
@@ -172,4 +176,4 @@ try {
   await page.screenshot({path:resolve(captures,'FAILED-verification.png'),timeout:60000}).catch(()=>{});
   console.error('Runtime state',JSON.stringify(await stage('failure-diagnostics',()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()),5000).catch(()=>null)));
   throw error;
-} finally { await stage('close-browser',()=>browser.close(),10000); }
+} finally { await stage('close-browser',()=>closeReviewBrowser(browser,context,renderingContext),10000); }
