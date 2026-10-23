@@ -28,7 +28,9 @@ export class WeaponFeedback {
  }
  step(dt:number):void {
   if(!finite(dt)||dt<=0)return;
-  const safe=Math.min(dt,.25);
+  // A hidden/backgrounded tab may supply a multi-second elapsed interval.
+  // Cosmetic recoil must be gone on return, not left stuck at the .25s cap.
+  const safe=dt;
   this.rear*=decay(safe,.09);this.drop*=decay(safe,.11);this.rise*=decay(safe,.135);
   this.flash=Math.max(0,this.flash-safe);
   for(const key of ['rear','drop','rise'] as const)if(this[key]<1e-5)this[key]=0;
@@ -42,7 +44,11 @@ export class DroneCrashRig {
  private elapsed=0;
  private bank=0;
  private settled=false;
+ private restingY=0;
+ /** Last finite cosmetic position. Invalid terrain samples must never poison a mesh. */
+ private lastSafeY=0;
  private groundAtStart=0;
+ private contactGround=0;
  private startY=0;
  private started=false;
  private readonly acceleration=11;
@@ -54,16 +60,34 @@ export class DroneCrashRig {
   return .5*this.acceleration*toTerminal*toTerminal+this.terminalSpeed*(t-toTerminal);
  }
  step(dt:number,currentY:number,groundY:number):DroneCrashPose {
-  if(!finite(dt)||dt<=0||!finite(currentY)||!finite(groundY))
-   return{y:currentY,bank:this.bank,stopped:true,settled:this.settled};
-  if(!this.started){this.started=true;this.groundAtStart=groundY;this.startY=currentY;}
-  const floor=Math.max(this.groundAtStart,groundY)+.25;
-  if(this.settled)return{y:floor,bank:this.bank,stopped:true,settled:true};
+  // Sleep is a terminal cosmetic pose. Do not re-query terrain after contact:
+  // a moved/invalid sampling point must never teleport the disabled wreck.
+  if(this.settled)return{y:this.restingY,bank:this.bank,stopped:true,settled:true};
+  // The existing PR #8 contract leaves a non-advancing frame's authoritative
+  // finite y untouched. Preserving this matters for retry, pause and callers
+  // that use dt<=0 for sampling without committing a cosmetic movement.
+  if(!finite(dt)||dt<=0)
+   return{y:finite(currentY)?currentY:(this.started?this.lastSafeY:0),bank:this.bank,stopped:true,settled:false};
+  // A valid elapsed frame with an invalid height probe must hold the last
+  // *drawn* position; returning scene y would resurrect a falling wreck.
+  if(!finite(currentY)||!finite(groundY))
+   return{y:this.started?this.lastSafeY:(finite(currentY)?currentY:0),bank:this.bank,stopped:true,settled:false};
+  if(!this.started){this.started=true;this.groundAtStart=groundY;this.contactGround=groundY;this.startY=currentY;this.lastSafeY=currentY;}
+  // The drone stops moving in X/Z once disabled. Never accept a later
+  // ground sample that sits ABOVE the already-rendered wreck: that sample
+  // is inconsistent with a stationary world and would pop the wreck upward.
+  // Ground uplift below the current visible height is still respected, so
+  // genuine early contacts cannot sink through the floor. Track the highest
+  // credible floor to avoid oscillation between successive LOD probes.
+  if(groundY+.25<=Math.min(this.startY,this.lastSafeY)+1e-7)
+   this.contactGround=Math.max(this.contactGround,groundY);
+  const floor=this.contactGround+.25;
   this.elapsed+=dt;
   this.bank=Math.min(.95,1.5*this.elapsed);
   const y=Math.max(floor,this.startY-this.fallDistance(this.elapsed));
-  if(y<=floor+1e-5)this.settled=true;
+  if(y<=floor+1e-5){this.settled=true;this.restingY=y;}
+  this.lastSafeY=y;
   return{y,bank:this.bank,stopped:true,settled:this.settled};
  }
- reset():void {this.elapsed=0;this.bank=0;this.settled=false;this.started=false;this.groundAtStart=0;this.startY=0;}
+ reset():void {this.elapsed=0;this.bank=0;this.settled=false;this.started=false;this.groundAtStart=0;this.contactGround=0;this.startY=0;this.restingY=0;this.lastSafeY=0;}
 }
