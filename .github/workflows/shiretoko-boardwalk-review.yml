@@ -1,0 +1,38 @@
+name: Shiretoko boardwalk real-WebGL review
+on:
+  pull_request:
+    paths:
+      - 'src/shiretoko-phase1/boardwalk.ts'
+      - 'src/shiretoko-phase1/walker.ts'
+      - 'src/shiretoko-phase1/preview.ts'
+      - 'tests/shiretoko-boardwalk.test.mjs'
+      - 'scripts/verify-shiretoko-boardwalk.mjs'
+      - '.github/workflows/shiretoko-boardwalk-review.yml'
+permissions:
+  contents: read
+jobs:
+  boardwalk-real-webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node --experimental-strip-types --test tests/shiretoko-boardwalk.test.mjs
+      - run: npm test
+      - run: npm run build
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-shiretoko-boardwalk.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-boardwalk-review-${{ github.event.pull_request.head.sha }}
+          path: release/shiretoko-boardwalk-review/
+          retention-days: 14
