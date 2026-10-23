@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { captureTerrainFramebuffer } from './capture-terrain-framebuffer.mjs';
+import { captureTerrainScreenshot } from './capture-shiretoko-page-frame.mjs';
 import { closeReviewBrowser } from './close-review-browser.mjs';
 const root = resolve(import.meta.dirname, '..'), release = resolve(root, 'release'), captures = resolve(release, 'shiretoko-phase1-review');
 await mkdir(captures, { recursive: true });
@@ -123,18 +123,19 @@ try {
   await stage('native-look-delivery',()=>page.evaluate(async()=>{await window.__terrainLookDelivered;delete window.__terrainLookDelivered;}));
   // Keep only the review image's heading reproducible after the real inputs.
   // Never move the walker or replace the W/jump/Escape assertions above/below.
-  const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;return api.diagnostics().renderCallsTotal;});
-  // Capture the same full-size real frame through a PBO/fence. The browser
-  // remains responsive; neither gl.finish nor a second WebGL toDataURL read
-  // can stall the main thread. Camera, scene and all assertions stay unchanged.
+  const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;api.freeze(true);return api.diagnostics().renderCallsTotal;});
+  // Request one genuine, settled WebGL frame at the verified walking pose.
+  // Capture through the page compositor used by 76 successful V3/V4 views.
+  // Only DOM overlays are temporarily hidden in screenshot CSS; geometry,
+  // camera, input, material and all original evidence gates remain unchanged.
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeWalkingCapture);
-  const walkingReadback=await stage('walking-framebuffer',()=>page.evaluate(captureTerrainFramebuffer));
+  const walkingReadback=await stage('walking-framebuffer',()=>captureTerrainScreenshot(page));
   assert.equal(walkingReadback.glError,0);assert.equal(walkingReadback.preserveDrawingBuffer,true);assert.equal(walkingReadback.dpr,1);assert.deepEqual(walkingReadback.viewport,[1600,1000]);assert.equal(walkingReadback.width,1600);assert.equal(walkingReadback.height,1000);assert.ok(walkingReadback.max>walkingReadback.min,'Walking framebuffer is not blank');
   assert.equal(walkingReadback.mode,'walk');assert.equal(walkingReadback.pointerLocked,true);assert.equal(walkingReadback.grounded,true);assert.deepEqual(walkingReadback.inputKeys,[]);assert.equal(walkingReadback.contextLost,false);assert.equal(walkingReadback.shaderError,false);assert.ok(walkingReadback.renderCallsTotal>beforeWalkingCapture);assert.ok(walkingReadback.groundError<.001);
   assert.equal(walkingReadback.yaw,0);assert.equal(walkingReadback.pitch,-.06);assert.equal(walkingReadback.fov,66);
   assert.ok(walkingReadback.image.startsWith('data:image/jpeg;base64,'));const walkingJPEG=Buffer.from(walkingReadback.image.split(',')[1],'base64');assert.equal(walkingJPEG[0],255);assert.equal(walkingJPEG[1],216);
   await writeFile(resolve(captures,'08-first-person-cape-webgl-framebuffer.jpg'),walkingJPEG);
-  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='Asynchronous WebGL PBO framebuffer (DOM overlay not included)';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
+  const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='Actual WebGL page compositor screenshot with transient DOM overlay exclusion';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
   await stage('native-Escape',()=>page.keyboard.press('Escape'));
   await stage('orbit-after-Escape',()=>page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().mode === 'orbit'));
   checks.push('Space jump settles; Escape releases the pointer and returns to orbit');
