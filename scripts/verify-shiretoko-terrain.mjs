@@ -4,6 +4,7 @@ import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { captureTerrainFramebuffer } from './capture-terrain-framebuffer.mjs';
+import { closeReviewBrowser } from './close-review-browser.mjs';
 const root = resolve(import.meta.dirname, '..'), release = resolve(root, 'release'), captures = resolve(release, 'shiretoko-phase1-review');
 await mkdir(captures, { recursive: true });
 const artifact = resolve(release, 'RECLAIM_Shiretoko_Terrain_Phase1.html');
@@ -172,4 +173,4 @@ try {
   await page.screenshot({path:resolve(captures,'FAILED-verification.png'),timeout:60000}).catch(()=>{});
   console.error('Runtime state',JSON.stringify(await stage('failure-diagnostics',()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()),5000).catch(()=>null)));
   throw error;
-} finally { await stage('close-browser',()=>browser.close(),10000); }
+} finally { await stage('close-browser',()=>closeReviewBrowser(browser,context),10000); }
