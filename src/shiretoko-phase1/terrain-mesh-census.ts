@@ -41,7 +41,8 @@ export function auditTerrainMeshes(meshes:readonly TerrainMesh[],heightAt:(x:num
    const a=point(m,ia),b=point(m,ib),c=point(m,ic);
    const signed=(b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x);
    if(!finite(signed)||Math.abs(signed)<1e-6)add('degenerate',m.name+' triangle '+i/3);
-   else if(signed<0)add('winding',m.name+' triangle '+i/3);
+   // XZ signed area is the NEGATIVE of the upward-facing Y component of (b-a)×(c-a).
+   else if(signed>0)add('winding',m.name+' triangle '+i/3);
   }
  }
  return {vertices,triangles,issues:Object.freeze(issues),pass:issues.length===0};
