@@ -60,7 +60,7 @@ jobs:
       - run: npm run typecheck
       - name: Full terrain contract tests
         if: matrix.lane == 'core'
-        run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs tests/coast-relief-v5.test.mjs
+        run: node --experimental-strip-types --test tests/shiretoko-*.test.mjs tests/coast-relief-v5.test.mjs tests/webgl-canvas-jpeg.test.mjs
       - run: node scripts/package-shiretoko-terrain.mjs
       - name: Record exact package identity
         run: |
