@@ -8,7 +8,7 @@ export class ScoutDrone {
   id='shiretoko-scout-01';state:DroneState='idle';hp:number=COMBAT_TUNING.droneHp;hits=0;clock=0;attackClock=0;scanClock=0;position:Position;origin:{x:number;z:number};
   constructor(x:number,z:number,height:number,defeated=false){this.origin={x,z};this.position={x,y:height+2.1,z};if(defeated){this.hp=0;this.state='stopped';}}
   step(dt:number,player:Position,heightAt:(x:number,z:number)=>number,visible=true):number {
-    dt=Math.max(0,Math.min(.1,dt));this.clock+=dt;this.attackClock+=dt;
+    dt=Number.isFinite(dt)?Math.max(0,Math.min(.1,dt)):0;this.clock+=dt;const wasAttacking=this.state==='attacking';
     if(this.hp<=0){this.state='stopped';this.position.y=Math.max(heightAt(this.position.x,this.position.z)+.25,this.position.y-dt*2);return 0;}
     const distance=Math.hypot(player.x-this.position.x,player.z-this.position.z),home=Math.hypot(this.position.x-this.origin.x,this.position.z-this.origin.z);
     if(home>COMBAT_TUNING.leash||distance>COMBAT_TUNING.scanRadius+7||!visible&&this.state!=='idle')this.state='retreating';
@@ -22,7 +22,16 @@ export class ScoutDrone {
       if(this.state==='retreating'&&len<.6)this.state='idle';
     }
     this.position.y=heightAt(this.position.x,this.position.z)+2.1+Math.sin(this.clock*2.2)*.14;
-    if(this.state==='attacking'&&this.attackClock>=COMBAT_TUNING.attackInterval){this.attackClock=0;return COMBAT_TUNING.attackDamage;}
+    // Attack energy never charges while patrolling, searching, occluded or retreating.
+    // Entering range starts a full, dodgeable wind-up instead of an instant hit.
+    if(this.state==='attacking'){
+      if(!wasAttacking)this.attackClock=0;
+      this.attackClock+=dt;
+      if(this.attackClock>=COMBAT_TUNING.attackInterval){
+        this.attackClock-=COMBAT_TUNING.attackInterval;
+        return COMBAT_TUNING.attackDamage;
+      }
+    }else this.attackClock=0;
     return 0;
   }
   hit(damage:number):boolean {if(this.hp<=0||damage<=0||!Number.isFinite(damage))return false;this.hits++;this.hp=Math.max(0,this.hp-damage);if(this.hp===0)this.state='stopped';return true;}
