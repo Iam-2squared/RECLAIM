@@ -107,14 +107,14 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
-  const deck = new T.Mesh(geometry, new T.MeshStandardMaterial({
-    vertexColors: true, roughness: .94, metalness: 0, side: T.DoubleSide,
+  const deck = new T.Mesh(geometry, new T.MeshLambertMaterial({
+    vertexColors: true, side: T.DoubleSide,
   }));
   deck.name = 'boardwalk / real indexed deck collision surface';
   group.add(deck);
   const postGeometry = new T.BoxGeometry(.17, 1, .17);
   const posts = new T.InstancedMesh(postGeometry,
-    new T.MeshStandardMaterial({ color: 0x554537, roughness: .96 }), postMatrices.length);
+    new T.MeshLambertMaterial({ color: 0x554537 }), postMatrices.length);
   posts.name = 'boardwalk / instanced supports';
   for (let i = 0; i < postMatrices.length; i++) posts.setMatrixAt(i, postMatrices[i]);
   posts.instanceMatrix.needsUpdate = true;

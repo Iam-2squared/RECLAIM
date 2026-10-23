@@ -112,7 +112,7 @@ async function boot() {
   if (floraReview) root.add(floraReview.group);
   if (boardwalkReview) {
     root.add(boardwalkReview.group);
-    // Wood is PBR and needs a dedicated opt-in light; baseline shaders are untouched.
+    // Development decking uses bounded lit materials; original scene shader path is untouched.
     const fill = new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 2);
     fill.name = 'review timber skylight'; root.add(fill);
     const sun = new T.DirectionalLight(0xffdab0, 2.1);

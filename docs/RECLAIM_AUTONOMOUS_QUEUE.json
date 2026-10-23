@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "as_of_jst": "2026-10-24T08:18:00+09:00",
+  "repo": "Iam-2squared/RECLAIM",
+  "latest_known_main": "15b9fdf3a59de7c518a388dcc706845eff04d74b",
+  "vercel": {
+    "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
+    "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
+    "status": "BLOCKED_AUTH_403",
+    "live_sha": null,
+    "live_url": null
+  },
+  "work": [
+    {
+      "id": "A",
+      "pr": 52,
+      "branch": "feature/shiretoko-nature-integration-20261024",
+      "previous_head": "2b9d6fe71d3aa3f1a65d89622b282297211bbb61",
+      "current_head": "RE_READ_GITHUB",
+      "state": "PRODUCT_TEXTURE_LEAK_FIX_COMMITTED_CI_PENDING",
+      "run_old": {
+        "terrain": 40037987149,
+        "preview": 40037987139,
+        "nature": 40037987225
+      },
+      "failure_old": "1 renderer.info.memory texture retained on strict dispose, old evidence 12537842696",
+      "next": "verify all exact current HEAD runs and real opt-in WebGL, then merge"
+    },
+    {
+      "id": "B",
+      "pr": 53,
+      "source_head": "97ac91061c885c5088a39d0dc68a280183d97b2c",
+      "merged_sha": "15b9fdf3a59de7c518a388dcc706845eff04d74b",
+      "state": "MERGED_MAIN_CI_PENDING",
+      "main_run": 40038025194
+    },
+    {
+      "id": "C",
+      "pr": 54,
+      "source_head": "6cc5dff48930e5c04c7ed9ff82498503f27b55e5",
+      "state": "PR_5_OF_5_GREEN_MAIN_INTEGRATION_PENDING",
+      "pr_run": 40036933204
+    },
+    {
+      "id": "CABIN",
+      "state": "LOCAL_6_OF_6_PURE_TESTS_ONLY",
+      "depends_on": "A",
+      "src": "RECLAIM_Shiretoko_Cabin_Candidate_NOT_INTEGRATED.zip",
+      "next": "typecheck on actual repo, collision/walking in physical rendered world"
+    }
+  ]
+}
