@@ -12,9 +12,10 @@ jobs:
   verify:
     name: verify (${{ matrix.suite }})
     runs-on: ubuntu-latest
+    # Exactly matches package-lock.json. Browser/native dependencies are already
+    # installed; host apt/service updates must not consume the test budget.
+    container: mcr.microsoft.com/playwright:v1.64.0-noble
     timeout-minutes: 25
-    # Each assertion still runs once with one browser worker. Separate the
-    # complete suites so software-WebGL mission walks cannot cut off Safari.
     strategy:
       fail-fast: false
       matrix:
@@ -38,10 +39,18 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+      - name: Trust only this container checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - run: npm ci
+      - name: Verify pinned native browser and Japanese fonts
+        env:
+          REVIEW_BROWSER: ${{ matrix.browser }}
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; import {chromium,webkit} from 'playwright'; const v=JSON.parse(fs.readFileSync('node_modules/playwright/package.json','utf8')).version; if(v!=='1.64.0') throw Error('Update the pinned CI image with Playwright: '+v); fs.accessSync(({chromium,webkit})[process.env.REVIEW_BROWSER].executablePath());"
+          test -n "$(fc-list :lang=ja | head -n 1)"
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:blender
@@ -50,10 +59,6 @@ jobs:
       - run: npm run package:preview
         env:
           RECLAIM_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Install browser and Japanese text rendering
-        run: |
-          npx playwright install --with-deps ${{ matrix.browser }}
-          sudo apt-get install -y fonts-noto-cjk
       - name: Existing PC, world and iPhone regression suites
         if: ${{ !startsWith(matrix.suite, 'mobile-') }}
         run: npm run test:e2e -- ${{ matrix.tests }} --project=${{ matrix.suite == 'iphone-webkit' && 'iphone-webkit' || 'chromium' }}
@@ -71,6 +76,7 @@ jobs:
         if: matrix.suite == 'chromium-ui'
         working-directory: pc-reference-baseline
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE/pc-reference-baseline"
           npm ci
           npm run build
           npm run package:preview
