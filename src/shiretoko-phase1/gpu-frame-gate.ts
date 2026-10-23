@@ -9,7 +9,8 @@
  */
 export class TerrainGpuFrameGate {
   private readonly pending: WebGLSync[] = [];
-  constructor(private readonly gl: WebGL2RenderingContext) {}
+  private readonly gl: WebGL2RenderingContext;
+  constructor(gl: WebGL2RenderingContext) { this.gl = gl; }
 
   canSubmit(): boolean {
     if (this.gl.isContextLost()) return false;
