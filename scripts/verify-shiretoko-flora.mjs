@@ -109,17 +109,23 @@ try {
       // cannot substantiate organic species shapes, grounded roots or density.
       // Use the same terrain height function as the render and walking mesh.
       const closeups = [
-        { name: 'wetland-edge', x: 380, z: 360, tx: 410, tz: 330 },
-        { name: 'highland-approach', x: 350, z: -870, tx: 390, tz: -900 },
+        // Stable, measured-on-the-render-mesh positions along the existing
+        // walkable route. Never choose an offshore/underwater camera.
+        { name: 'wetland-path', x: -130, z: 410, tx: -210, tz: 365 },
+        { name: 'lake-path', x: -140, z: -310, tx: -220, tz: -355 },
       ];
       for (const place of closeups) {
         const previous = await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
         await page.evaluate(({ x, z, tx, tz }) => {
           const review = window.__SHIRETOKO_TERRAIN__;
           const terrain = review.terrain;
+          const ground = terrain.heightAt(x, z);
+          if (ground <= 20 || terrain.inWater(x, z)) {
+            throw new Error('Flora closeup camera is not on safe, dry walkable land');
+          }
           review.viewFrom(
-            [x, terrain.heightAt(x, z) + 4, z],
-            [tx, terrain.heightAt(tx, tz) + 1.8, tz],
+            [x, ground + 5, z],
+            [tx, terrain.heightAt(tx, tz) + 3.5, tz],
           );
         }, place);
         await page.waitForFunction(n => window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal > n,
