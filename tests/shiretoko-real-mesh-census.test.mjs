@@ -41,7 +41,8 @@ test('synthetic T junction, contact drift, reverse winding and invalid indices f
  const right=m('right',[0,0,0,10,0,0,20,0,0,0,0,10,10,0,10,20,0,10],[0,1,3,1,4,3,1,2,4,2,5,4]);
  const seamResult=auditTerrainSeam([left],[right],seam(0,0,20));
  assert(seamResult.issues.some(e=>e.kind==='missing-edge'));
- const wrong=m('wrong',[0,3,0,20,3,0,0,3,10],[0,2,1]);
+ // [0,1,2] has downward cross-product Y; [0,2,1] would face up.
+ const wrong=m('wrong',[0,3,0,20,3,0,0,3,10],[0,1,2]);
  const result=auditTerrainMeshes([wrong],()=>0);
  assert(result.issues.some(e=>e.kind==='ground'));
  assert(result.issues.some(e=>e.kind==='winding'));
