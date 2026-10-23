@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="RECLAIM 知床2400m地形の自然・木道・住宅を確認する、ゲームセーブから独立した3D開発レビュー入口。">
+  <title>知床 3D自然レビュー | RECLAIM</title>
+  <style>
+    :root { color-scheme:dark; font-family:system-ui,-apple-system,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; background:#10191a; color:#f3f4ed; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(ellipse at 82% 10%,#324b48 0%,transparent 46%),linear-gradient(160deg,#172d31,#10191a 75%); }
+    main { width:min(980px,calc(100% - 36px)); margin:0 auto; padding:clamp(48px,10vh,110px) 0 80px; }
+    .eyebrow { color:#a5d6bd; font-size:12px; font-weight:700; letter-spacing:.26em; text-transform:uppercase; }
+    h1 { font-size:clamp(32px,5.6vw,64px); font-weight:650; letter-spacing:.04em; line-height:1.2; margin:16px 0 20px; }
+    .lead { max-width:710px; color:#c6d2cd; line-height:1.95; font-size:clamp(14px,1.8vw,17px); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr)); gap:14px; margin:34px 0 24px; }
+    .card { display:flex; flex-direction:column; align-items:flex-start; gap:16px; min-height:178px; background:#1b3030; border:1px solid #42615b; border-radius:14px; padding:24px; text-decoration:none; color:inherit; transition:transform .2s,background .2s,border-color .2s; }
+    .card:hover,.card:focus-visible { transform:translateY(-3px); background:#27403b; border-color:#9bc8a8; outline:none; }
+    .card strong { font-size:19px; }
+    .card span { color:#c9d5ce; font-size:13px; line-height:1.65; }
+    .card .open { margin-top:auto; color:#b8efca; font-size:13px; letter-spacing:.05em; }
+    .note { padding:18px 20px; border-left:3px solid #a4b989; background:#20312c; border-radius:0 10px 10px 0; color:#cdd9ce; font-size:13px; line-height:1.85; }
+    footer { margin-top:36px; font-size:12px; color:#a9b8b2; }
+    footer a { color:#d1e9db; }
+    @media(prefers-reduced-motion:reduce){.card{transition:none}.card:hover,.card:focus-visible{transform:none}}
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">RECLAIM / SHIRETOKO / DEVELOPMENT REVIEW</p>
+  <h1>知床の自然へ。</h1>
+  <p class="lead">2400mの歩ける地形に、草木と湿原の木道を重ねた独立3Dプレビューです。<br>動作するPCブラウザで開き、景色・接地・徒歩ルートを確認できます。</p>
+  <nav class="grid" aria-label="知床のレビュー表示を選択">
+    <a class="card" data-review-link="low" href="./shiretoko-terrain.html?flora=low&amp;boardwalk=1">
+      <strong>🌿 低負荷で歩く</strong>
+      <span>植生を低密度にして木道を表示。最初の確認に推奨。</span>
+      <span class="open">3Dビューを開く ↗</span>
+    </a>
+    <a class="card" data-review-link="balanced" href="./shiretoko-terrain.html?flora=balanced&amp;boardwalk=1">
+      <strong>🌲 標準密度で歩く</strong>
+      <span>森林の密度を増やした比較モード。描画負荷に注意。</span>
+      <span class="open">3Dビューを開く ↗</span>
+    </a>
+    <a class="card" data-review-link="cabin" href="./shiretoko-terrain.html?flora=low&amp;boardwalk=1&amp;cabin=1">
+      <strong>🏠 崖上の家も確認</strong>
+      <span>室内・階段・当たり判定は対応版のみ表示。未対応版では自然と木道の表示になります。</span>
+      <span class="open">3Dビューを開く ↗</span>
+    </a>
+    <a class="card" data-review-link="baseline" href="./shiretoko-terrain.html">
+      <strong>⛰ 地形だけを比較</strong>
+      <span>従来の基準描画。植生・木道・建物を追加しません。</span>
+      <span class="open">基準ビューを開く ↗</span>
+    </a>
+  </nav>
+  <p class="note">これは<strong>本編のセーブと接続しない開発レビュー</strong>です。東京TITLE・知床HOME、本編480mエリアは変更されません。WebGL 2対応のPCブラウザ推奨。家の表示は対応するビルドから有効になります。写真品質やスマホ本編の完成を意味しません。</p>
+  <footer><a href="./index.html">東京TITLEへ戻る</a> · RECLAIM / 3D REVIEW</footer>
+</main>
+</body>
+</html>
