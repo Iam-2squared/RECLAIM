@@ -5,6 +5,8 @@ import { TerrainIntro } from './intro.ts';
 import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
+import { createFloraReviewLayer } from './flora-renderer.ts';
+import { createBoardwalkReview } from './boardwalk.ts';
 import { TerrainFrameDemand } from './frame-demand.ts';
 import { TerrainGpuFrameGate } from './gpu-frame-gate.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
@@ -98,6 +100,35 @@ async function boot() {
     const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setIndex(indices);
     const mesh=new T.Mesh(geometry,waterMaterial(detail,height,91));mesh.name=`watercourse/${channel.id}`;root.add(mesh);waters.push(mesh);
   }
+  // Opt-in standalone review, not the saved 480m campaign world or default V4 baseline.
+  // These URL parameters preserve unchanged TITLE/HOME and reference screenshots.
+  const query = new URLSearchParams(location.search);
+  const floraChoice = query.get('flora');
+  const floraReview = ['1', 'low', 'balanced'].includes(floraChoice ?? '')
+    ? createFloraReviewLayer(terrain, floraChoice === 'balanced' ? 'balanced' : 'low') : null;
+  const boardwalkReview = ['1', 'true', 'on'].includes(query.get('boardwalk') ?? '')
+    ? createBoardwalkReview(terrain) : null;
+  const natureBadges: HTMLElement[] = [];
+  if (floraReview) root.add(floraReview.group);
+  if (boardwalkReview) {
+    root.add(boardwalkReview.group);
+    // Wood is PBR and needs a dedicated opt-in light; baseline shaders are untouched.
+    const fill = new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 2);
+    fill.name = 'review timber skylight'; root.add(fill);
+    const sun = new T.DirectionalLight(0xffdab0, 2.1);
+    sun.position.set(-260, 640, 340); sun.name = 'review timber sunlight'; root.add(sun);
+  }
+  if (floraReview || boardwalkReview) {
+    const badge = document.createElement('div');
+    badge.textContent = [floraReview ? `植生 ${floraReview.quality}` : '',
+      boardwalkReview ? '木道・三角形接地' : ''].filter(Boolean).join(' ＋ ')
+      + ' ｜開発レビュー・本編セーブ未接続';
+    badge.setAttribute('data-nature-review', 'true');
+    Object.assign(badge.style, { position: 'fixed', bottom: '14px', left: '14px', zIndex: '25',
+      padding: '7px 12px', background: 'rgba(14,32,29,.88)', color: '#e3e5d5',
+      font: '12px sans-serif', borderRadius: '5px', pointerEvents: 'none' });
+    document.body.append(badge); natureBadges.push(badge);
+  }
   const routePoints: T.Vector3[] = [];
   for (let i = 1; i < ROUTE.length; i++) {
     const a = ROUTE[i - 1], b = ROUTE[i], steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 2);
@@ -107,7 +138,7 @@ async function boot() {
   const routeLine = new T.Line(new T.BufferGeometry().setFromPoints(routePoints), new T.LineDashedMaterial({ color: 0xf7e6b3, dashSize: 5, gapSize: 4, depthTest: true }));
   routeLine.computeLineDistances(); routeLine.visible = false; routeLine.name = 'optional route inspection overlay'; root.add(routeLine);
   const intro=new TerrainIntro();
-  const walker = new TerrainWalker(terrain), keys = new Set<string>(), frameTimes: number[] = [];
+  const walker = new TerrainWalker(terrain, boardwalkReview?.heightAt), keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
   const frameDemand = new TerrainFrameDemand();
@@ -276,7 +307,14 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
+    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview,
+    floraReview: floraReview ? { enabled: true, quality: floraReview.quality,
+      instances: floraReview.instances, drawGroups: floraReview.drawGroups,
+      instanceBytes: floraReview.instanceBytes, saveWrites: 0 } : { enabled: false },
+    boardwalkReview: boardwalkReview ? { enabled: true, panels: boardwalkReview.panels,
+      supports: boardwalkReview.supports, indexedTriangles: boardwalkReview.indexedTriangles,
+      saveWrites: 0 } : { enabled: false },
+    mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     sceneryGeneratedMs:+sceneryGeneratedMs.toFixed(1),
@@ -289,9 +327,9 @@ async function boot() {
     pointerLocked:document.pointerLockElement===renderer.domElement, inputKeys:[...keys], hidden:document.hidden, contextLost, shaderError, disposed, heapBytes: (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
   });
   function dispose() {
-    if (disposed) return; disposed = true; intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
+    if (disposed) return; disposed = true; natureBadges.forEach(badge => badge.remove()); intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
     const geometries = new Set<T.BufferGeometry>(), materials = new Set<T.Material>();
-    scene.traverse(object => { if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
+    scene.traverse(object => { if (object instanceof T.InstancedMesh) object.dispose(); if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose();
     gpuFrameGate.dispose();
     renderer.dispose();
@@ -307,7 +345,7 @@ async function boot() {
   // Inspection hooks are isolated here and never imported by the actual game's index.html.
   if(document.body.dataset.initialIntro==='true')openIntro();
   Object.assign(window, { __SHIRETOKO_TERRAIN__: {
-    diagnostics, terrain, walker, route: ROUTE, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
+    diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
     setClean, freeze: (value: boolean) => { freeze = value; if(value)for(const water of waters)water.material.uniforms.uTime.value=0; needsRender=true; },
     viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
     openIntro, dispose,
