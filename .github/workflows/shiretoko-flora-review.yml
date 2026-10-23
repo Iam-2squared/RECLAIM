@@ -1,0 +1,35 @@
+name: Shiretoko flora real-WebGL review
+on:
+  pull_request:
+    paths:
+      - 'src/shiretoko-phase1/flora-renderer.ts'
+      - 'src/shiretoko-phase1/vegetation-plan.ts'
+      - 'src/shiretoko-phase1/preview.ts'
+      - 'scripts/verify-shiretoko-flora.mjs'
+      - 'tests/shiretoko-flora-renderer.test.mjs'
+      - '.github/workflows/shiretoko-flora-review.yml'
+permissions:
+  contents: read
+jobs:
+  flora-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node --experimental-strip-types --test tests/shiretoko-flora-renderer.test.mjs
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-shiretoko-flora.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-flora-visual-${{ github.event.pull_request.head.sha }}
+          path: release/shiretoko-flora-review/
+          retention-days: 14
