@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {selectRenderedTerrainView} from './shiretoko-frame-observer.mjs';
 const out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v3');await mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
 const context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1});
@@ -65,7 +66,10 @@ try{
   for(let i=0;i<12;i++)await new Promise(r=>requestAnimationFrame(r));
   const hiddenDraws=a.diagnostics().renderCallsTotal-before;delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));return hiddenDraws;
  });assert.equal(hidden,0);checks.push('synthetic visibility-hidden lifecycle stops GL submissions, then restores state');
- await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.setView(0));
+ // GPU backpressure may defer setView's legitimate draw beyond 30 RAF ticks.
+ // Acknowledge that requested frame first; the unchanged 30/20-frame window
+ // below must still observe exactly zero redundant submissions.
+ await selectRenderedTerrainView(page,0);
  const idle=await page.evaluate(async()=>{const a=window.__SHIRETOKO_TERRAIN__;for(let i=0;i<30;i++)await new Promise(r=>requestAnimationFrame(r));const n=a.diagnostics().renderCallsTotal;for(let i=0;i<20;i++)await new Promise(r=>requestAnimationFrame(r));return a.diagnostics().renderCallsTotal-n;});assert.equal(idle,0);
  const beforeDispose=await state();await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());const disposed=await state();assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0);assert.equal(await page.locator('canvas').count(),0);
  checks.push('idle overview submits zero identical frames; dispose returns GPU geometry/texture counts to zero');
