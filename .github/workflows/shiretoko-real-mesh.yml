@@ -1,0 +1,30 @@
+name: Shiretoko real mesh seam census
+on:
+  pull_request:
+    paths:
+      - 'src/shiretoko-phase1/terrain.ts'
+      - 'src/shiretoko-phase1/scenery.ts'
+      - 'src/shiretoko-phase1/coast-relief-v5.ts'
+      - 'tests/shiretoko-real-mesh.test.mjs'
+      - '.github/workflows/shiretoko-real-mesh.yml'
+permissions:
+  contents: read
+jobs:
+  mesh-census:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: node --experimental-strip-types --test tests/shiretoko-real-mesh.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-real-mesh-census-${{ github.event.pull_request.head.sha }}
+          path: release/shiretoko-phase1-review/real-mesh/
+          retention-days: 14
