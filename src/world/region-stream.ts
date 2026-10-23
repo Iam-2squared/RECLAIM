@@ -162,8 +162,13 @@ export class RegionTileStream<T> {
       }).catch(() => {
         // Failed loads are blocked only for automatic refills of this focus.
         // A subsequent explicit focus may retry after its inputs have changed.
-        if(this.pending.get(coord.key)?.controller===controller&&!controller.signal.aborted)
+        if(this.pending.get(coord.key)?.controller===controller&&!controller.signal.aborted){
           this.failedAutoKeys.add(coord.key);
+          // Rejected individual tiles are terminal for automatic retry, but
+          // must not monopolize the two available slots for healthy neighbors.
+          // Undefined/empty loader responses retain the older fail-closed rule.
+          completedOrObsolete=true;
+        }
       }).finally(() => {
         if (this.pending.get(coord.key)?.controller === controller) this.pending.delete(coord.key);
         this.unsettled.delete(controller);
