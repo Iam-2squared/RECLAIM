@@ -126,6 +126,43 @@ test('story/pause buttons accept Space; storage quota updates the idle save stat
  await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new Error('quota');};});await expect(page.locator('#mission-save')).toContainText('このセッション');await page.keyboard.press('Escape');await page.locator('#mission-home').click();
 });
 
-test('a delayed pointer-lock request cannot lock HOME after mission disposal',async({page})=>{
- await page.addInitScript(()=>{const request=HTMLCanvasElement.prototype.requestPointerLock;HTMLCanvasElement.prototype.requestPointerLock=function(...args){return new Promise((resolve,reject)=>setTimeout(()=>{try{Promise.resolve(request.apply(this,args)).then(resolve,reject);}catch(e){reject(e);}},250));};});await enter(page);await page.locator('#mission-skip').click();await page.locator('#mission-lock').click();await page.locator('#mission-home').click();await page.waitForTimeout(400);await expect(page.locator('body')).toHaveAttribute('data-screen','home');expect(await page.evaluate(()=>document.pointerLockElement)).toBeNull();expect((await snapshot(page)).mission).toBeNull();await expect(page.locator('#start-button')).toBeEnabled();
+test('a delayed pointer-lock request cannot lock HOME after mission disposal', async ({page}) => {
+  await page.addInitScript(() => {
+    const native = HTMLCanvasElement.prototype.requestPointerLock;
+    window.__reclaimPendingLock = undefined;
+    HTMLCanvasElement.prototype.requestPointerLock = function(...args) {
+      const canvas = this;
+      return new Promise((resolve, reject) => {
+        const pending = {
+          released: false,
+          settled: false,
+          release() {
+            if (pending.released) throw new Error('double release of deferred pointer lock');
+            pending.released = true;
+            try {
+              Promise.resolve(native.apply(canvas, args)).then(
+                value => { pending.settled = true; resolve(value); },
+                error => { pending.settled = true; reject(error); },
+              );
+            } catch (error) { pending.settled = true; reject(error); }
+          },
+        };
+        window.__reclaimPendingLock = pending;
+      });
+    };
+  });
+  await enter(page);
+  await page.locator('#mission-skip').click();
+  await page.locator('#mission-lock').click();
+  await expect.poll(async () => page.evaluate(() => Boolean(window.__reclaimPendingLock))).toBe(true);
+  // Deliberately dispatch to test a lifecycle race after the lock overlay hides.
+  // Separate tests cover the visible Escape -> HOME path.
+  await page.locator('#mission-home').dispatchEvent('click');
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
+  expect((await snapshot(page)).mission).toBeNull();
+  await page.evaluate(() => window.__reclaimPendingLock.release());
+  await expect.poll(async () => page.evaluate(() => window.__reclaimPendingLock.settled)).toBe(true);
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => document.pointerLockElement)).toBeNull();
+  await expect(page.locator('#start-button')).toBeEnabled();
 });
