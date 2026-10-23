@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {withCanvasCaptureDeadline,readLiveWebGLCanvasJPEG} from '../scripts/webgl-canvas-jpeg.mjs';
 const jpeg='data:image/jpeg;base64,/9j/2Q==';
 function pageWithCanvas(canvas,{readError=null}={}) {
-  return {evaluate:async f=>{
+  return {evaluate:async (f,arg)=>{
     const oldDocument=globalThis.document,oldReader=globalThis.FileReader;
     try {
       globalThis.document={querySelector:()=>canvas};
@@ -11,7 +11,7 @@ function pageWithCanvas(canvas,{readError=null}={}) {
         result=null;error=readError;onload=null;onerror=null;
         readAsDataURL(){if(this.error)this.onerror();else{this.result=jpeg;this.onload();}}
       };
-      return await f();
+      return await f(arg);
     } finally {globalThis.document=oldDocument;globalThis.FileReader=oldReader;}
   }};
 }
@@ -52,4 +52,23 @@ test('does not silently retry a stalled software-GPU readback',async()=>{
   let calls=0;
   await assert.rejects(withCanvasCaptureDeadline(()=>{calls++;return new Promise(()=>{});},15),/original 20000ms/);
   assert.equal(calls,1);
+});
+
+test('V4 uses the original 0.94 JPEG quality on a real-resolution live WebGL canvas',async()=>{
+  let encodes=0;
+  const canvas=liveCanvas((callback,format,quality)=>{
+    encodes++;assert.equal(format,'image/jpeg');assert.equal(quality,.94);
+    callback({type:'image/jpeg',size:12});
+  });
+  canvas.height=900;
+  assert.equal(canvas.width,1600);
+  assert.equal(await readLiveWebGLCanvasJPEG(pageWithCanvas(canvas),.94),jpeg);
+  assert.equal(encodes,1);
+});
+test('rejects invalid JPEG quality before capturing any GPU pixels',async()=>{
+  let calls=0;
+  const canvas=liveCanvas(()=>{calls++});
+  for(const quality of [-.01,1.01,NaN,Infinity,-Infinity])
+    await assert.rejects(readLiveWebGLCanvasJPEG(pageWithCanvas(canvas),quality),RangeError);
+  assert.equal(calls,0);
 });
