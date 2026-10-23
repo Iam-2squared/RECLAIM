@@ -42,7 +42,9 @@ try{
   const before=(await state()).player;await page.keyboard.down('Shift');await page.keyboard.down('w');
   await page.waitForFunction(start=>{const d=window.__SHIRETOKO_TERRAIN__.diagnostics();return d.inputKeys.includes('ShiftLeft')&&Math.hypot(d.player.x-start.x,d.player.z-start.z)>.8;},before,{timeout:15000});
   await page.keyboard.up('w');await page.keyboard.up('Shift');await page.keyboard.down('Space');await page.waitForFunction(()=>!window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded,{}, {timeout:15000});await page.keyboard.up('Space');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded,{}, {timeout:15000});
-  const tick=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
+  // Frozen, grounded walking is now on-demand. Request one real frame using
+  // the existing freeze invalidation; never move the player or relax the gate.
+  const tick=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,n=api.diagnostics().renderCallsTotal;api.freeze(true);return n;});
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,tick);
   const frame=await page.evaluate(()=>{const a=window.__SHIRETOKO_TERRAIN__,c=document.querySelector('canvas'),gl=c.getContext('webgl2');gl.finish();const d=a.diagnostics();return{...d,groundError:Math.abs(d.player.y-a.terrain.heightAt(d.player.x,d.player.z)),water:a.terrain.inWater(d.player.x,d.player.z),glError:gl.getError(),image:c.toDataURL('image/jpeg',.94)};});
   assert.equal(frame.mode,'walk');assert.ok(frame.pointerLocked&&frame.player.grounded);assert.equal(frame.water,false);assert.ok(frame.groundError<.001);assert.equal(frame.glError,0);assert.deepEqual(frame.inputKeys,[]);assert.ok(frame.player.distance-before.distance>.8);

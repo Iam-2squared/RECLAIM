@@ -51,7 +51,8 @@ jobs:
           node-version: '22'
       - run: npm ci
       - name: Verify pinned native Chromium
-        run: node --input-type=module -e "import fs from 'node:fs'; import {chromium} from 'playwright'; const v=JSON.parse(fs.readFileSync('node_modules/playwright/package.json','utf8')).version; if(v!=='1.64.0') throw Error('Update the pinned CI image with Playwright: '+v); fs.accessSync(chromium.executablePath());"
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; import {chromium} from 'playwright'; const v=JSON.parse(fs.readFileSync('node_modules/playwright/package.json','utf8')).version; if(v!=='1.64.0') throw Error('Update the pinned CI image with Playwright: '+v); fs.accessSync(chromium.executablePath());"
       - run: npm run typecheck
       - name: Full terrain contract tests
         if: matrix.lane == 'core'
