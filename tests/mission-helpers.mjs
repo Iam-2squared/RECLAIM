@@ -1,4 +1,5 @@
 import {expect} from '@playwright/test';
+import {arrowSteps} from './native-arrow-input.mjs';
 export const snapshot=page=>page.evaluate(()=>window.__RECLAIM__.snapshot());
 export async function enter(page,{low=true}={}) {
  await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');
@@ -9,8 +10,8 @@ export async function lock(page){await page.locator('#mission-lock').click();awa
 export async function turnToward(page,target){
  const {player}= (await snapshot(page)).mission;
  const desired=Math.atan2(-(target.x-player.x),-(target.z-player.z));let delta=Math.atan2(Math.sin(desired-player.yaw),Math.cos(desired-player.yaw));
- const count=Math.round(Math.abs(delta)/.0484);for(let i=0;i<count;i++)await page.keyboard.press(delta>0?'ArrowLeft':'ArrowRight');
- if(target.y!==undefined){const pitch=Math.atan2(target.y-(player.y+1.62),Math.hypot(target.x-player.x,target.z-player.z)),dp=pitch-player.pitch;for(let i=0;i<Math.round(Math.abs(dp)/.0484);i++)await page.keyboard.press(dp>0?'ArrowUp':'ArrowDown');}
+ const count=Math.round(Math.abs(delta)/.0484);await arrowSteps(page.keyboard,delta>0?'ArrowLeft':'ArrowRight',count);
+ if(target.y!==undefined){const pitch=Math.atan2(target.y-(player.y+1.62),Math.hypot(target.x-player.x,target.z-player.z)),dp=pitch-player.pitch;await arrowSteps(page.keyboard,dp>0?'ArrowUp':'ArrowDown',Math.round(Math.abs(dp)/.0484));}
 }
 
 async function forwardInput(page,observe,{sprint=false,maxMs=5000,keepHeld=false}={}){
