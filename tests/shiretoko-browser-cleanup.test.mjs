@@ -23,3 +23,23 @@ test('both failures are preserved without a retry or fallback', async () => {
   const a=new Error('context'),b=new Error('browser');
   await assert.rejects(closeReviewBrowser({async close(){throw b;}},{async close(){throw a;}}),e=>e instanceof AggregateError&&e.errors[0]===a&&e.errors[1]===b);
 });
+
+test('retained fixture GL context and handle are released before native context close',async()=>{
+ const events=[];const gl={isContextLost:()=>false,getExtension:name=>{assert.equal(name,'WEBGL_lose_context');return{loseContext(){events.push('lose-gl');}};}};
+ const handle={evaluate:async fn=>fn(gl),dispose:async()=>events.push('handle')};
+ await closeReviewBrowser({close:async()=>events.push('browser'),isConnected:()=>false},{close:async()=>events.push('context')},handle);
+ assert.deepEqual(events,['lose-gl','handle','context','browser']);
+});
+test('already lost or unsupported fixture contexts do not request another loss',async()=>{
+ for(const lost of [true,false]){
+  let probes=0,disposed=false;
+  const gl={isContextLost:()=>lost,getExtension(){probes++;return null;}};
+  await closeReviewBrowser({close:async()=>{},isConnected:()=>false},{close:async()=>{}},{evaluate:async fn=>fn(gl),dispose:async()=>{disposed=true;}});
+  assert.equal(probes,lost?0:1);assert(disposed);
+ }
+});
+test('GL teardown failure still closes the owned handle, context and browser and remains failure',async()=>{
+ const error=new Error('GPU release failed'),events=[];
+ await assert.rejects(closeReviewBrowser({close:async()=>events.push('browser'),isConnected:()=>false},{close:async()=>events.push('context')},{evaluate:async()=>{throw error;},dispose:async()=>events.push('handle')}),e=>e===error);
+ assert.deepEqual(events,['handle','context','browser']);
+});
