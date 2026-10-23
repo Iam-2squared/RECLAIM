@@ -63,3 +63,40 @@ test('default manual streaming semantics and terminal close remain unchanged',as
   stream.close();
   assert.throws(()=>stream.focus('01',0,0,'low'),/disposed/);
 });
+
+test('a mixed empty loader is not silently retried after healthy sibling tiles settle',async()=>{
+  const desired=planRegionTiles('01',0,0,'low',[]).desired;
+  const emptyKey=desired[0].key;
+  const attempts=new Map();
+  const stream=new RegionTileStream(async coord=>{
+    attempts.set(coord.key,(attempts.get(coord.key)??0)+1);
+    return coord.key===emptyKey?undefined:{key:coord.key};
+  },()=>{}, {autoRefill:true});
+  stream.focus('01',0,0,'low');await flush();
+  assert.equal(stream.loadedKeys.length,desired.length-1,'unrelated tiles must still load');
+  assert.equal(stream.outstandingLoads,0);
+  assert.equal(attempts.get(emptyKey),1,'successful siblings must not requeue an empty tile');
+  assert(desired.every(t=>attempts.get(t.key)===1),'each tile has exactly one automatic attempt');
+  stream.focus('01',0,0,'low');await flush();
+  assert.equal(attempts.get(emptyKey),2,'only a fresh explicit focus retries the empty tile');
+  assert.equal(stream.loadedKeys.length,desired.length-1);
+  stream.close();
+});
+
+test('a mixed rejecting loader is not silently retried after healthy sibling tiles settle',async()=>{
+  const desired=planRegionTiles('01',0,0,'low',[]).desired;
+  const badKey=desired[0].key;
+  const attempts=new Map();
+  const stream=new RegionTileStream(async coord=>{
+    attempts.set(coord.key,(attempts.get(coord.key)??0)+1);
+    if(coord.key===badKey)throw new Error('terrain mesh provider offline');
+    return {key:coord.key};
+  },()=>{}, {autoRefill:true});
+  stream.focus('01',0,0,'low');await flush();
+  assert.equal(stream.loadedKeys.length,desired.length-1);
+  assert.equal(stream.outstandingLoads,0);
+  assert.equal(attempts.get(badKey),1);
+  stream.focus('01',0,0,'low');await flush();
+  assert.equal(attempts.get(badKey),2);
+  stream.close();
+});
