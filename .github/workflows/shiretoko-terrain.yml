@@ -6,6 +6,7 @@ on:
       - 'src/shiretoko-phase1/**'
       - 'shiretoko-terrain.html'
       - 'scripts/*shiretoko-*.mjs'
+      - 'scripts/capture-terrain-framebuffer.mjs'
       - 'tests/shiretoko-*.test.mjs'
       - 'tests/coast-relief-v5.test.mjs'
       - '.github/workflows/shiretoko-terrain.yml'
@@ -14,6 +15,7 @@ on:
       - 'src/shiretoko-phase1/**'
       - 'shiretoko-terrain.html'
       - 'scripts/*shiretoko-*.mjs'
+      - 'scripts/capture-terrain-framebuffer.mjs'
       - 'tests/shiretoko-*.test.mjs'
       - 'tests/coast-relief-v5.test.mjs'
       - '.github/workflows/shiretoko-terrain.yml'
@@ -28,10 +30,10 @@ jobs:
   review:
     name: terrain-review (${{ matrix.lane }})
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.0-noble
     timeout-minutes: 12
-    # Run 39950471480 passed the geometry and interaction checks, but exhausted
-    # the job budget while capturing V4. Keep the 12-minute limit and every
-    # existing test/camera; separate independent work instead of deleting gates.
+    # The same assertions/cameras run once, with unchanged deadlines. A pinned
+    # native browser avoids repeated apt transactions and host service restarts.
     strategy:
       fail-fast: false
       matrix:
@@ -42,10 +44,14 @@ jobs:
           fetch-depth: 0
           ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
+      - name: Trust only this container checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - run: npm ci
+      - name: Verify pinned native Chromium
+        run: node --input-type=module -e "import fs from 'node:fs'; import {chromium} from 'playwright'; const v=JSON.parse(fs.readFileSync('node_modules/playwright/package.json','utf8')).version; if(v!=='1.64.0') throw Error('Update the pinned CI image with Playwright: '+v); fs.accessSync(chromium.executablePath());"
       - run: npm run typecheck
       - name: Full terrain contract tests
         if: matrix.lane == 'core'
@@ -56,7 +62,6 @@ jobs:
           mkdir -p release
           git rev-parse HEAD > release/ci-source-${{ matrix.lane }}.txt
           (cd release && sha256sum RECLAIM_Shiretoko_Terrain_Phase1.html RECLAIM_Shiretoko_Intro_Demo.html) > release/ci-package-${{ matrix.lane }}.sha256
-      - run: npx playwright install --with-deps chromium
       - name: Original terrain, intro and V3 review gates
         if: matrix.lane == 'core'
         run: |
