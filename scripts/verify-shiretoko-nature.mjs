@@ -1,0 +1,103 @@
+/** Actual opt-in, save-isolated Shiretoko flora + boardwalk WebGL evidence. */
+import assert from 'node:assert/strict';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {chromium} from '@playwright/test';
+import {captureTerrainFramebuffer} from './capture-terrain-framebuffer.mjs';
+import {closeReviewBrowser} from './close-review-browser.mjs';
+const out=resolve('release/shiretoko-nature-review');
+await mkdir(out,{recursive:true});
+const artifact=resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html');
+const html=await readFile(artifact,'utf8');
+const sourceSHA=html.match(/name="reclaim-terrain-source" content="([^"]+)"/)?.[1];
+assert.match(sourceSHA??'',/^[0-9a-f]{40}$/);
+const browser=await chromium.launch({headless:true,
+  ...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),
+  args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader',
+    '--enable-unsafe-swiftshader','--allow-file-access-from-files']});
+const context=await browser.newContext({viewport:{width:1100,height:680},deviceScaleFactor:1});
+const page=await context.newPage(),errors=[],network=[];
+const result={sourceSHA,browser:browser.version(),method:'real WebGL2 SwiftShader; async pixel buffer and fence',
+  device:'CI software renderer; NOT physical Windows GPU',tests:[],images:[],errors,network};
+page.on('pageerror',e=>errors.push(e.message));
+page.on('request',r=>{if(/^https?:/i.test(r.url()))network.push(r.url());});
+await page.addInitScript(()=>{
+  window.__natureStorageAccess=[];
+  for(const method of ['getItem','setItem','removeItem','clear'])
+    Storage.prototype[method]=function(){
+      window.__natureStorageAccess.push(method);
+      throw new Error('Independent nature review must not access game saves');
+    };
+});
+let renderingContext;
+try{
+  await page.goto(pathToFileURL(artifact).href+'?flora=low&boardwalk=1');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,{},{timeout:60000});
+  renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+  const review=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
+    if(!d.floraReview.enabled||d.floraReview.quality!=='low'||d.floraReview.instances<=1000||
+       d.floraReview.drawGroups<1||d.floraReview.drawGroups>96)throw Error('floral layer absent/over budget');
+    if(!d.boardwalkReview.enabled||d.boardwalkReview.panels<30||
+       d.boardwalkReview.indexedTriangles!==d.boardwalkReview.panels*2)
+      throw Error('rendered indexed boardwalk absent');
+    if(d.shaderError||d.contextLost||d.renderCallsTotal<1)throw Error('WebGL not rendering');
+    const u=a.route[3],v=a.route[4],x=(u.x+v.x)/2,z=(u.z+v.z)/2;
+    const deck=a.boardwalkHeightAt(x,z), ground=a.terrain.heightAt(x,z);
+    if(!Number.isFinite(deck)||deck<=ground+.1)throw Error('visible raised deck height absent');
+    if(!a.walker.place(x,z)||Math.abs(a.walker.y-deck)>1e-6)
+      throw Error('actual deck geometry and player contact do not agree');
+    a.walker.step({forward:0,right:0,sprint:false,jump:true},1/60);
+    if(a.walker.grounded)throw Error('deck jump did not take off');
+    for(let i=0;i<90;i++)a.walker.step({forward:0,right:0,sprint:false,jump:false},1/60);
+    if(!a.walker.grounded||Math.abs(a.walker.y-deck)>1e-5)
+      throw Error('player did not land back on the same deck');
+    return {floral:d.floraReview,boardwalk:d.boardwalkReview,drawCalls:d.drawCalls,
+      triangles:d.triangles,geometries:d.geometries,textures:d.textures,
+      deckContact:{x,z,deck,ground,landed:a.walker.y}};
+  });
+  assert.equal(await page.locator('[data-nature-review]').count(),1);
+  result.tests.push({name:'flora LOD, actual raised indexed deck, walker jump/landing',data:review});
+  const views=[
+    {name:'wooden-wetland',x:-50,z:610,tx:-118,tz:500,elevation:10},
+    {name:'flora-wetland',x:-130,z:410,tx:-210,tz:370,elevation:6}
+  ];
+  for(const view of views){
+    const before=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
+    await page.evaluate(({x,z,tx,tz,elevation})=>{
+      const api=window.__SHIRETOKO_TERRAIN__,t=api.terrain;
+      api.viewFrom([x,t.heightAt(x,z)+elevation,z],[tx,t.heightAt(tx,tz)+2,tz]);
+    },view);
+    await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,
+      before,{timeout:30000});
+    const frame=await page.evaluate(captureTerrainFramebuffer);
+    assert.equal(frame.glError,0);
+    assert.ok(frame.max-frame.min>20,'actual RGB framebuffer must contain scene variation');
+    assert.match(frame.image,/^data:image\/jpeg;base64,/);
+    const data=Buffer.from(frame.image.split(',')[1],'base64');
+    assert.ok(data.length>2000,'actual JPEG pixels missing');
+    const filename=view.name+'-actual-webgl.jpg';
+    await writeFile(resolve(out,filename),data);
+    result.images.push({name:view.name,filename,bytes:data.length,
+      width:frame.width,height:frame.height,min:frame.min,max:frame.max,
+      frameCount:frame.renderCallsTotal,camera:frame.cameraPosition});
+  }
+  assert.deepEqual(await page.evaluate(()=>window.__natureStorageAccess),[]);
+  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());
+  const d=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
+  assert.equal(d.disposed,true);assert.equal(d.geometries,0);assert.equal(d.textures,0);
+  assert.equal(await page.locator('canvas').count(),0);
+  assert.equal(await page.locator('[data-nature-review]').count(),0);
+  result.tests.push({name:'no saves/network, resources released',pass:true});
+  console.log('NATURE WEBGL PASS',JSON.stringify({sourceSHA,images:result.images.length,
+    instances:review.floral.instances,panels:review.boardwalk.panels}));
+}catch(error){
+  errors.push(String(error?.stack??error));
+  throw error;
+}finally{
+  await writeFile(resolve(out,'nature-real-webgl.json'),JSON.stringify(result,null,2));
+  await closeReviewBrowser(browser,context,renderingContext);
+}
