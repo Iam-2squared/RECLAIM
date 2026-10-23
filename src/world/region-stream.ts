@@ -26,6 +26,9 @@ export class RegionTileStream<T> {
   private wanted = new Set<string>();
   private region = '';
   private generation = 0;
+  // Prevent callbacks in external disposers/abort listeners from resurrecting
+  // an earlier focus after a later focus, clear, or close has taken ownership.
+  private revision = 0;
   private shutDown = false;
   readonly load: TileLoader<T>;
   readonly dispose: TileDisposer<T>;
@@ -40,13 +43,20 @@ export class RegionTileStream<T> {
     if (this.shutDown) throw new Error('region stream disposed');
     // Validate *before* modifying the active scene or aborting any request.
     const initial = planRegionTiles(code, x, z, detail, []);
+    const revision = ++this.revision;
+    const requireCurrent = () => {
+      if (this.shutDown || revision !== this.revision)
+        throw new Error('region stream focus superseded by a reentrant lifecycle operation');
+    };
     const cancelled: string[] = [], evicted: string[] = [], started: string[] = [];
     if (this.region !== code) {
       this.generation++;
-      for (const [key, request] of this.pending) {
+      const obsoletePending = [...this.pending];
+      this.pending.clear();
+      for (const [key, request] of obsoletePending) {
         request.controller.abort(); cancelled.push(key);
       }
-      this.pending.clear();
+      requireCurrent();
       // Clear ownership before invoking external disposers. A partially lost
       // graphics context must not leave previously-disposed resident handles.
       const obsolete = [...this.resident];
@@ -57,11 +67,13 @@ export class RegionTileStream<T> {
         try { this.dispose(resource); } catch (error) { failures.push(error); }
       }
       if (failures.length) throw new AggregateError(failures, 'region switch disposal failed');
+      requireCurrent();
     }
     this.wanted = new Set(initial.desired.map(t => t.key));
     for (const [key, request] of this.pending) {
       if (!this.wanted.has(key)) {
-        request.controller.abort(); this.pending.delete(key); cancelled.push(key);
+        this.pending.delete(key); request.controller.abort(); cancelled.push(key);
+        requireCurrent();
       }
     }
 
@@ -75,6 +87,7 @@ export class RegionTileStream<T> {
       }
     }
     if (evictionFailures.length) throw new AggregateError(evictionFailures, 'region tile disposal failed');
+    requireCurrent();
     // Obsolete unresolved operations still occupy real loader slots.
     const available = Math.max(0, REGION_TILE_RULES.loadLimit - this.unsettled.size);
     plan = planRegionTiles(code, x, z, detail, [...this.resident.keys(), ...this.pending.keys()]);
@@ -111,11 +124,13 @@ export class RegionTileStream<T> {
   }
 
   clear(): void {
+    this.revision++;
     this.generation++;
-    for (const request of this.pending.values()) request.controller.abort();
+    const pending = [...this.pending.values()];
     this.pending.clear();
     const resources = [...this.resident.values()];
     this.resident.clear(); this.wanted.clear(); this.region = '';
+    for (const request of pending) request.controller.abort();
     const failures: unknown[] = [];
     for (const resource of resources) {
       try { this.dispose(resource); } catch (error) { failures.push(error); }
@@ -125,6 +140,8 @@ export class RegionTileStream<T> {
   }
   close(): void {
     if (this.shutDown) return;
-    try { this.clear(); } finally { this.shutDown = true; }
+    // Set terminal state FIRST: a disposer cannot reopen while close() runs.
+    this.shutDown = true;
+    this.clear();
   }
 }
