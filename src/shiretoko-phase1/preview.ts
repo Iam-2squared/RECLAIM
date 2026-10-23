@@ -6,6 +6,7 @@ import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
 import { createFloraReviewLayer } from './flora-renderer.ts';
+import { createBoardwalkReview } from './boardwalk.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
 import './preview.css';
 
@@ -111,6 +112,22 @@ async function boot() {
     Object.assign(floraBadge.style,{position:'fixed',bottom:'14px',left:'14px',zIndex:'25',padding:'7px 12px',background:'rgba(14,32,29,.85)',color:'#e3e5d5',font:'12px sans-serif',borderRadius:'5px',pointerEvents:'none'});
     document.body.append(floraBadge);
   }
+  // A second opt-in, URL-only development layer: actual wooden deck triangles
+  // share the exact CPU surface sampled by the preview walker. No save writes.
+  const boardwalkParameter = new URLSearchParams(location.search).get('boardwalk');
+  const boardwalkReview = ['1','true','on'].includes(boardwalkParameter??'')
+    ? createBoardwalkReview(terrain) : null;
+  let boardwalkBadge: HTMLElement | null = null;
+  if (boardwalkReview) {
+    root.add(boardwalkReview.group);
+    boardwalkBadge = document.createElement('div');
+    boardwalkBadge.textContent = '開発レビュー：木道（実三角形接地・本編未接続）';
+    boardwalkBadge.setAttribute('data-boardwalk-review','true');
+    Object.assign(boardwalkBadge.style, {position:'fixed',bottom:'48px',left:'14px',zIndex:'25',
+      padding:'7px 12px',background:'rgba(50,35,25,.86)',color:'#efe3cb',
+      font:'12px sans-serif',borderRadius:'5px',pointerEvents:'none'});
+    document.body.append(boardwalkBadge);
+  }
   const routePoints: T.Vector3[] = [];
   for (let i = 1; i < ROUTE.length; i++) {
     const a = ROUTE[i - 1], b = ROUTE[i], steps = Math.ceil(Math.hypot(b.x - a.x, b.z - a.z) / 2);
@@ -120,7 +137,7 @@ async function boot() {
   const routeLine = new T.Line(new T.BufferGeometry().setFromPoints(routePoints), new T.LineDashedMaterial({ color: 0xf7e6b3, dashSize: 5, gapSize: 4, depthTest: true }));
   routeLine.computeLineDistances(); routeLine.visible = false; routeLine.name = 'optional route inspection overlay'; root.add(routeLine);
   const intro=new TerrainIntro();
-  const walker = new TerrainWalker(terrain), keys = new Set<string>(), frameTimes: number[] = [];
+  const walker = new TerrainWalker(terrain, boardwalkReview?.heightAt), keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
   const cameraChanged = () => { needsRender = true; };
@@ -282,7 +299,9 @@ async function boot() {
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
     ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview,
-    floraReview: floraReview ? {enabled:true,quality:floraReview.quality,instances:floraReview.instances,drawGroups:floraReview.drawGroups,instanceBytes:floraReview.instanceBytes,saveWrites:0} : {enabled:false}, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
+    floraReview: floraReview ? {enabled:true,quality:floraReview.quality,instances:floraReview.instances,drawGroups:floraReview.drawGroups,instanceBytes:floraReview.instanceBytes,saveWrites:0} : {enabled:false},
+    boardwalkReview: boardwalkReview ? {enabled:true,panels:boardwalkReview.panels,supports:boardwalkReview.supports,indexedTriangles:boardwalkReview.indexedTriangles,saveWrites:0} : {enabled:false},
+    mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     sceneryGeneratedMs:+sceneryGeneratedMs.toFixed(1),
@@ -295,7 +314,7 @@ async function boot() {
     pointerLocked:document.pointerLockElement===renderer.domElement, inputKeys:[...keys], hidden:document.hidden, contextLost, shaderError, disposed, heapBytes: (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
   });
   function dispose() {
-    if (disposed) return; disposed = true; floraBadge?.remove(); intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
+    if (disposed) return; disposed = true; floraBadge?.remove(); boardwalkBadge?.remove(); intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
     const geometries = new Set<T.BufferGeometry>(), materials = new Set<T.Material>();
     scene.traverse(object => { if (object instanceof T.InstancedMesh) object.dispose(); if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose(); renderer.dispose(); renderer.domElement.remove(); scene.clear();
@@ -305,7 +324,7 @@ async function boot() {
   // Inspection hooks are isolated here and never imported by the actual game's index.html.
   if(document.body.dataset.initialIntro==='true')openIntro();
   Object.assign(window, { __SHIRETOKO_TERRAIN__: {
-    diagnostics, terrain, walker, route: ROUTE, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
+    diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
     setClean, freeze: (value: boolean) => { freeze = value; if(value)for(const water of waters)water.material.uniforms.uTime.value=0; needsRender=true; },
     viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
     openIntro, dispose,
