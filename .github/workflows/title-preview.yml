@@ -41,6 +41,11 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+      - name: Trust checked-out workspace inside pinned WebKit container
+        if: matrix.browser == 'webkit'
+        # The bind-mounted checkout belongs to the runner host, not to the
+        # container account. Only trust this job's exact checkout, not '*'.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
