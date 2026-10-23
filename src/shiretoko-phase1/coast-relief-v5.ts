@@ -5,7 +5,7 @@
  * Real 5/20/80m mesh, 360-degree visuals and footprint still require review.
  */
 export const RELIEF_V5=Object.freeze({
-  zStart:-1200,zFull:-1400,zFade:-5000,zEnd:-5600,
+  zStart:-4240,zFull:-4480,zFade:-5000,zEnd:-5600,
   coastSeaStart:-460,coastSeaFull:-220,
   coastLandFull:300,coastLandEnd:740,
   sampleOffset:140,maxBaseSamplesPerVertex:9,
@@ -19,7 +19,7 @@ const smoothstep=(a:number,b:number,x:number):number=>{
 /**
  * A bounded symmetric 3x3 low-pass for near-shore cliffs in both axes.
  * Samples the raw source, NEVER itself. No smoothing within protected
- * walkable bounds or beyond the isolated far-scenery envelope.
+ * walkable bounds, the entire preserved near mesh, or the 20/80m join row.
  */
 export function farCoastReliefV5(
   x:number,z:number,base:(x:number,z:number)=>number,
