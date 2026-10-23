@@ -32,10 +32,13 @@ export class RegionTileStream<T> {
   private shutDown = false;
   private lastFocus: {code:string;x:number;z:number;detail:TileDetail}|null=null;
   private refillQueued=false;
+  private readonly autoRefill:boolean;
   private lastRefillFailure:string|null=null;
   readonly load: TileLoader<T>;
   readonly dispose: TileDisposer<T>;
-  constructor(load: TileLoader<T>, dispose: TileDisposer<T>) { this.load = load; this.dispose = dispose; }
+  constructor(load: TileLoader<T>, dispose: TileDisposer<T>, options:Readonly<{autoRefill?:boolean}>={}) {
+    this.load=load;this.dispose=dispose;this.autoRefill=options.autoRefill===true;
+  }
 
   get loadedKeys(): readonly string[] { return [...this.resident.keys()]; }
   get pendingKeys(): readonly string[] { return [...this.pending.keys()]; }
@@ -46,7 +49,7 @@ export class RegionTileStream<T> {
 
   /** A settled slot can be reused without waiting for another user focus event. */
   private scheduleRefill():void {
-    if(this.refillQueued||this.shutDown||!this.lastFocus||
+    if(!this.autoRefill||this.refillQueued||this.shutDown||!this.lastFocus||
        this.unsettled.size>=REGION_TILE_RULES.loadLimit)return;
     let missing=false;
     for(const key of this.wanted)
