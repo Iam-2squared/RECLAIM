@@ -54,7 +54,7 @@ try {
           glError:gl.getError(),image:canvas.toDataURL('image/png'),w:canvas.width,h:canvas.height};
       });
       assert.equal(info.d.boardwalkReview.enabled,enabled);
-      assert.equal(info.d.florareview?.enabled??false,false);
+      assert.equal(info.d.floraReview?.enabled??false,false);
       assert.equal(info.glError,0);
       assert.equal(info.placed,true);
       assert.equal(info.w>0&&info.h>0,true);
