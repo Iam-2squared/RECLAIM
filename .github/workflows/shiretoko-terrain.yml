@@ -108,9 +108,47 @@ jobs:
         run: test "$REVIEW_RESULT" = success
       - uses: actions/download-artifact@v4
         with:
-          pattern: shiretoko-ci-*-${{ env.SOURCE_SHA }}-${{ github.run_attempt }}
-          merge-multiple: true
-          path: release
+          # Partial Actions reruns retain successful lane artifacts from earlier attempts.
+          # Never silently merge failed and successful attempts into one directory.
+          pattern: shiretoko-ci-*-${{ env.SOURCE_SHA }}-*
+          merge-multiple: false
+          path: ci-artifacts
+      - name: Verify lane artifacts independently, then combine only byte-compatible outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for lane in core v4; do
+            matches=(ci-artifacts/shiretoko-ci-${lane}-${SOURCE_SHA}-*)
+            candidates=()
+            for match in "${matches[@]}"; do
+              [[ -d "$match" ]] || continue
+              suffix="${match##*-}"
+              [[ "$suffix" =~ ^[1-9][0-9]*$ ]] && candidates+=("$match")
+            done
+            ((${#candidates[@]} > 0)) || { echo "Missing verified $lane artifact for exact HEAD $SOURCE_SHA" >&2; exit 1; }
+            choice="$(printf '%s\n' "${candidates[@]}" | sort -V | tail -n 1)"
+            [[ "$(cat "$choice/ci-source-$lane.txt")" == "$SOURCE_SHA" ]] || { echo "Source mismatch for $lane" >&2; exit 1; }
+            [[ -z "$(find "$choice" -type l -print -quit)" ]] || { echo "Unexpected symbolic link in $lane" >&2; exit 1; }
+            (cd "$choice" && sha256sum -c "ci-package-$lane.sha256")
+            if [[ "$lane" == core ]]; then core_artifact="$choice"; else v4_artifact="$choice"; fi
+          done
+          cmp -s "$core_artifact/ci-package-core.sha256" "$v4_artifact/ci-package-v4.sha256" || { echo "Core and V4 produced different HTML bytes" >&2; exit 1; }
+          [[ ! -e release ]] || { echo "Refusing to reuse an existing output release" >&2; exit 1; }
+          mkdir -p release
+          cp -a "$core_artifact/." release/
+          while IFS= read -r -d '' file; do
+            relative="${file#"$v4_artifact/"}"
+            destination="release/$relative"
+            if [[ -e "$destination" ]]; then
+              cmp -s "$file" "$destination" || { echo "Artifact content collision: $relative" >&2; exit 1; }
+            else
+              mkdir -p "$(dirname "$destination")"
+              cp "$file" "$destination"
+            fi
+          done < <(find "$v4_artifact" -type f -print0)
+          (cd release && sha256sum -c ci-package-core.sha256)
+          echo "Merged exact HEAD $SOURCE_SHA from $core_artifact and $v4_artifact"
       - name: Verify both jobs tested the identical source and HTML bytes
         working-directory: release
         run: |
