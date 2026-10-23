@@ -9,8 +9,10 @@ export class TerrainWalker {
   // Optional review-only indexed deck. The default campaign-independent walker
   // remains on the canonical 5m terrain and is byte-for-byte behavior-compatible.
   private readonly platformHeightAt: ((x: number, z: number) => number | null) | undefined;
-  constructor(terrain: ShiretokoTerrain, platformHeightAt?: (x: number, z: number) => number | null) {
-    this.terrain = terrain; this.platformHeightAt = platformHeightAt;
+  private readonly blockedAt: ((x: number, z: number) => boolean) | undefined;
+  constructor(terrain: ShiretokoTerrain, platformHeightAt?: (x: number, z: number) => number | null,
+    blockedAt?: (x: number, z: number) => boolean) {
+    this.terrain = terrain; this.platformHeightAt = platformHeightAt; this.blockedAt = blockedAt;
     this.y = this.surfaceAt(this.x, this.z);
   }
   private surfaceAt(x: number, z: number): number {
@@ -28,7 +30,7 @@ export class TerrainWalker {
   }
   place(x: number, z: number): boolean {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
-    if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.waterAt(x, z) || this.slopeAt(x, z) > .8) return false;
+    if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.waterAt(x, z) || this.blockedAt?.(x, z) || this.slopeAt(x, z) > .8) return false;
     this.x = x; this.z = z; this.y = this.surfaceAt(x, z); this.velocity = 0; this.grounded = true; this.jumpHeld = false; return true;
   }
   clearInput() { this.jumpHeld = false; }
@@ -43,7 +45,7 @@ export class TerrainWalker {
       const oldX = this.x, oldZ = this.z;
       for (const axis of ['x', 'z'] as const) {
         const x = this.x + (axis === 'x' ? dx / pieces : 0), z = this.z + (axis === 'z' ? dz / pieces : 0);
-        if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.waterAt(x, z)) continue;
+        if (Math.abs(x) >= TERRAIN.extent - 2 || Math.abs(z) >= TERRAIN.extent - 2 || this.waterAt(x, z) || this.blockedAt?.(x, z)) continue;
         if (this.slopeAt(x, z) > .85 || this.surfaceAt(x, z) - this.surfaceAt(this.x, this.z) > .4) continue;
         this[axis] = axis === 'x' ? x : z;
       }
