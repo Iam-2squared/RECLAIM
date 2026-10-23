@@ -7,9 +7,9 @@
  * the per-segment 5s timeout, or the overall 50s walk deadline.
  * Serialized by Playwright into the page; no gameplay state is modified.
  */
-export function observeActualWalkSegment(observation) {
+export function observeActualWalkSegment(observation, sampledMission) {
   const {target,radius,stopRange,simSeconds,initialTargetDistance,progressMetres}=observation;
-  const m=window.__RECLAIM__.snapshot().mission;
+  const m=sampledMission===undefined?window.__RECLAIM__.snapshot().mission:sampledMission;
   if(!m||m.paused)return 'paused';
   const distance=Math.hypot(target.x-m.player.x,target.z-m.player.z);
   if(distance<=radius)return 'reached';
