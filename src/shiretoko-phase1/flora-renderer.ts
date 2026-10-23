@@ -129,7 +129,11 @@ export function createFloraReviewLayer(
     mesh.name=`flora/review/600m-${cell}/${kind}`;
     for(let i=0;i<plants.length;i++){
       const p=plants[i],s=p.scale;
-      origin.set(p.x,p.y,p.z);rotation.setFromAxisAngle(axis,p.rotation);
+      // InstancedMesh stores float32 matrices: collision and render must sample
+      // precisely the SAME quantized X/Z, not the unrounded plan coordinates.
+      const x=Math.fround(p.x),z=Math.fround(p.z);
+      origin.set(x,Math.fround(terrain.heightAt(x,z)),z);
+      rotation.setFromAxisAngle(axis,p.rotation);
       scale.set(s,s,s);matrix.compose(origin,rotation,scale);
       mesh.setMatrixAt(i,matrix);
       mesh.setColorAt(i,tint(p.x,p.z));
