@@ -19,8 +19,16 @@ const X=-100, Z=835, WIDTH=18, DEPTH=14, WALL=.34;
 const DOOR_HALF=1.15, PERSON=.23;
 export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   const left=X-WIDTH/2,right=X+WIDTH/2,back=Z-DEPTH/2,front=Z+DEPTH/2;
+  // Foundation sites participate in the same true 5m terrain survey used
+  // to set the walkable floor. Sampling only outer corners allowed a high
+  // interior pier to intersect the floor underside by 1mm (CI regression).
+  const pierSites=[
+    [left+1,back+1],[X,back+1],[right-1,back+1],
+    [left+1,front-1],[X,front-1],[right-1,front-1],
+    [left+1,Z],[right-1,Z],
+  ] as const;
   const samples=[[left,back],[left,front],[right,back],[right,front],[X,Z],
-    [right+9,Z],[right+5,Z]] as const;
+    [right+9,Z],[right+5,Z],...pierSites] as const;
   // The previous footprint spanned 16.6m of vertical cliff relief. Ground
   // height and the shoreline are sampled from the actual immutable 5m terrain.
   const footprint=[[left,back],[left,front],[right,back],[right,front],[X,Z]] as const;
@@ -58,11 +66,6 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   // plinth stays underneath and cannot overwrite the walking Y coordinate.
   box('cabin / real wooden floor',X,floorY-.13,Z,WIDTH,.26,DEPTH,mats.wood);
   box('cabin / stone foundation',X,floorY-.78,Z,WIDTH,1.05,DEPTH,mats.stone);
-  const pierSites=[
-    [left+1,back+1],[X,back+1],[right-1,back+1],
-    [left+1,front-1],[X,front-1],[right-1,front-1],
-    [left+1,Z],[right-1,Z],
-  ] as const;
   for(const [px,pz] of pierSites){
     const foundation=terrain.heightAt(px,pz),height=floorY-.12-foundation;
     if(!(height>.1 && height<3))
