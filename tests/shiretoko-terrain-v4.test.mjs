@@ -60,3 +60,51 @@ test('resolved coast is deterministic and its actual20m triangles distribute the
   assert.ok(y.filter(v=>v>full*.1&&v<full*.9).length>=6,'Rise crosses multiple actual cells');
  }
 });
+
+/**
+ * Indexed border edges must agree, not merely contain matching vertices.
+ * A coarse triangle can otherwise end halfway through a fine edge and leave
+ * a T-junction even when the vertex heights happen to match.
+ */
+function indexedBorderSegments(meshes, z, from, to) {
+  const segments = new Map();
+  for (const mesh of meshes) {
+    const {positions:p,indices:q}=mesh;
+    const limit=p.length/3;
+    for (let i=0;i<q.length;i+=3) {
+      for (let k=0;k<3;k++) {
+        const a=q[i+k],b=q[i+(k+1)%3];
+        assert(a<limit && b<limit, 'out-of-range mesh index');
+        const ax=p[a*3],bx=p[b*3];
+        if(p[a*3+2]!==z || p[b*3+2]!==z || ax===bx)continue;
+        const lo=Math.min(ax,bx),hi=Math.max(ax,bx);
+        if(lo<from||hi>to)continue;
+        const ay=p[(ax<bx?a:b)*3+1],by=p[(ax<bx?b:a)*3+1];
+        const key=`${lo}:${hi}`;
+        assert(!segments.has(key),`duplicate boundary edge ${key} on z=${z}`);
+        segments.set(key,{lo,hi,ay,by});
+      }
+    }
+  }
+  return segments;
+}
+function assertMatchingSeam(first,second,z,from,to,step) {
+  const a=indexedBorderSegments(first,z,from,to);
+  const b=indexedBorderSegments(second,z,from,to);
+  assert.equal(a.size,(to-from)/step,`first indexed border count at z=${z}`);
+  assert.equal(b.size,a.size,`second indexed border count at z=${z}`);
+  for(let x=from;x<to;x+=step){
+    const key=`${x}:${x+step}`,left=a.get(key),right=b.get(key);
+    assert(left,`first mesh missing ${key} on z=${z}`);
+    assert(right,`second mesh missing ${key} on z=${z}`);
+    assert.equal(left.ay,right.ay,`left ground contact ${key} on z=${z}`);
+    assert.equal(left.by,right.by,`right ground contact ${key} on z=${z}`);
+    assert.equal(left.ay,Math.fround(t.surfaceAt(x,z)));
+    assert.equal(left.by,Math.fround(t.surfaceAt(x+step,z)));
+  }
+}
+test('actual indexed 5/20/80m border segments have no T-junctions or mismatched walk contact',()=>{
+  assertMatchingSeam([near],[far],-4200,-3600,3600,20);
+  const walkingEdge=Array.from({length:8},(_,i)=>t.chunk(i-4,-4));
+  assertMatchingSeam([near],walkingEdge,-1200,-1200,1200,5);
+});
