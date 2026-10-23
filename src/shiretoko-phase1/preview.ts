@@ -5,6 +5,7 @@ import { TerrainIntro } from './intro.ts';
 import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
+import { TerrainFrameDemand } from './frame-demand.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
 import './preview.css';
 
@@ -108,6 +109,7 @@ async function boot() {
   const walker = new TerrainWalker(terrain), keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
+  const frameDemand = new TerrainFrameDemand();
   const cameraChanged = () => { needsRender = true; };
   controls.addEventListener('change', cameraChanged); cleanup.push(() => controls.removeEventListener('change',cameraChanged));
   let transition: { from: T.Vector3; targetFrom: T.Vector3; to: View; start: number } | null = null;
@@ -132,7 +134,7 @@ async function boot() {
     // The backdrop represents directions, not a finite sphere fixed to the
     // world's origin. Panning to the distant terminal must not exit its shell.
     sky.position.copy(camera.position);
-    const submitted = performance.now(); renderer.render(scene,camera); renderCallsTotal++; needsRender = false;
+    const submitted = performance.now(); renderer.render(scene,camera); frameDemand.submitted(camera); renderCallsTotal++; needsRender = false;
     if (drawSubmissionMs.length < 600) drawSubmissionMs.push(performance.now()-submitted);
     if (!firstFrame && !shaderError) { firstFrame = performance.now(); $('loading').hidden = true; }
   }
@@ -258,8 +260,10 @@ async function boot() {
       camera.position.lerpVectors(transition.from, new T.Vector3(...transition.to.position), easing); controls.target.lerpVectors(transition.targetFrom, new T.Vector3(...transition.to.target), easing); controls.update();
       if (t === 1) transition = null;
     } else if(intro.state!=='landed')controls.update();
-    // A terrain review has no reason to flood the GPU with identical idle overview frames.
-    if (needsRender || walking || transition) renderNow(time);
+    // Frozen water plus an unchanged walking camera is an identical image.
+    // Keep input/60Hz physics above active, and draw every changed pose; do not
+    // flood the software GPU with duplicate frames while a capture is pending.
+    if (needsRender || transition || (walking && (!freeze || frameDemand.changed(camera)))) renderNow(time);
     if (walking && document.pointerLockElement === renderer.domElement && rawDelta > 0 && frameTimes.length < 600) frameTimes.push(rawDelta * 1000);
   }
   animation = requestAnimationFrame(frame);
@@ -274,7 +278,7 @@ async function boot() {
     geometryAttributeBytes,indexBytes,terrainHeightBytes:terrain.heights.byteLength,approxTextureBytes:512*512*4*4/3+terrain.count**2*4,
     camera:{position:camera.position.toArray(),target:controls.target.toArray(),fov:camera.fov},
     geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures,
-    frameTimesMs: frameTimes.slice(2), drawSubmissionMs:drawSubmissionMs.slice(), renderCallsTotal, renderingPolicy:'on-demand orbit, continuous walking', viewport: [innerWidth, innerHeight], dpr: renderer.getPixelRatio(),
+    frameTimesMs: frameTimes.slice(2), drawSubmissionMs:drawSubmissionMs.slice(), renderCallsTotal, renderingPolicy:'on-demand orbit; continuous walking unless frozen and camera unchanged', viewport: [innerWidth, innerHeight], dpr: renderer.getPixelRatio(),
     player: { x: walker.x, y: walker.y, z: walker.z, grounded: walker.grounded, distance: walker.distance },
     pointerLocked:document.pointerLockElement===renderer.domElement, inputKeys:[...keys], hidden:document.hidden, contextLost, shaderError, disposed, heapBytes: (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
   });
