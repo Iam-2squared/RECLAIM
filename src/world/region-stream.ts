@@ -30,6 +30,9 @@ export class RegionTileStream<T> {
   // an earlier focus after a later focus, clear, or close has taken ownership.
   private revision = 0;
   private shutDown = false;
+  private lastFocus: {code:string;x:number;z:number;detail:TileDetail}|null=null;
+  private refillQueued=false;
+  private lastRefillFailure:string|null=null;
   readonly load: TileLoader<T>;
   readonly dispose: TileDisposer<T>;
   constructor(load: TileLoader<T>, dispose: TileDisposer<T>) { this.load = load; this.dispose = dispose; }
@@ -38,12 +41,34 @@ export class RegionTileStream<T> {
   get pendingKeys(): readonly string[] { return [...this.pending.keys()]; }
   /** Counts physical slots; not just requests which still have interested consumers. */
   get outstandingLoads(): number { return this.unsettled.size; }
+  /** Only used by debugging/review UI; no repeated silent retries on errors. */
+  get refillFailure(): string|null { return this.lastRefillFailure; }
+
+  /** A settled slot can be reused without waiting for another user focus event. */
+  private scheduleRefill():void {
+    if(this.refillQueued||this.shutDown||!this.lastFocus||
+       this.unsettled.size>=REGION_TILE_RULES.loadLimit)return;
+    let missing=false;
+    for(const key of this.wanted)
+      if(!this.resident.has(key)&&!this.pending.has(key)){missing=true;break;}
+    if(!missing)return;
+    this.refillQueued=true;
+    queueMicrotask(()=>{
+      this.refillQueued=false;
+      if(this.shutDown||!this.lastFocus)return;
+      const spec=this.lastFocus;
+      try { this.focus(spec.code,spec.x,spec.z,spec.detail); }
+      catch(error) {this.lastRefillFailure=String(error);}
+    });
+  }
 
   focus(code: string, x: number, z: number, detail: TileDetail): RegionStreamReport {
     if (this.shutDown) throw new Error('region stream disposed');
     // Validate *before* modifying the active scene or aborting any request.
     const initial = planRegionTiles(code, x, z, detail, []);
     const revision = ++this.revision;
+    this.lastFocus={code,x,z,detail};
+    this.lastRefillFailure=null;
     const requireCurrent = () => {
       if (this.shutDown || revision !== this.revision)
         throw new Error('region stream focus superseded by a reentrant lifecycle operation');
@@ -96,6 +121,7 @@ export class RegionTileStream<T> {
       this.pending.set(coord.key, { generation, controller });
       this.unsettled.add(controller); started.push(coord.key);
       // Let same-turn focus() cancel a request before creating any loader work.
+      let completedOrObsolete=false;
       void Promise.resolve().then(async () => {
         if (controller.signal.aborted) return;
         const resource = await this.load(coord, controller.signal);
@@ -105,16 +131,22 @@ export class RegionTileStream<T> {
         const current = this.pending.get(coord.key);
         if (this.shutDown || controller.signal.aborted || current?.controller !== controller ||
             generation !== this.generation || !this.wanted.has(coord.key) || this.region !== code) {
-          this.dispose(resource); return;
+          this.dispose(resource); completedOrObsolete=true; return;
         }
         this.pending.delete(coord.key);
         if (this.resident.has(coord.key)) this.dispose(resource);
         else this.resident.set(coord.key, resource);
+        completedOrObsolete=true;
       }).catch(() => {
         // A loader failure remains eligible for a subsequent explicit focus().
       }).finally(() => {
         if (this.pending.get(coord.key)?.controller === controller) this.pending.delete(coord.key);
         this.unsettled.delete(controller);
+        // A failed/empty active load waits for explicit refocus; never spin
+        // indefinitely against a broken loader. Aborted old loads may release
+        // capacity for the NEW focus even if the old Promise rejected.
+        if((completedOrObsolete||controller.signal.aborted)&&!this.shutDown)
+          this.scheduleRefill();
       });
     }
     return {
@@ -124,6 +156,7 @@ export class RegionTileStream<T> {
   }
 
   clear(): void {
+    this.lastFocus=null;
     this.revision++;
     this.generation++;
     const pending = [...this.pending.values()];
