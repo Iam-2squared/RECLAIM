@@ -172,4 +172,13 @@ try {
   await page.screenshot({path:resolve(captures,'FAILED-verification.png'),timeout:60000}).catch(()=>{});
   console.error('Runtime state',JSON.stringify(await stage('failure-diagnostics',()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()),5000).catch(()=>null)));
   throw error;
-} finally { await stage('close-browser',()=>browser.close(),10000); }
+} finally {
+  // Scene.dispose() and renderer.info assertions run above. Closing the page
+  // and its isolated context first also releases the headless SwiftShader GL
+  // document before Playwright attempts to terminate the browser process.
+  // Each operation keeps the existing 10-second failure bound; a teardown
+  // failure remains a failing CI, never silently converted into a pass.
+  await stage('close-page',()=>page.close({runBeforeUnload:false}),10000);
+  await stage('close-context',()=>context.close(),10000);
+  await stage('close-browser',()=>browser.close(),10000);
+}
