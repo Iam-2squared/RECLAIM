@@ -100,3 +100,25 @@ test('a mixed rejecting loader is not silently retried after healthy sibling til
   assert.equal(attempts.get(badKey),2);
   stream.close();
 });
+
+test('two blocked nearest tiles do not starve healthy farther tiles under the two-slot planner',async()=>{
+  const desired=planRegionTiles('01',0,0,'low',[]).desired;
+  const badKeys=new Set(desired.slice(0,2).map(t=>t.key));
+  const attempts=new Map();
+  const stream=new RegionTileStream(async coord=>{
+    attempts.set(coord.key,(attempts.get(coord.key)??0)+1);
+    if(badKeys.has(coord.key))throw new Error('tile missing');
+    return {key:coord.key};
+  },()=>{}, {autoRefill:true});
+  stream.focus('01',0,0,'low');await flush();
+  assert.equal(stream.loadedKeys.length,desired.length-2,
+    'bounded planner must advance after two nearest tiles fail');
+  assert.equal(stream.outstandingLoads,0);
+  for(const coord of desired)assert.equal(attempts.get(coord.key),1,
+    'no automatic repetition even when the first two slots both fail');
+  stream.focus('01',0,0,'low');await flush();
+  for(const key of badKeys)assert.equal(attempts.get(key),2,
+    'explicit focus is required to retry a failed tile');
+  assert.equal(stream.loadedKeys.length,desired.length-2);
+  stream.close();
+});
