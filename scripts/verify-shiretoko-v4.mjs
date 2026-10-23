@@ -3,6 +3,7 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
+import {captureTerrainFramebuffer} from './capture-shiretoko-framebuffer.mjs';
 const out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v4/interaction');await mkdir(out,{recursive:true});
 const file=resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),browser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
 const context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1}),page=await context.newPage(),errors=[],network=[],checks=[],walks=[];
@@ -44,9 +45,9 @@ try{
   await page.keyboard.up('w');await page.keyboard.up('Shift');await page.keyboard.down('Space');await page.waitForFunction(()=>!window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded,{}, {timeout:15000});await page.keyboard.up('Space');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().player.grounded,{}, {timeout:15000});
   const tick=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,tick);
-  const frame=await page.evaluate(()=>{const a=window.__SHIRETOKO_TERRAIN__,c=document.querySelector('canvas'),gl=c.getContext('webgl2');gl.finish();const d=a.diagnostics();return{...d,groundError:Math.abs(d.player.y-a.terrain.heightAt(d.player.x,d.player.z)),water:a.terrain.inWater(d.player.x,d.player.z),glError:gl.getError(),image:c.toDataURL('image/jpeg',.94)};});
+  const frame=await page.evaluate(captureTerrainFramebuffer,{quality:.94});
   assert.equal(frame.mode,'walk');assert.ok(frame.pointerLocked&&frame.player.grounded);assert.equal(frame.water,false);assert.ok(frame.groundError<.001);assert.equal(frame.glError,0);assert.deepEqual(frame.inputKeys,[]);assert.ok(frame.player.distance-before.distance>.8);
-  const image=`walk-${['cape','wetland','lake','mountain'][i-1]}-webgl-framebuffer.jpg`;await writeFile(resolve(out,image),Buffer.from(frame.image.split(',')[1],'base64'));delete frame.image;walks.push({location:i,file:image,method:'Actual preserved WebGL framebuffer after real W+Shift and Space input; DOM overlay excluded',...frame});
+  const image=`walk-${['cape','wetland','lake','mountain'][i-1]}-webgl-framebuffer.jpg`;await writeFile(resolve(out,image),Buffer.from(frame.image.split(',')[1],'base64'));delete frame.image;walks.push({location:i,file:image,method:'Actual preserved WebGL framebuffer through completed async transfer after real W+Shift and Space input; DOM overlay excluded',...frame});
   await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit'&&!document.pointerLockElement);
  }
  checks.push('All four actual first-person starts accept W+Shift, jump/land, enforce dry shared grounding and release onEscape');
