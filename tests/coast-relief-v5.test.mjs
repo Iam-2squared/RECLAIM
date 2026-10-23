@@ -22,22 +22,22 @@ test('playable 2400m, original near LOD and immutable -4200 join stay bit identi
 test('seaward and deep-inland masks avoid all neighbour samples',()=>{
   let calls=0;
   const base=(x,z)=>{calls++;return x+z;};
-  assert.equal(relief(20,-2100,base,()=>-900),-2080);assert.equal(calls,1);
-  calls=0;assert.equal(relief(20,-2100,base,()=>1400),-2080);assert.equal(calls,1);
+  assert.equal(relief(20,-4800,base,()=>-900),-4780);assert.equal(calls,1);
+  calls=0;assert.equal(relief(20,-4800,base,()=>1400),-4780);assert.equal(calls,1);
 });
 
 test('masked kernel has strict nine-height read budget and deterministic output',()=>{
   let calls=0;
   const base=(x,z)=>{calls++;return x*.002+Math.cos(z*.002);};
-  const first=at(base,0,-2100);
+  const first=at(base,0,-4800);
   assert.equal(calls,config.maxBaseSamplesPerVertex);
-  assert.equal(first,at(base,0,-2100));
+  assert.equal(first,at(base,0,-4800));
 });
 
 test('nonfinite neighbour cannot infect surrounding valid mesh vertices',()=>{
   const base=x=>x===140?NaN:73;
-  assert.equal(at(base,0,-2100),73);
-  assert(Number.isNaN(relief(NaN,-2100,()=>NaN,coast)));
+  assert.equal(at(base,0,-4800),73);
+  assert(Number.isNaN(relief(NaN,-4800,()=>NaN,coast)));
 });
 
 test('blend envelope stays continuous at all four z transitions',()=>{
