@@ -24,22 +24,38 @@ test('both failures are preserved without a retry or fallback', async () => {
   await assert.rejects(closeReviewBrowser({async close(){throw b;}},{async close(){throw a;}}),e=>e instanceof AggregateError&&e.errors[0]===a&&e.errors[1]===b);
 });
 
-test('retained fixture GL context and handle are released before native context close',async()=>{
- const events=[];const gl={isContextLost:()=>false,getExtension:name=>{assert.equal(name,'WEBGL_lose_context');return{loseContext(){events.push('lose-gl');}};}};
- const handle={evaluate:async fn=>fn(gl),dispose:async()=>events.push('handle')};
- await closeReviewBrowser({close:async()=>events.push('browser'),isConnected:()=>false},{close:async()=>events.push('context')},handle);
- assert.deepEqual(events,['lose-gl','handle','context','browser']);
+test('retained GL handle, actual review page and explicit context close in order',async()=>{
+  const events=[];
+  const handle={async dispose(){events.push('handle');},async evaluate(){throw new Error('Must never invoke context-loss after renderer disposal');}};
+  const page={async close(options){assert.deepEqual(options,{runBeforeUnload:false});events.push('page');}};
+  const context={pages:()=>[page],async close(){events.push('context');}};
+  const browser={async close(){events.push('browser');},isConnected:()=>false};
+  await closeReviewBrowser(browser,context,handle);
+  assert.deepEqual(events,['handle','page','context','browser']);
 });
-test('already lost or unsupported fixture contexts do not request another loss',async()=>{
- for(const lost of [true,false]){
-  let probes=0,disposed=false;
-  const gl={isContextLost:()=>lost,getExtension(){probes++;return null;}};
-  await closeReviewBrowser({close:async()=>{},isConnected:()=>false},{close:async()=>{}},{evaluate:async fn=>fn(gl),dispose:async()=>{disposed=true;}});
-  assert.equal(probes,lost?0:1);assert(disposed);
- }
+test('lost GPU context needs no extension evaluation and still disposes retained handle',async()=>{
+  let disposed=false;
+  const handle={async evaluate(){throw new Error('No post-disposal WEBGL extension calls');},async dispose(){disposed=true;}};
+  await closeReviewBrowser({close:async()=>{},isConnected:()=>false},{pages:()=>[],close:async()=>{}},handle);
+  assert(disposed);
 });
-test('GL teardown failure still closes the owned handle, context and browser and remains failure',async()=>{
- const error=new Error('GPU release failed'),events=[];
- await assert.rejects(closeReviewBrowser({close:async()=>events.push('browser'),isConnected:()=>false},{close:async()=>events.push('context')},{evaluate:async()=>{throw error;},dispose:async()=>events.push('handle')}),e=>e===error);
- assert.deepEqual(events,['handle','context','browser']);
+test('GL handle release failure still closes page, context, browser and remains a failure',async()=>{
+  const error=new Error('GPU handle release failed'),events=[];
+  const page={async close(){events.push('page');}};
+  const context={pages:()=>[page],async close(){events.push('context');}};
+  const browser={async close(){events.push('browser');},isConnected:()=>false};
+  await assert.rejects(closeReviewBrowser(browser,context,{async dispose(){throw error;}}),e=>e===error);
+  assert.deepEqual(events,['page','context','browser']);
+});
+test('page close failure does not bypass context/browser cleanup or count as a pass', async () => {
+  const error=new Error('page close failed'),events=[];
+  const context={pages:()=>[{async close(){events.push('page');throw error;}}],async close(){events.push('context');}};
+  const browser={async close(){events.push('browser');},isConnected:()=>false};
+  await assert.rejects(closeReviewBrowser(browser,context),e=>e===error);
+  assert.deepEqual(events,['page','context','browser']);
+});
+test('enumeration and browser close errors are both retained',async()=>{
+  const enumerateError=new Error('pages listing failed'),browserError=new Error('browser close failed');
+  await assert.rejects(closeReviewBrowser({async close(){throw browserError;}},
+    {pages(){throw enumerateError;},async close(){}}),e=>e instanceof AggregateError&&e.errors[0]===enumerateError&&e.errors[1]===browserError);
 });
