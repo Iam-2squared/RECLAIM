@@ -3,6 +3,8 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
+import {captureTerrainFramebuffer} from './capture-terrain-framebuffer.mjs';
+import {withCanvasCaptureDeadline} from './webgl-canvas-jpeg.mjs';
 const out=resolve(process.argv[2]??'release/shiretoko-phase1-review/v4/interaction');await mkdir(out,{recursive:true});
 const file=resolve('release/RECLAIM_Shiretoko_Terrain_Phase1.html'),browser=await chromium.launch({headless:true,...(process.env.RECLAIM_TEST_BROWSER?{executablePath:process.env.RECLAIM_TEST_BROWSER}:{}),args:['--no-sandbox','--disable-dev-shm-usage','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--allow-file-access-from-files']});
 const context=await browser.newContext({viewport:{width:1600,height:900},deviceScaleFactor:1}),page=await context.newPage(),errors=[],network=[],checks=[],walks=[];
@@ -54,7 +56,19 @@ try{
   // the existing freeze invalidation; never move the player or relax the gate.
   const tick=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,n=api.diagnostics().renderCallsTotal;api.freeze(true);return n;});
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,tick);
-  const frame=await page.evaluate(()=>{const a=window.__SHIRETOKO_TERRAIN__,c=document.querySelector('canvas'),gl=c.getContext('webgl2');gl.finish();const d=a.diagnostics();return{...d,groundError:Math.abs(d.player.y-a.terrain.heightAt(d.player.x,d.player.z)),water:a.terrain.inWater(d.player.x,d.player.z),glError:gl.getError(),image:c.toDataURL('image/jpeg',.94)};});
+  // Read the exact real 1600x900 WebGL framebuffer via an asynchronous GPU
+  // fence and PBO. A separate CPU 2D canvas encodes the original .94 JPEG.
+  // Unlike gl.finish()/WebGL.toDataURL()/toBlob(), this does not synchronously
+  // drain SwiftShader or request another readback of the walking framebuffer.
+  // Keep the original 20s capture budget, native input and grounding gates.
+  const frame=await withCanvasCaptureDeadline(
+    ()=>page.evaluate(captureTerrainFramebuffer,{timeoutMs:20000,pollMs:10,jpegQuality:.94}),
+    20000
+  );
+  assert.deepEqual([frame.width,frame.height],[1600,900]);
+  assert.equal(frame.preserveDrawingBuffer,true);
+  assert.ok(frame.max>frame.min,'Actual V4 WebGL framebuffer is blank');
+  assert.ok(frame.image.startsWith('data:image/jpeg;base64,/9j'),'Actual V4 WebGL framebuffer is not JPEG');
   assert.equal(frame.mode,'walk');assert.ok(frame.pointerLocked&&frame.player.grounded);assert.equal(frame.water,false);assert.ok(frame.groundError<.001);assert.equal(frame.glError,0);assert.deepEqual(frame.inputKeys,[]);assert.ok(frame.player.distance-before.distance>.8);
   const image=`walk-${['cape','wetland','lake','mountain'][i-1]}-webgl-framebuffer.jpg`;await writeFile(resolve(out,image),Buffer.from(frame.image.split(',')[1],'base64'));delete frame.image;walks.push({location:i,file:image,method:'Actual preserved WebGL framebuffer after real W+Shift and Space input; DOM overlay excluded',...frame});
   await page.keyboard.press('Escape');await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().mode==='orbit'&&!document.pointerLockElement);
