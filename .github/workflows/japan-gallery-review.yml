@@ -1,0 +1,33 @@
+name: Japan catalog development atlas review
+on:
+  pull_request:
+    paths:
+      - 'public/reviews/japan-catalog.html'
+      - 'tests/japan-catalog-review.test.mjs'
+      - 'tests/japan-gallery.spec.mjs'
+      - '.github/workflows/japan-gallery-review.yml'
+permissions:
+  contents: read
+jobs:
+  gallery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- tests/japan-gallery.spec.mjs --project=chromium
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: japan-gallery-browser-${{ github.event.pull_request.head.sha }}
+          path: release/japan-gallery-review/
+          retention-days: 14
