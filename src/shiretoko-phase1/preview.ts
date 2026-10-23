@@ -120,6 +120,15 @@ async function boot() {
   let boardwalkBadge: HTMLElement | null = null;
   if (boardwalkReview) {
     root.add(boardwalkReview.group);
+    // The terrain uses its own daylight shader; the review-only timber PBR
+    // requires explicit lights. No lights are injected in default previews.
+    const fillLight = new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 2.0);
+    fillLight.name = 'review only / wood skylight';
+    root.add(fillLight);
+    const sunLight = new T.DirectionalLight(0xffdab0, 2.1);
+    sunLight.position.set(-260, 640, 340);
+    sunLight.name = 'review only / warm timber daylight';
+    root.add(sunLight);
     boardwalkBadge = document.createElement('div');
     boardwalkBadge.textContent = '開発レビュー：木道（実三角形接地・本編未接続）';
     boardwalkBadge.setAttribute('data-boardwalk-review','true');
