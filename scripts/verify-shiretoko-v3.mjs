@@ -65,7 +65,14 @@ try{
   for(let i=0;i<12;i++)await new Promise(r=>requestAnimationFrame(r));
   const hiddenDraws=a.diagnostics().renderCallsTotal-before;delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));return hiddenDraws;
  });assert.equal(hidden,0);checks.push('synthetic visibility-hidden lifecycle stops GL submissions, then restores state');
+ // After visibility restoration, a software-WebGL frame may still be queued.
+ // The GPU frame gate correctly defers setView's actual draw when its queue is
+ // full. Observe that requested frame before measuring idle, rather than
+ // counting an outstanding view-change render as an identical idle frame.
+ // This keeps the original 30+20 RAF observation and exact zero-draw assertion.
+ const beforeIdleView=(await state()).renderCallsTotal;
  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.setView(0));
+ await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeIdleView);
  const idle=await page.evaluate(async()=>{const a=window.__SHIRETOKO_TERRAIN__;for(let i=0;i<30;i++)await new Promise(r=>requestAnimationFrame(r));const n=a.diagnostics().renderCallsTotal;for(let i=0;i<20;i++)await new Promise(r=>requestAnimationFrame(r));return a.diagnostics().renderCallsTotal-n;});assert.equal(idle,0);
  const beforeDispose=await state();await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());const disposed=await state();assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0);assert.equal(await page.locator('canvas').count(),0);
  checks.push('idle overview submits zero identical frames; dispose returns GPU geometry/texture counts to zero');
