@@ -7,14 +7,14 @@ const at=(base,x,z)=>relief(x,z,base,coast);
 
 test('far-shore candidate smooths X and Z discontinuities, not just their appearance',()=>{
   const xWall=x=>x>=0?195:-28;
-  const zWall=(_x,z)=>z>=-2000?195:-28;
-  assert(Math.abs(at(xWall,0,-2000)-at(xWall,-20,-2000))<80);
-  assert(Math.abs(at(zWall,0,-2000)-at(zWall,0,-2020))<80);
+  const zWall=(_x,z)=>z>=-4800?195:-28;
+  assert(Math.abs(at(xWall,0,-4800)-at(xWall,-20,-4800))<80);
+  assert(Math.abs(at(zWall,0,-4800)-at(zWall,0,-4820))<80);
 });
 
-test('playable 2400m square and unaffected far boundary stay bit identical',()=>{
+test('playable 2400m, original near LOD and immutable -4200 join stay bit identical',()=>{
   const base=(x,z)=>103+Math.sin(x*.017)*21+z*.002;
-  for(const z of [-5800,-5600,-1200,-800,0,850,1200])
+  for(const z of [-5800,-5600,-4240,-4200,-2000,-1200,-800,0,850,1200])
     for(const x of [-2800,-1000,-170,0,990,2100])
       assert.equal(at(base,x,z),base(x,z));
 });
@@ -42,7 +42,7 @@ test('nonfinite neighbour cannot infect surrounding valid mesh vertices',()=>{
 
 test('blend envelope stays continuous at all four z transitions',()=>{
   const base=(x,z)=>Math.sin(x*.01+z*.005)*90;
-  for(const boundary of [-5600,-5000,-1400,-1200]){
+  for(const boundary of [-5600,-5000,-4480,-4240]){
     const left=at(base,0,boundary-.001),right=at(base,0,boundary+.001);
     assert(Math.abs(left-right)<.05, `height jump at ${boundary}: ${left} -> ${right}`);
   }
