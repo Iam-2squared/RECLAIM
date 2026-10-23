@@ -6,7 +6,7 @@ function fixture(t, statuses = [4, 5]) {
   const restore = new Map(['window','document','innerWidth','innerHeight','devicePixelRatio','ImageData'].map(k => [k, Object.getOwnPropertyDescriptor(globalThis,k)]));
   t.after(() => { for (const [k, d] of restore) d ? Object.defineProperty(globalThis,k,d) : delete globalThis[k]; });
   const calls = [], previous = {}, buffer = {}, sync = {};
-  let binding = previous, encoded, submitted = false, signaled = false;
+  let binding = previous, encoded, encoding, submitted = false, signaled = false;
   const gl = {
     PIXEL_PACK_BUFFER:1, PIXEL_PACK_BUFFER_BINDING:2, STREAM_READ:3, TIMEOUT_EXPIRED:4,
     CONDITION_SATISFIED:5, ALREADY_SIGNALED:6, WAIT_FAILED:7, SYNC_GPU_COMMANDS_COMPLETE:8,
@@ -27,13 +27,13 @@ function fixture(t, statuses = [4, 5]) {
   const source = {width:2,height:2,getContext:()=>gl,toDataURL:()=>{throw new Error('second GPU read forbidden');}};
   globalThis.document = {
     querySelector: () => source,
-    createElement: () => ({getContext:()=>({putImageData:data=>{encoded=data;}}),toDataURL:()=> 'data:image/jpeg;base64,/9j/2Q=='}),
+    createElement: () => ({getContext:()=>({putImageData:data=>{encoded=data;}}),toDataURL:(format,quality)=>{encoding={format,quality};return 'data:image/jpeg;base64,/9j/2Q==';}}),
   };
   const metadata = {mode:'walk',pointerLocked:true,player:{x:1,y:10,z:2,grounded:true},inputKeys:[],contextLost:false,shaderError:false,renderCallsTotal:12,camera:{position:[1,12,2],fov:66}};
-  globalThis.window = {__SHIRETOKO_TERRAIN__:{diagnostics:()=>metadata,terrain:{heightAt:()=>10},walker:{yaw:0,pitch:-.06}}};
+  globalThis.window = {__SHIRETOKO_TERRAIN__:{diagnostics:()=>metadata,terrain:{heightAt:()=>10,inWater:()=>false},walker:{yaw:0,pitch:-.06}}};
   globalThis.innerWidth=2;globalThis.innerHeight=2;globalThis.devicePixelRatio=1;
   globalThis.ImageData=class {constructor(data,width,height){this.data=data;this.width=width;this.height=height;}};
-  return {gl,calls,metadata,previous,getBinding:()=>binding,getEncoded:()=>encoded};
+  return {gl,calls,metadata,previous,getBinding:()=>binding,getEncoded:()=>encoded,getEncoding:()=>encoding};
 }
 
 test('asynchronous framebuffer reads actual pixels once, flips rows and releases GPU resources', async t => {
@@ -41,8 +41,16 @@ test('asynchronous framebuffer reads actual pixels once, flips rows and releases
   assert.deepEqual(f.calls,['read','fence','flush','poll','poll','copy','delete-sync','delete-buffer']);
   assert.equal(f.getBinding(),f.previous);assert.equal(result.min,1);assert.equal(result.max,26);
   assert.equal(result.mode,'walk');assert.equal(result.groundError,0);assert.equal(result.renderCallsTotal,12);
+  assert.deepEqual(result.player,{x:1,y:10,z:2,grounded:true});assert.equal(result.water,false);
   assert.deepEqual([...f.getEncoded().data],[21,22,23,255,24,25,26,255,1,2,3,255,4,5,6,255]);
   assert.equal(result.width,2);assert.equal(result.height,2);assert.equal(result.fov,66);
+});
+test('V4 uses the original .94 JPEG quality without a second WebGL readback', async t => {
+  const f=fixture(t,[5]);const frame=await captureTerrainFramebuffer({jpegQuality:.94});
+  assert.deepEqual(f.getEncoding(),{format:'image/jpeg',quality:.94});
+  assert.ok(frame.image.startsWith('data:image/jpeg;base64,/9j'));
+  assert.equal(f.calls.filter(x=>x==='read').length,1);
+  assert.equal(frame.glError,0);assert.equal(frame.groundError,0);
 });
 test('failed fence fails closed and releases every allocation', async t => {
   const f=fixture(t,[7]);await assert.rejects(captureTerrainFramebuffer(),/fence failed/);
@@ -65,6 +73,6 @@ test('metadata remains tied to the submitted frame while scene keeps running', a
   assert.equal(result.renderCallsTotal,12);assert.deepEqual(result.cameraPosition,[1,12,2]);
 });
 test('invalid time budgets are rejected before touching WebGL', async () => {
-  for (const options of [{timeoutMs:0},{timeoutMs:Infinity},{timeoutMs:20001},{pollMs:0},{pollMs:NaN}])
+  for (const options of [{timeoutMs:0},{timeoutMs:Infinity},{timeoutMs:20001},{pollMs:0},{pollMs:NaN},{jpegQuality:-.01},{jpegQuality:1.01},{jpegQuality:NaN},{jpegQuality:Infinity}])
     await assert.rejects(captureTerrainFramebuffer(options),RangeError);
 });
