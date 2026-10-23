@@ -269,12 +269,12 @@ export function rawHeight(x: number, z: number): number {
       height = Math.max(height,-29+(stack.h*.28+29)*foot+(stack.h*.72+strata)*core);
     }
   }
-  // v4 resolves the shore at 20m inside the 80m scenery. The old transition
-  // still left a 270m headwall mostly intact between z=-4200 and -5800.
-  // Distribute that rise into the existing broad talus/shore shelf immediately
-  // behind the joined row. The first 40m (including ±5m normal probes) stays
-  // identical. Main/near remain unchanged; far coast frequencies are filtered
-  // above as well. No display-only displacement or denser fog is involved.
+  // The v4 talus ramp broadens the far-shore transition. A separately
+  // bounded source-height relief starts before the near/far join so its physical
+  // 20m edge cannot retain the formerly measured >170m single-edge rise.
+  // Both scenery LODs and normals sample the same surfaceAt function; the
+  // 5m walking mesh and its 2.4km saved-coordinate region stay unchanged.
+  // This is real terrain geometry, not visual fog or a displaced shader.
   const distantCoast=smooth(-4240,-4560,z);
   if(distantCoast>0){
     const slopeWidth=300+noise(z*.0011,coastalSide*137)*100;
