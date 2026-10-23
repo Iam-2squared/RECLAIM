@@ -32,7 +32,7 @@ await page.addInitScript(()=>{
 });
 let renderingContext;
 try{
-  await page.goto(pathToFileURL(artifact).href+'?flora=low&boardwalk=1');
+  await page.goto(pathToFileURL(artifact).href+'?flora=low&boardwalk=1&cabin=1');
   await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,{},{timeout:60000});
   renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
   await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
@@ -43,6 +43,16 @@ try{
     if(!d.boardwalkReview.enabled||d.boardwalkReview.panels<30||
        d.boardwalkReview.indexedTriangles!==d.boardwalkReview.panels*2)
       throw Error('rendered indexed boardwalk absent');
+    if(!d.cabinReview?.enabled||d.cabinReview.parts<25||d.cabinReview.stairs<3)
+      throw Error('headland cabin mesh absent');
+    const e=a.cabinEntrance;
+    if(!e||!a.walker.place(e.x,e.z))throw Error('cannot enter real cabin stairs');
+    a.walker.yaw=Math.PI/2;
+    for(let i=0;i<245;i++)a.walker.step({forward:1,right:0,sprint:false,jump:false},1/60);
+    if(a.walker.x>=-212||a.walker.x<=-226.7||Math.abs(a.walker.y-d.cabinReview.floorY)>1e-5)
+      throw Error('cabin doorway/stair walking and real floor are inconsistent');
+    if(!a.cabinBlockedAt(-227,882)||a.cabinBlockedAt(-209,882))
+      throw Error('cabin real wall/door collision contract failed');
     if(d.shaderError||d.contextLost||d.renderCallsTotal<1)throw Error('WebGL not rendering');
     const u=a.route[3],v=a.route[4],x=(u.x+v.x)/2,z=(u.z+v.z)/2;
     const deck=a.boardwalkHeightAt(x,z), ground=a.terrain.heightAt(x,z);
@@ -54,7 +64,7 @@ try{
     for(let i=0;i<90;i++)a.walker.step({forward:0,right:0,sprint:false,jump:false},1/60);
     if(!a.walker.grounded||Math.abs(a.walker.y-deck)>1e-5)
       throw Error('player did not land back on the same deck');
-    return {floral:d.floraReview,boardwalk:d.boardwalkReview,drawCalls:d.drawCalls,
+    return {floral:d.floraReview,boardwalk:d.boardwalkReview,cabin:d.cabinReview,drawCalls:d.drawCalls,
       triangles:d.triangles,geometries:d.geometries,textures:d.textures,
       deckContact:{x,z,deck,ground,landed:a.walker.y}};
   });
@@ -62,7 +72,8 @@ try{
   result.tests.push({name:'flora LOD, actual raised indexed deck, walker jump/landing',data:review});
   const views=[
     {name:'wooden-wetland',x:-50,z:610,tx:-118,tz:500,elevation:10},
-    {name:'flora-wetland',x:-130,z:410,tx:-210,tz:370,elevation:6}
+    {name:'flora-wetland',x:-130,z:410,tx:-210,tz:370,elevation:6},
+    {name:'headland-cabin',x:-172,z:909,tx:-218,tz:882,elevation:11}
   ];
   for(const view of views){
     const before=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
@@ -93,7 +104,7 @@ try{
   assert.equal(await page.locator('[data-nature-review]').count(),0);
   result.tests.push({name:'no saves/network, resources released',pass:true});
   console.log('NATURE WEBGL PASS',JSON.stringify({sourceSHA,images:result.images.length,
-    instances:review.floral.instances,panels:review.boardwalk.panels}));
+    instances:review.floral.instances,panels:review.boardwalk.panels,stairs:review.cabin.stairs}));
 }catch(error){
   errors.push(String(error?.stack??error));
   throw error;
