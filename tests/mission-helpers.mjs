@@ -1,6 +1,7 @@
 import {expect} from '@playwright/test';
 import {arrowSteps} from './native-arrow-input.mjs';
 import {walkObserverOptions} from './walk-observer-options.mjs';
+import {withNativePrecisionInputGuard} from './native-precision-input-guard.mjs';
 export const snapshot=page=>page.evaluate(()=>window.__RECLAIM__.snapshot());
 export async function enter(page,{low=true}={}) {
  await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');
@@ -140,7 +141,11 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
    const simSeconds=precision?Math.max(1/60,Math.min(.12,(distance-radius)/(3.1*2))):.4;
    await startForward();
    try{
-    await probe(simSeconds,mode);
+    // Under SwiftShader the read-only polling callback may stall while KeyW
+    // keeps advancing the real 60Hz player. Guard only the near-target pulse
+    // via Playwright's native keyup, without changing radius or deadlines.
+    if(precision) await withNativePrecisionInputGuard(stopForward,()=>probe(simSeconds,mode));
+    else await probe(simSeconds,mode);
    }catch(error){
     await stopForward();
     const final=(await snapshot(page)).mission;
