@@ -23,3 +23,25 @@ test('both failures are preserved without a retry or fallback', async () => {
   const a=new Error('context'),b=new Error('browser');
   await assert.rejects(closeReviewBrowser({async close(){throw b;}},{async close(){throw a;}}),e=>e instanceof AggregateError&&e.errors[0]===a&&e.errors[1]===b);
 });
+
+test('actual page releases WebGL document before context and browser', async () => {
+  const events=[];
+  let pageClosed=false,contextClosed=false;
+  const page={async close(opts){ assert.deepEqual(opts,{runBeforeUnload:false});events.push('page');pageClosed=true; }};
+  const context={pages:()=>[page],async close(){assert(pageClosed);events.push('context');contextClosed=true;}};
+  const browser={async close(){assert(contextClosed);events.push('browser');},isConnected:()=>false};
+  await closeReviewBrowser(browser,context);
+  assert.deepEqual(events,['page','context','browser']);
+});
+
+test('page close failure is propagated after closing context and browser', async () => {
+  const events=[];
+  const pageError=new Error('page GPU close failure');
+  const context={
+    pages:()=>[{async close(){events.push('page');throw pageError;}}],
+    async close(){events.push('context');}
+  };
+  const browser={async close(){events.push('browser');},isConnected:()=>false};
+  await assert.rejects(closeReviewBrowser(browser,context),e=>e===pageError);
+  assert.deepEqual(events,['page','context','browser']);
+});
