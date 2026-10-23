@@ -12,6 +12,9 @@ jobs:
   verify:
     name: verify (${{ matrix.suite }})
     runs-on: ubuntu-latest
+    # Official version-pinned image supplies native WebKit dependencies without a large
+    # apt transaction that previously exhausted the job time budget.
+    container: ${{ matrix.browser == 'webkit' && 'mcr.microsoft.com/playwright:v1.64.0-noble' || '' }}
     timeout-minutes: 25
     # Each assertion still runs once with one browser worker. Separate the
     # complete suites so software-WebGL mission walks cannot cut off Safari.
@@ -50,13 +53,16 @@ jobs:
       - run: npm run package:preview
         env:
           RECLAIM_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Install browser and Japanese text rendering
+      - name: Install Chromium and Japanese text rendering
+        if: matrix.browser == 'chromium'
         run: |
-          # Hosted Ubuntu already provides browser runtime libraries. Avoid
-          # rerunning the system dependency installer in five simultaneous jobs;
-          # the real Playwright launch and image checks remain mandatory.
-          npx playwright install ${{ matrix.browser }}
+          npx playwright install chromium
           sudo apt-get install -y fonts-noto-cjk
+      - name: Verify preinstalled WebKit browser and Japanese fonts
+        if: matrix.browser == 'webkit'
+        run: |
+          npx playwright install webkit
+          test -n "$(fc-list :lang=ja | head -n 1)"
       - name: Existing PC, world and iPhone regression suites
         if: ${{ !startsWith(matrix.suite, 'mobile-') }}
         run: npm run test:e2e -- ${{ matrix.tests }} --project=${{ matrix.suite == 'iphone-webkit' && 'iphone-webkit' || 'chromium' }}
