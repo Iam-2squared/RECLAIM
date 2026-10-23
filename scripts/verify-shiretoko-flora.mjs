@@ -105,6 +105,39 @@ try {
         await page.locator('canvas').screenshot({ path: resolve(output, file), animations: 'disabled' });
         frames.push({ view, file, ...observation });
       }
+      // These perspectives are at human scale. Distant aerial views alone
+      // cannot substantiate organic species shapes, grounded roots or density.
+      // Use the same terrain height function as the render and walking mesh.
+      const closeups = [
+        { name: 'wetland-edge', x: 380, z: 360, tx: 410, tz: 330 },
+        { name: 'highland-approach', x: 350, z: -870, tx: 390, tz: -900 },
+      ];
+      for (const place of closeups) {
+        const previous = await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
+        await page.evaluate(({ x, z, tx, tz }) => {
+          const review = window.__SHIRETOKO_TERRAIN__;
+          const terrain = review.terrain;
+          review.viewFrom(
+            [x, terrain.heightAt(x, z) + 4, z],
+            [tx, terrain.heightAt(tx, tz) + 1.8, tz],
+          );
+        }, place);
+        await page.waitForFunction(n => window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal > n,
+          previous, { timeout: 30000 });
+        const observation = await page.evaluate(() => {
+          const d = window.__SHIRETOKO_TERRAIN__.diagnostics();
+          const gl = document.querySelector('canvas').getContext('webgl2');
+          gl.finish();
+          return { drawCalls: d.drawCalls, triangles: d.triangles, frames: d.renderCallsTotal,
+            glError: gl.getError(), camera: d.camera, textureCount: d.textures,
+            geometryCount: d.geometries };
+        });
+        assert(observation.drawCalls > 0 && observation.triangles > 0);
+        assert.equal(observation.glError, 0);
+        const file = quality + '-' + place.name + '-close-webgl.png';
+        await page.locator('canvas').screenshot({ path: resolve(output, file), animations: 'disabled' });
+        frames.push({ view: place.name, file, ...observation });
+      }
       const storage = await page.evaluate(() => window.__floraStorageReadsAndWrites);
       assert.deepEqual(storage, [], 'review must never access campaign storage');
       assert.deepEqual(pageErrors, [], 'no JavaScript failures or network requests');
