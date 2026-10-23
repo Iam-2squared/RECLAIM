@@ -5,6 +5,7 @@ import { TerrainIntro } from './intro.ts';
 import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
+import { createFloraReviewLayer } from './flora-renderer.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
 import './preview.css';
 
@@ -95,6 +96,20 @@ async function boot() {
     }
     const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.setIndex(indices);
     const mesh=new T.Mesh(geometry,waterMaterial(detail,height,91));mesh.name=`watercourse/${channel.id}`;root.add(mesh);waters.push(mesh);
+  }
+  // Flora is visible ONLY on this dedicated development review URL.
+  // Default terrain/intro screenshots, campaign and HOME remain untouched.
+  const floraParameter = new URLSearchParams(location.search).get('flora');
+  const floraReview = ['1','low','balanced'].includes(floraParameter??'')
+    ? createFloraReviewLayer(terrain,floraParameter==='balanced'?'balanced':'low') : null;
+  let floraBadge: HTMLElement | null=null;
+  if(floraReview){
+    root.add(floraReview.group);
+    floraBadge=document.createElement('div');
+    floraBadge.textContent='開発レビュー：植生の仮配置（保存・本編と独立）';
+    floraBadge.setAttribute('data-flora-review','true');
+    Object.assign(floraBadge.style,{position:'fixed',bottom:'14px',left:'14px',zIndex:'25',padding:'7px 12px',background:'rgba(14,32,29,.85)',color:'#e3e5d5',font:'12px sans-serif',borderRadius:'5px',pointerEvents:'none'});
+    document.body.append(floraBadge);
   }
   const routePoints: T.Vector3[] = [];
   for (let i = 1; i < ROUTE.length; i++) {
@@ -266,7 +281,8 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: true, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
+    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview,
+    floraReview: floraReview ? {enabled:true,quality:floraReview.quality,instances:floraReview.instances,drawGroups:floraReview.drawGroups,instanceBytes:floraReview.instanceBytes,saveWrites:0} : {enabled:false}, mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
     sceneryGeneratedMs:+sceneryGeneratedMs.toFixed(1),
@@ -279,7 +295,7 @@ async function boot() {
     pointerLocked:document.pointerLockElement===renderer.domElement, inputKeys:[...keys], hidden:document.hidden, contextLost, shaderError, disposed, heapBytes: (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? null,
   });
   function dispose() {
-    if (disposed) return; disposed = true; intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
+    if (disposed) return; disposed = true; floraBadge?.remove(); intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
     const geometries = new Set<T.BufferGeometry>(), materials = new Set<T.Material>();
     scene.traverse(object => { if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose(); renderer.dispose(); renderer.domElement.remove(); scene.clear();
