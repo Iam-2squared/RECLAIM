@@ -16,6 +16,21 @@ const browser = await chromium.launch({
 });
 const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
 const page = await context.newPage(), errors = [], network = [], checks = [];
+// The previous CI emitted the real walking framebuffer, then exhausted the
+// entire job without identifying the stalled protocol operation. Previously
+// unbounded keyboard/evaluate operations now fail with stage evidence; no
+// assertion, drawing, input, route, radius or existing timeout is relaxed.
+async function stage(label, operation, timeoutMs=30000) {
+  const started=Date.now();let timer;
+  console.log(`[terrain-stage] ${label}: start`);
+  await writeFile(resolve(captures,'CI-stage.json'),JSON.stringify({label,state:'started',at:new Date().toISOString()}));
+  try {
+    const result=await Promise.race([Promise.resolve().then(operation),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(`Unresponsive terrain operation: ${label}`)),timeoutMs);})]);
+    console.log(`[terrain-stage] ${label}: passed in ${Date.now()-started}ms`);
+    await writeFile(resolve(captures,'CI-stage.json'),JSON.stringify({label,state:'passed',at:new Date().toISOString(),elapsedMs:Date.now()-started}));
+    return result;
+  } finally {clearTimeout(timer);}
+}
 page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
 page.on('request', request => { if (/^https?:/.test(request.url())) network.push(request.url()); });
@@ -103,7 +118,7 @@ try {
     });
   });
   await page.mouse.move(840, 475);
-  await page.evaluate(async()=>{await window.__terrainLookDelivered;delete window.__terrainLookDelivered;});
+  await stage('native-look-delivery',()=>page.evaluate(async()=>{await window.__terrainLookDelivered;delete window.__terrainLookDelivered;}));
   // Keep only the review image's heading reproducible after the real inputs.
   // Never move the walker or replace the W/jump/Escape assertions above/below.
   const beforeWalkingCapture=await page.evaluate(()=>{const api=window.__SHIRETOKO_TERRAIN__,w=api.walker;w.yaw=0;w.pitch=-.06;return api.diagnostics().renderCallsTotal;});
@@ -111,22 +126,22 @@ try {
   // stall on screenshot synchronization while that valid WebGL loop is active.
   // Wait for a real new submission, then read its preserved shader framebuffer.
   await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeWalkingCapture);
-  const walkingReadback=await page.evaluate(()=>{
+  const walkingReadback=await stage('walking-framebuffer',()=>page.evaluate(()=>{
     const api=window.__SHIRETOKO_TERRAIN__,canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2');gl.finish();
     const d=api.diagnostics(),rgba=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,rgba);
     let min=255,max=0;for(let i=0;i<rgba.length;i+=4)for(let c=0;c<3;c++){min=Math.min(min,rgba[i+c]);max=Math.max(max,rgba[i+c]);}
     return{width:canvas.width,height:canvas.height,viewport:[innerWidth,innerHeight],dpr:devicePixelRatio,preserveDrawingBuffer:Boolean(gl.getContextAttributes()?.preserveDrawingBuffer),mode:d.mode,pointerLocked:d.pointerLocked,grounded:d.player.grounded,inputKeys:d.inputKeys,contextLost:d.contextLost,shaderError:d.shaderError,renderCallsTotal:d.renderCallsTotal,groundError:Math.abs(d.player.y-api.terrain.heightAt(d.player.x,d.player.z)),yaw:api.walker.yaw,pitch:api.walker.pitch,cameraPosition:d.camera.position,fov:d.camera.fov,min,max,glError:gl.getError(),image:canvas.toDataURL('image/jpeg',.92)};
-  });
+  }));
   assert.equal(walkingReadback.glError,0);assert.equal(walkingReadback.preserveDrawingBuffer,true);assert.equal(walkingReadback.dpr,1);assert.deepEqual(walkingReadback.viewport,[1600,1000]);assert.equal(walkingReadback.width,1600);assert.equal(walkingReadback.height,1000);assert.ok(walkingReadback.max>walkingReadback.min,'Walking framebuffer is not blank');
   assert.equal(walkingReadback.mode,'walk');assert.equal(walkingReadback.pointerLocked,true);assert.equal(walkingReadback.grounded,true);assert.deepEqual(walkingReadback.inputKeys,[]);assert.equal(walkingReadback.contextLost,false);assert.equal(walkingReadback.shaderError,false);assert.ok(walkingReadback.renderCallsTotal>beforeWalkingCapture);assert.ok(walkingReadback.groundError<.001);
   assert.equal(walkingReadback.yaw,0);assert.equal(walkingReadback.pitch,-.06);assert.equal(walkingReadback.fov,66);
   assert.ok(walkingReadback.image.startsWith('data:image/jpeg;base64,'));const walkingJPEG=Buffer.from(walkingReadback.image.split(',')[1],'base64');assert.equal(walkingJPEG[0],255);assert.equal(walkingJPEG[1],216);
   await writeFile(resolve(captures,'08-first-person-cape-webgl-framebuffer.jpg'),walkingJPEG);
   const {image:unusedWalkingImage,...walkingCapture}=walkingReadback;walkingCapture.captureMethod='WebGL framebuffer (DOM overlay not included)';walkingCapture.file='08-first-person-cape-webgl-framebuffer.jpg';
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().mode === 'orbit');
+  await stage('native-Escape',()=>page.keyboard.press('Escape'));
+  await stage('orbit-after-Escape',()=>page.waitForFunction(() => window.__SHIRETOKO_TERRAIN__.diagnostics().mode === 'orbit'));
   checks.push('Space jump settles; Escape releases the pointer and returns to orbit');
-  const passage = await page.evaluate(async () => {
+  const passage = await stage('full-4km-walker-route',()=>page.evaluate(async () => {
     const api = window.__SHIRETOKO_TERRAIN__, w = api.walker, t = api.terrain;
     // Start of this independent walking test; intermediate points are NEVER teleported.
     w.place(-170, 850);
@@ -141,13 +156,13 @@ try {
       if (segmentTicks >= 6000) throw new Error(`Route blocked at ${x},${z}`);
     }
     return { distanceMetres: w.distance-start, ticks, maxGroundError, final: { x:w.x,y:w.y,z:w.z } };
-  });
+  }));
   assert.ok(passage.distanceMetres > 4100); assert.ok(passage.maxGroundError < .001); checks.push('browser: full 4.1km round trip with the actual walker, fixed 60Hz simulation');
   const storage = await page.evaluate(() => window.__storageAccesses);
   assert.deepEqual(storage, []); assert.deepEqual(network, []); assert.deepEqual(errors, []);
   checks.push('zero network requests and zero local/session-storage access');
   const measured = await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.diagnostics());
-  await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.dispose());
+  await stage('dispose-scene',()=>page.evaluate(() => window.__SHIRETOKO_TERRAIN__.dispose()));
   assert.equal(await page.locator('canvas').count(), 0);
   const disposed=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());assert.equal(disposed.geometries,0);assert.equal(disposed.textures,0); checks.push('explicit dispose releases canvas / scene / GPU resources and input listeners');
   const samples = measured.frameTimesMs.filter(x => x > 0).sort((a,b) => a-b), percentile = p => samples[Math.min(samples.length-1,Math.floor(samples.length*p))] ?? null;
@@ -155,9 +170,10 @@ try {
   await writeFile(resolve(captures,'verification.json'), JSON.stringify(report,null,2));
   console.log(JSON.stringify({ checks, firstFrameMs:initial.firstFrameMs, renderer:initial.renderer, passage, frameIntervalMedianMs:percentile(.5), frameIntervalP95Ms:percentile(.95), output:captures }, null, 2));
 } catch(error) {
-  await page.screenshot({path:resolve(captures,'FAILED-verification.png'),timeout:60000}).catch(()=>{});
+  // Persist the cause BEFORE any additional potentially unresponsive protocol work.
   await writeFile(resolve(captures,'FAILED-verification.txt'),String(error));
   console.error('Verification failed', error);
-  console.error('Runtime state',JSON.stringify(await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()).catch(()=>null)));
+  await page.screenshot({path:resolve(captures,'FAILED-verification.png'),timeout:60000}).catch(()=>{});
+  console.error('Runtime state',JSON.stringify(await stage('failure-diagnostics',()=>page.evaluate(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics()),5000).catch(()=>null)));
   throw error;
-} finally { await browser.close(); }
+} finally { await stage('close-browser',()=>browser.close(),10000); }
