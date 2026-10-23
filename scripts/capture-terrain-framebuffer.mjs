@@ -2,9 +2,10 @@
  * Serialized by Playwright into the review page; deliberately has no imports.
  * No scene, resolution, camera, input, simulation or game-save mutation.
  */
-export async function captureTerrainFramebuffer({ timeoutMs = 20000, pollMs = 10 } = {}) {
+export async function captureTerrainFramebuffer({ timeoutMs = 20000, pollMs = 10, jpegQuality = 0.92 } = {}) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0 || timeoutMs > 20000 ||
-      !Number.isFinite(pollMs) || pollMs < 1 || pollMs > 1000) throw new RangeError('invalid readback budget');
+      !Number.isFinite(pollMs) || pollMs < 1 || pollMs > 1000 ||
+      !Number.isFinite(jpegQuality) || jpegQuality < 0 || jpegQuality > 1) throw new RangeError('invalid readback budget or JPEG quality');
   const api = window.__SHIRETOKO_TERRAIN__, canvas = document.querySelector('canvas');
   const gl = canvas?.getContext('webgl2');
   if (!api || !gl || gl.isContextLost()) throw new Error('WebGL readback unavailable');
@@ -17,6 +18,7 @@ export async function captureTerrainFramebuffer({ timeoutMs = 20000, pollMs = 10
     width, height, viewport: [innerWidth, innerHeight], dpr: devicePixelRatio,
     preserveDrawingBuffer: Boolean(gl.getContextAttributes()?.preserveDrawingBuffer),
     mode: d.mode, pointerLocked: d.pointerLocked, grounded: d.player.grounded,
+    player: {...d.player}, water: api.terrain.inWater(d.player.x, d.player.z),
     inputKeys: [...d.inputKeys], contextLost: d.contextLost, shaderError: d.shaderError,
     renderCallsTotal: d.renderCallsTotal,
     groundError: Math.abs(d.player.y - api.terrain.heightAt(d.player.x, d.player.z)),
@@ -67,7 +69,7 @@ export async function captureTerrainFramebuffer({ timeoutMs = 20000, pollMs = 10
     const imageContext = imageCanvas.getContext('2d');
     if (!imageContext) throw new Error('image encoder unavailable');
     imageContext.putImageData(new ImageData(topDown, width, height), 0, 0);
-    return { ...state, min, max, glError, image: imageCanvas.toDataURL('image/jpeg', .92) };
+    return { ...state, min, max, glError, image: imageCanvas.toDataURL('image/jpeg', jpegQuality) };
   } finally {
     // Only initial errors can leave our buffer bound.
     if (gl.getParameter(gl.PIXEL_PACK_BUFFER_BINDING) === buffer)
