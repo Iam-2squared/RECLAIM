@@ -1,7 +1,7 @@
 import {expect} from '@playwright/test';
-export const referenceMode=async page=>(await page.evaluate(()=>window.__RECLAIM__.snapshot())).menus?.mode==='reference-2d';
+export const referenceMode=async page=>['reference-2d','mobile-reference-2d'].includes((await page.evaluate(()=>window.__RECLAIM__.snapshot())).menus?.mode);
 export async function referenceReady(page){
- await expect(page.locator('body')).toHaveAttribute('data-menu-presentation','reference-2d');
+ await expect(page.locator('body')).toHaveAttribute('data-menu-presentation',/^(?:mobile-)?reference-2d$/);
  await page.locator('.reference-backplate').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
 }
 export async function compareReference(page,screen,path){

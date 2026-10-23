@@ -286,7 +286,14 @@ async function boot() {
     if (disposed) return; disposed = true; intro.dispose();flight=null;cancelAnimationFrame(animation); document.exitPointerLock?.(); cleanup.splice(0).forEach(fn => fn()); controls.dispose();
     const geometries = new Set<T.BufferGeometry>(), materials = new Set<T.Material>();
     scene.traverse(object => { if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
-    geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose(); renderer.dispose(); renderer.domElement.remove(); scene.clear();
+    geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose();
+    renderer.dispose();
+    // This *standalone* preview owns its WebGL context (unlike the game
+    // renderer shared by Mission). Releasing it before detaching the canvas
+    // lets Chromium/SwiftShader finish GPU teardown without a post-disposal
+    // automation command. All mesh/material/resource assertions are unchanged.
+    renderer.forceContextLoss();
+    renderer.domElement.remove(); scene.clear();
   }
   on(window, 'pagehide', () => dispose());
   // This entry is explicitly a development review surface, including the standalone artifact.

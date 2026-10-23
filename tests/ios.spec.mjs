@@ -26,13 +26,16 @@ test('a file-viewer-like module block gives a visible Safari instruction instead
   await expect(page.locator('body')).not.toHaveAttribute('data-ready', 'true');
 });
 
-test('iPhone touch preserves the brief title reveal and travels TITLE to HOME and back', async ({ page }) => {
+test('iPhone touch uses fixed 2D art without a GPU reveal and travels TITLE to HOME and back', async ({ page }) => {
   test.setTimeout(60000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await ready(page);
-  await page.locator('#title-button').tap();
-  await expect(page.locator('body')).toHaveAttribute('data-reveal', 'true');
-  await expect(page.locator('body')).toHaveAttribute('data-reveal', 'false', { timeout: 4000 });
+  await expect(page.locator('body')).toHaveAttribute('data-menu-presentation','mobile-reference-2d');
+  await expect(page.locator('#title-button')).toHaveAttribute('tabindex','-1');
+  const frames=(await snapshot(page)).renderClock.rendererFrames;
+  await page.waitForTimeout(100);
+  expect((await snapshot(page)).renderClock.rendererFrames).toBe(frames);
+  await expect(page.locator('body')).toHaveAttribute('data-reveal','false');
   await page.locator('#home-button').tap();
   await expect(page.locator('#title-screen')).toBeHidden();
   await expect(page.locator('#home-screen')).toBeVisible();
@@ -55,7 +58,7 @@ test('Safari display dialog, reduced motion and quality remain touch operable', 
 });
 
 for (const [width, height] of [[375, 667], [390, 664], [390, 844], [430, 932]]) {
-  test(`iPhone portrait ${width}x${height} shows all four survivors, including after toolbar-height changes`, async ({ page }, info) => {
+  test(`iPhone portrait ${width}x${height} shows fixed art and three local sample cards after toolbar-height changes`, async ({ page }, info) => {
     test.setTimeout(60000); await page.setViewportSize({ width, height }); await home(page);
     await page.locator('#squad-button').tap(); await fullSquad(page);
     await expect(page.locator('#start-button')).toBeInViewport({ ratio: 1 });
@@ -140,8 +143,12 @@ test('HOME V2 safe-area substitutes keep the header, four models and sheet actio
   await page.setViewportSize({width:view.width,height:view.height});
   // These CSS inset substitutes exercise geometry, not a physical notch/Safari UI.
   await page.evaluate(v=>{for(const [edge,px] of Object.entries(v).filter(([k])=>['top','bottom','left','right'].includes(k)))document.body.style.setProperty(`--home-safe-${edge}`,`${px}px`);document.body.style.setProperty('--sheet-safe-top',`${v.top}px`);document.body.style.setProperty('--sheet-safe-bottom',`${v.bottom}px`);},view);
+  // Check the header at the top of the page, BEFORE the intentional START
+  // scroll. Read both rectangles in one layout sample (WebKit rotation may
+  // settle between separate protocol reads). Keep and strengthen the bounds.
+  await page.evaluate(()=>window.scrollTo({top:0,left:0,behavior:'instant'}));
+  await expect.poll(()=>page.evaluate(v=>{const r=document.querySelector('.topbar').getBoundingClientRect(),h=document.querySelector('.home-location').getBoundingClientRect();return r.top>=v.top&&r.left>=v.left&&r.right<=innerWidth-v.right+1&&h.top>=r.bottom+8;},view)).toBe(true);
   await fullSquad(page);
-  const r=await page.locator('.topbar').boundingBox(),heading=await page.locator('.home-location').boundingBox();expect(heading.y).toBeGreaterThanOrEqual(r.y+r.height+8);
   const start=await page.locator('#start-button').boundingBox();expect(start.x+start.width).toBeLessThanOrEqual(view.width-view.right+1);expect(start.y+start.height).toBeLessThanOrEqual(view.height-view.bottom+1);
   await open(page,'キャラ設定');
   // Linux mobile WebKit can retain the old IntersectionObserver root after

@@ -4,6 +4,7 @@ import { CampaignStore, visibleAreas, type MissionCheckpoint } from '../campaign
 import { CharacterController, PLAYER_TUNING } from './controller.ts';
 import { SimulationClock, SIMULATION_TIMING } from './clock.ts';
 import { ScoutDrone, COMBAT_TUNING, WEAPON_TUNING, raySphere, obstructionDistance } from './combat.ts';
+import { WeaponFeedback, DroneCrashRig } from './feedback.ts';
 import type { HomePreview } from '../home-state.ts';
 import './mission.css';
 const node=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id)! as E;
@@ -26,7 +27,7 @@ function createWeapon(id:string) {
 }
 export type MissionHooks={returnHome:()=>void;announce:(s:string)=>void;invalidate:()=>void;effect:(kind:'radio'|'shot'|'hit')=>void;stopEffects:()=>void};
 export class Mission {
- loader:AreaLoader;camera=new T.PerspectiveCamera(74,1,.055,900);controller:CharacterController;drone:ScoutDrone|null=null;droneArt:ReturnType<typeof createDroneModel>|null=null;weapon:T.Group;
+ loader:AreaLoader;camera=new T.PerspectiveCamera(74,1,.055,900);controller:CharacterController;drone:ScoutDrone|null=null;droneArt:ReturnType<typeof createDroneModel>|null=null;weapon:T.Group;weaponFeedback=new WeaponFeedback();droneCrash=new DroneCrashRig();
  paused=true;disposed=false;hp:number=COMBAT_TUNING.playerHp;keys=new Set<string>();clock=new SimulationClock();elapsed=0;checkpointClock=0;hudClock=0;nextShot=0;shots=0;misses=0;lastHit=false;hitFlash=0;lastUI='';locked=false;transitions=0;frames=0;frameTimes:number[]=[];loadMs=0;storyShowing=false;endShowing=false;lockSettledAt=0;ignoreFirstMouseMove=false;jumpBuffered=false;
  canvas:HTMLCanvasElement;store:CampaignStore;renderer:T.WebGLRenderer;hooks:MissionHooks;preview:HomePreview;areaId:AreaId;quality:WorldQuality;debug:boolean;
  constructor(renderer:T.WebGLRenderer,store:CampaignStore,areaId:AreaId,quality:WorldQuality,preview:HomePreview,hooks:MissionHooks,resume:MissionCheckpoint|null=null,debug=false){
@@ -62,7 +63,7 @@ export class Mission {
  visibility=()=>{if(document.hidden)this.pause();};blur=()=>this.pause();
  lockClick=()=>this.requestLock();homeClick=()=>{this.save();this.hooks.returnHome();};interactClick=()=>this.interact();skipClick=()=>this.skipOpening();continueClick=()=>this.continueStory();retryClick=()=>this.retry();nextClick=()=>{this.endShowing=false;this.hooks.returnHome();};pauseClick=()=>this.pause();
  requestLock(){if(this.disposed||this.storyShowing||this.endShowing||this.hp<=0)return;try{const promise=this.canvas.requestPointerLock();promise?.then(()=>{if(this.disposed&&document.pointerLockElement===this.canvas)document.exitPointerLock();}).catch(()=>{if(!this.disposed)this.lockError();});}catch{this.lockError();}}
- pause(release=true){this.paused=true;this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
+ pause(release=true){this.paused=true;this.weaponFeedback.clear();this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
  showInitial(){node('mission-area').textContent=getAreaDefinition(this.areaId).displayName;node('mission-prototype').textContent=this.areaId==='shiretoko'?'導入プレイ / 仮バランス':'環境プロトタイプ / 正式任務は開発中';if(this.areaId==='shiretoko'&&this.store.value.introStep===0&&!this.debug)this.showStory('WAKE / 01','北の家で、目を覚ます。','朝の薄明かり。木造の家には、いつもと違う静けさがある。まず、ラジオの報道を確かめよう。','起き上がる');else if(this.areaId==='shiretoko'&&this.store.value.introStep===2&&!this.debug)this.showStory('RADIO / 02','日本各地で、AIが暴走。','日本各地に危機が広がっている。東京の親友から連絡が届いた。','届いた連絡を読む');else this.pause(false);}
  showStory(kicker:string,title:string,text:string,action:string){this.pause();this.storyShowing=true;node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-story').hidden=false;node('mission-story-kicker').textContent=kicker;node('mission-story-title').textContent=title;node('mission-story-text').textContent=text;node('mission-continue').textContent=action;node('mission-continue').focus();}
  continueStory(){
@@ -84,7 +85,7 @@ export class Mission {
   this.updateCamera();this.render();this.hudClock+=dt;if(this.hudClock>.12){this.hudClock=0;this.updateHUD();}
  }
  step(dt:number){
-  this.elapsed+=dt;const oldRecover=this.controller.recoveries;
+  this.elapsed+=dt;this.weaponFeedback.step(dt);const oldRecover=this.controller.recoveries;
   this.controller.step({forward:Number(this.keys.has('KeyW'))-Number(this.keys.has('KeyS')),right:Number(this.keys.has('KeyD'))-Number(this.keys.has('KeyA')),sprint:this.keys.has('ShiftLeft')||this.keys.has('ShiftRight'),jump:this.jumpBuffered||this.keys.has('Space')},dt);this.jumpBuffered=false;
   if(this.controller.recoveries!==oldRecover)this.hooks.announce('場外から安全な起点へ戻りました。');
   this.loader.update(this.controller.position.x,this.controller.position.z);
@@ -94,7 +95,8 @@ export class Mission {
    const visible=obstructionDistance(origin,delta,distance,this.loader.colliders,this.loader.terrain)>=distance-.8;
    const damage=this.debug||this.store.value.introStep===4?this.drone.step(dt,this.controller.position,(x,z)=>this.loader.terrain.heightAt(x,z),visible):0;
    if(damage){this.hp=Math.max(0,this.hp-damage);this.hitFlash=.28;this.hooks.effect('hit');if(this.hp===0){this.endShowing=true;this.pause();node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-end').hidden=false;node('mission-end-title').textContent='安全な起点から、もう一度。';node('mission-end-text').textContent='ドローンの攻撃で行動不能になりました。実HPは0です。再挑戦では起点と体力を戻します。';node('mission-retry').hidden=false;node('mission-next').hidden=true;}}
-   this.droneArt.group.position.set(this.drone.position.x,this.drone.position.y,this.drone.position.z);this.droneArt.group.rotation.y=this.drone.clock*.15;this.droneArt.rotors.forEach(r=>r.rotation.y=this.drone!.state==='stopped'?r.rotation.y:this.drone!.clock*27);
+   const crash=this.drone.state==='stopped'?this.droneCrash.step(dt,this.drone.position.y,this.loader.terrain.heightAt(this.drone.position.x,this.drone.position.z)):null;
+   this.droneArt.group.position.set(this.drone.position.x,crash?.y??this.drone.position.y,this.drone.position.z);this.droneArt.group.rotation.y=this.drone.clock*.15;this.droneArt.group.rotation.z=crash?.bank??0;this.droneArt.rotors.forEach(r=>r.rotation.y=this.drone!.state==='stopped'?r.rotation.y:this.drone!.clock*27);
   }
   this.checkpointClock+=dt;if(this.checkpointClock>.35){this.checkpointClock=0;if(!this.debug){this.store.record({type:'position',areaId:this.areaId,position:{...this.controller.position},grounded:this.controller.grounded});this.save();}}
   const exit=getAreaDefinition(this.areaId).exitTriggers[0];
@@ -106,7 +108,7 @@ export class Mission {
  shoot(){
   if(this.paused||!this.drone||this.drone.hp<=0||this.elapsed<this.nextShot)return;
   if(!this.debug&&this.store.value.introStep!==4){this.hooks.announce('ラジオと親友の連絡を確かめてから、出発してください。');return;}
-  const tuning=WEAPON_TUNING[this.preview[this.preview.held]];this.nextShot=this.elapsed+tuning.interval;this.shots++;this.updateCamera();
+  const gun=this.preview[this.preview.held],tuning=WEAPON_TUNING[gun];this.nextShot=this.elapsed+tuning.interval;this.shots++;this.weaponFeedback.fire(gun);this.updateCamera();
   const direction=new T.Vector3();this.camera.getWorldDirection(direction);const origin=this.camera.position;
   const distance=raySphere(origin,direction,this.drone.position,COMBAT_TUNING.aimRadius),obstruction=obstructionDistance(origin,direction,tuning.range,this.loader.colliders,this.loader.terrain);
   this.lastHit=distance!==null&&distance<=tuning.range&&distance<obstruction;
@@ -114,8 +116,8 @@ export class Mission {
   this.hooks.effect('shot');this.updateHUD(true);
  }
  save(){if(this.debug)return;const c=this.controller;this.store.checkpoint({areaId:this.areaId,...c.position,yaw:c.yaw,pitch:c.pitch,hp:this.hp});}
- retry(){this.hp=COMBAT_TUNING.playerHp;this.controller.recover();if(!this.debug)this.store.record({type:'position',areaId:this.areaId,position:{...this.controller.position},grounded:true});this.endShowing=false;node('mission-end').hidden=true;node('mission-retry').hidden=true;this.pause(false);this.save();this.updateHUD(true);}
- updateCamera(){const p=this.controller.position;this.camera.position.set(p.x,p.y+PLAYER_TUNING.eyeHeight,p.z);this.camera.rotation.set(this.controller.pitch,this.controller.yaw,0,'YXZ');this.weapon.position.y=-.25+(this.paused?0:Math.sin(this.elapsed*9)*Math.min(.012,this.keys.size*.004));}
+ retry(){this.weaponFeedback.clear();this.droneCrash.reset();this.hp=COMBAT_TUNING.playerHp;this.controller.recover();if(!this.debug)this.store.record({type:'position',areaId:this.areaId,position:{...this.controller.position},grounded:true});this.endShowing=false;node('mission-end').hidden=true;node('mission-retry').hidden=true;this.pause(false);this.save();this.updateHUD(true);}
+ updateCamera(){const p=this.controller.position;this.camera.position.set(p.x,p.y+PLAYER_TUNING.eyeHeight,p.z);this.camera.rotation.set(this.controller.pitch,this.controller.yaw,0,'YXZ');const recoil=this.weaponFeedback.pose;this.weapon.position.y=-.25+(this.paused?0:Math.sin(this.elapsed*9)*Math.min(.012,this.keys.size*.004))-recoil.drop;this.weapon.position.z=-.44+recoil.rear;this.weapon.rotation.x=recoil.rise;}
  resize(){this.camera.aspect=innerWidth/innerHeight;this.camera.fov=innerWidth<700?82:74;this.camera.updateProjectionMatrix();}
  preferences(quality:WorldQuality){if(this.quality===quality)return;this.quality=quality;this.loader.setQuality(quality);this.hooks.invalidate();}
  render(){const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
