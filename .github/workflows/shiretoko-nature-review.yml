@@ -26,6 +26,7 @@ jobs:
           node-version: '22'
       - run: npm ci
       - run: npm run typecheck
+      - run: node --test tests/shiretoko-cabin.test.mjs
       - run: node scripts/package-shiretoko-terrain.mjs
       - name: Real framebuffer, ground contact, saves and resource release
         run: node scripts/verify-shiretoko-nature.mjs
