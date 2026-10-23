@@ -1,3 +1,4 @@
+import {farCoastReliefV5} from './coast-relief-v5.ts';
 /** Original, condensed Shiretoko terrain. Metres, Y up, inland = negative Z.
  * No dependencies on the existing world, campaign, HOME or save system. */
 export const TERRAIN = Object.freeze({ extent: 1200, cell: 5, chunk: 300, seed: 431071, sea: 0 });
@@ -284,9 +285,12 @@ export function rawHeight(x: number, z: number): number {
 }
 export type ChunkData = { positions: Float32Array; normals: Float32Array; occlusion: Float32Array; wetness: Float32Array; exposure:Float32Array; indices: Uint32Array; cx: number; cz: number };
 export class ShiretokoTerrain {
+  /** v4 is immutable default for all existing tests, saves and exported art. */
+  readonly reliefProfile:'v4'|'v5';
   readonly count = TERRAIN.extent * 2 / TERRAIN.cell + 1;
   readonly heights: Float32Array;
-  constructor() {
+  constructor(reliefProfile:'v4'|'v5'='v4') {
+    this.reliefProfile=reliefProfile;
     this.heights = new Float32Array(this.count ** 2);
     for (let z = 0; z < this.count; z++) for (let x = 0; x < this.count; x++) this.heights[z * this.count + x] = rawHeight(x * TERRAIN.cell - TERRAIN.extent, z * TERRAIN.cell - TERRAIN.extent);
     this.carveDrainage();
@@ -337,7 +341,8 @@ export class ShiretokoTerrain {
   }
   /** Shared by the walking mesh and both scenery LODs, including all seam attributes. */
   surfaceAt(x: number, z: number): number {
-    return Math.abs(x)<=TERRAIN.extent && Math.abs(z)<=TERRAIN.extent ? this.heightAt(x,z) : rawHeight(x,z);
+    return Math.abs(x)<=TERRAIN.extent && Math.abs(z)<=TERRAIN.extent ? this.heightAt(x,z) :
+      this.reliefProfile==='v5' ? farCoastReliefV5(x,z,rawHeight,coastDistance) : rawHeight(x,z);
   }
   vertexAt(x: number, z: number) {
     const at=(a:number,b:number)=>this.surfaceAt(a,b), y=at(x,z);
