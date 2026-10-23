@@ -1,3 +1,4 @@
+import {farCoastReliefV5} from './coast-relief-v5.ts';
 /** Original, condensed Shiretoko terrain. Metres, Y up, inland = negative Z.
  * No dependencies on the existing world, campaign, HOME or save system. */
 export const TERRAIN = Object.freeze({ extent: 1200, cell: 5, chunk: 300, seed: 431071, sea: 0 });
@@ -337,7 +338,7 @@ export class ShiretokoTerrain {
   }
   /** Shared by the walking mesh and both scenery LODs, including all seam attributes. */
   surfaceAt(x: number, z: number): number {
-    return Math.abs(x)<=TERRAIN.extent && Math.abs(z)<=TERRAIN.extent ? this.heightAt(x,z) : rawHeight(x,z);
+    return Math.abs(x)<=TERRAIN.extent && Math.abs(z)<=TERRAIN.extent ? this.heightAt(x,z) : farCoastReliefV5(x,z,rawHeight,coastDistance);
   }
   vertexAt(x: number, z: number) {
     const at=(a:number,b:number)=>this.surfaceAt(a,b), y=at(x,z);
