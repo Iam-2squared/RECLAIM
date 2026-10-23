@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 jobs:
-  terrain:
+  terrain-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -30,8 +30,58 @@ jobs:
       - run: node scripts/verify-shiretoko-intro.mjs
       - run: node scripts/verify-shiretoko-v3.mjs
       - run: node scripts/report-shiretoko-v3.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-terrain-contract-${{ github.event.pull_request.head.sha }}
+          path: |
+            release/RECLAIM_Shiretoko_Terrain_Phase1.html
+            release/RECLAIM_Shiretoko_Intro_Demo.html
+            release/shiretoko-phase1-review/
+          retention-days: 14
+
+  terrain-v4-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - run: npx playwright install chromium
       - run: node scripts/verify-shiretoko-v4.mjs
       - run: node scripts/report-shiretoko-v4.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-v4-validation-${{ github.event.pull_request.head.sha }}
+          path: |
+            release/RECLAIM_Shiretoko_Terrain_Phase1.html
+            release/shiretoko-phase1-review/v4/interaction/
+            release/shiretoko-phase1-review/v4/metrics/
+          retention-days: 14
+
+  terrain-v4-comparison:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - run: npx playwright install chromium
       - run: node scripts/build-shiretoko-v3-baseline.mjs
       - run: node scripts/capture-shiretoko-v4.mjs release/shiretoko-phase1-review/v4/baseline/RECLAIM_Shiretoko_Terrain_Phase1_v3.html release/shiretoko-phase1-review/v4/comparison/v3
       - run: node scripts/capture-shiretoko-v4.mjs release/RECLAIM_Shiretoko_Terrain_Phase1.html release/shiretoko-phase1-review/v4/comparison/v4
@@ -39,9 +89,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: shiretoko-terrain-phase1-${{ github.event.pull_request.head.sha }}
+          name: shiretoko-v4-comparison-${{ github.event.pull_request.head.sha }}
           path: |
-            release/RECLAIM_Shiretoko_Terrain_Phase1.html
-            release/RECLAIM_Shiretoko_Intro_Demo.html
-            release/shiretoko-phase1-review/
+            release/shiretoko-phase1-review/v4/baseline/
+            release/shiretoko-phase1-review/v4/comparison/
           retention-days: 14
