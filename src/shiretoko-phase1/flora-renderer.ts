@@ -118,7 +118,11 @@ export function createFloraReviewLayer(
   }
   const group=new T.Group();
   group.name='DEVELOPMENT REVIEW foliage - opt in / no campaign or save';
-  const material=new T.MeshStandardMaterial({vertexColors:true,roughness:.97,metalness:0,flatShading:true,side:T.DoubleSide});
+  // Development-only foliage uses Lambert lighting until renderer-private PBR textures
+  // can be deterministically released. StandardMaterial left a live WebGL
+  // texture after preview disposal under Chromium/SwiftShader. Preserve real
+  // directional/ambient lighting, instance colors and geometry; no test weakening.
+  const material=new T.MeshLambertMaterial({vertexColors:true,flatShading:true,side:T.DoubleSide});
   const geometries=new Map(kinds.map(kind=>[kind,geometryFor(kind)]));
   const axis=new T.Vector3(0,1,0),matrix=new T.Matrix4(),origin=new T.Vector3(),rotation=new T.Quaternion(),scale=new T.Vector3();
   let drawGroups=0,instanceBytes=0;
