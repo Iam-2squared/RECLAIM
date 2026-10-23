@@ -1,0 +1,14 @@
+import {execFileSync} from 'node:child_process';
+import {writeFile} from 'node:fs/promises';
+const git=(...args)=>execFileSync('git',args,{encoding:'utf8'}).trim();
+const base='6b6ff3946c2fab5c4a46694be7014a03e3fc5e3e';
+const changed=git('diff','--name-status',base).split('\n').filter(Boolean).map(row=>{const [status,...file]=row.split('\t');return{status,file:file.join('\t')}});
+const changedExisting=changed.filter(r=>r.status!=='A');
+const allowed=/^(src\/shiretoko-phase1\/|shiretoko-terrain\.html$|scripts\/[^/]*shiretoko-[^/]*\.mjs$|tests\/shiretoko-[^/]*\.test\.mjs$|docs\/SHIRETOKO_(TERRAIN|INTRO)[^/]*|\.github\/workflows\/shiretoko-terrain\.yml$)/;
+const outside=changed.filter(r=>!allowed.test(r.file));
+const untracked=git('ls-files','--others','--exclude-standard').split('\n').filter(Boolean);
+const unexpected=untracked.filter(f=>!allowed.test(f));
+const report={base,head:git('rev-parse','HEAD'),allMainFilesUnchanged:changedExisting.length===0,changedExisting,outside,untracked,unexpected,changed};
+if(process.argv[2])await writeFile(process.argv[2],JSON.stringify(report,null,2));
+console.log(JSON.stringify(report,null,2));
+if(changedExisting.length||outside.length||unexpected.length)process.exitCode=1;
