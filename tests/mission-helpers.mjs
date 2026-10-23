@@ -1,5 +1,6 @@
 import {expect} from '@playwright/test';
 import {arrowSteps} from './native-arrow-input.mjs';
+import {walkObserverOptions} from './walk-observer-options.mjs';
 export const snapshot=page=>page.evaluate(()=>window.__RECLAIM__.snapshot());
 export async function enter(page,{low=true}={}) {
  await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');
@@ -66,8 +67,9 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
   const stopRange=mode==='far'?nearRange:mode==='walk'?precisionRange:null;
   let handle,keepForward=false;
   try{
-   // Read-only RAF observation runs in the browser, avoiding repeated round
-   // trips while keys are held. Arrival, pause and real elapsed time are observed.
+   // Read-only timer observation runs in the browser, independently of a
+   // software GPU starving requestAnimationFrame callbacks. Real movement,
+   // original arrival predicates and the five-second deadline remain intact.
    handle=await page.waitForFunction(observation=>{
     const {target,radius,stopRange,simSeconds}=observation;
     const m=window.__RECLAIM__.snapshot().mission;if(!m||m.paused)return'paused';
@@ -78,7 +80,7 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
     // between the prior snapshot and keydown cannot consume the walk pulse.
     if(observation.firstElapsed===null)observation.firstElapsed=m.elapsed;
     return m.elapsed-observation.firstElapsed>=simSeconds?'elapsed':false;
-   },{target,radius,stopRange,firstElapsed:null,simSeconds},{polling:'raf',timeout:Math.min(5000,remaining)});
+   },{target,radius,stopRange,firstElapsed:null,simSeconds},walkObserverOptions(remaining));
    // Release sprint at eight metres but keep genuine walking continuous until
    // the final precision zone. Arrival still requires the fresh stopped pose.
    if(mode!=='precision'){
