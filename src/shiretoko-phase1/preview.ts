@@ -7,6 +7,7 @@ import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
 import { createFloraReviewLayer } from './flora-renderer.ts';
 import { createBoardwalkReview } from './boardwalk.ts';
+import { createCliffCabinReview } from './cabin.ts';
 import { TerrainFrameDemand } from './frame-demand.ts';
 import { TerrainGpuFrameGate } from './gpu-frame-gate.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
@@ -108,8 +109,16 @@ async function boot() {
     ? createFloraReviewLayer(terrain, floraChoice === 'balanced' ? 'balanced' : 'low') : null;
   const boardwalkReview = ['1', 'true', 'on'].includes(query.get('boardwalk') ?? '')
     ? createBoardwalkReview(terrain) : null;
+  const cabinReview = ['1', 'true', 'on'].includes(query.get('cabin') ?? '')
+    ? createCliffCabinReview(terrain) : null;
   const natureBadges: HTMLElement[] = [];
   if (floraReview) root.add(floraReview.group);
+  if (cabinReview) root.add(cabinReview.group);
+  if (cabinReview && !boardwalkReview && !floraReview) {
+    root.add(new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 1.8));
+    const cabinSun=new T.DirectionalLight(0xffdab0, 2.0);
+    cabinSun.position.set(-260,640,340);root.add(cabinSun);
+  }
   if (boardwalkReview) {
     root.add(boardwalkReview.group);
     // Development decking uses bounded lit materials; original scene shader path is untouched.
@@ -118,10 +127,11 @@ async function boot() {
     const sun = new T.DirectionalLight(0xffdab0, 2.1);
     sun.position.set(-260, 640, 340); sun.name = 'review timber sunlight'; root.add(sun);
   }
-  if (floraReview || boardwalkReview) {
+  if (floraReview || boardwalkReview || cabinReview) {
     const badge = document.createElement('div');
     badge.textContent = [floraReview ? `植生 ${floraReview.quality}` : '',
-      boardwalkReview ? '木道・三角形接地' : ''].filter(Boolean).join(' ＋ ')
+      boardwalkReview ? '木道・三角形接地' : '',
+      cabinReview ? '崖上住宅・階段・室内衝突' : ''].filter(Boolean).join(' ＋ ')
       + ' ｜開発レビュー・本編セーブ未接続';
     badge.setAttribute('data-nature-review', 'true');
     Object.assign(badge.style, { position: 'fixed', bottom: '14px', left: '14px', zIndex: '25',
@@ -138,7 +148,10 @@ async function boot() {
   const routeLine = new T.Line(new T.BufferGeometry().setFromPoints(routePoints), new T.LineDashedMaterial({ color: 0xf7e6b3, dashSize: 5, gapSize: 4, depthTest: true }));
   routeLine.computeLineDistances(); routeLine.visible = false; routeLine.name = 'optional route inspection overlay'; root.add(routeLine);
   const intro=new TerrainIntro();
-  const walker = new TerrainWalker(terrain, boardwalkReview?.heightAt), keys = new Set<string>(), frameTimes: number[] = [];
+  const reviewHeight = (x:number,z:number) =>
+    cabinReview?.heightAt(x,z) ?? boardwalkReview?.heightAt(x,z) ?? null;
+  const walker = new TerrainWalker(terrain, cabinReview || boardwalkReview ? reviewHeight : undefined,
+    cabinReview?.blockedAt), keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
   const frameDemand = new TerrainFrameDemand();
@@ -307,13 +320,15 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview,
+    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview && !cabinReview,
     floraReview: floraReview ? { enabled: true, quality: floraReview.quality,
       instances: floraReview.instances, drawGroups: floraReview.drawGroups,
       instanceBytes: floraReview.instanceBytes, saveWrites: 0 } : { enabled: false },
     boardwalkReview: boardwalkReview ? { enabled: true, panels: boardwalkReview.panels,
       supports: boardwalkReview.supports, indexedTriangles: boardwalkReview.indexedTriangles,
       saveWrites: 0 } : { enabled: false },
+    cabinReview: cabinReview ? {enabled:true,stairs:cabinReview.stairs,
+      parts:cabinReview.parts,floorY:cabinReview.floorY,saveWrites:0} : {enabled:false},
     mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
@@ -345,7 +360,7 @@ async function boot() {
   // Inspection hooks are isolated here and never imported by the actual game's index.html.
   if(document.body.dataset.initialIntro==='true')openIntro();
   Object.assign(window, { __SHIRETOKO_TERRAIN__: {
-    diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
+    diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, cabinHeightAt: cabinReview?.heightAt ?? null, cabinBlockedAt: cabinReview?.blockedAt ?? null, cabinEntrance: cabinReview?.entrance ?? null, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
     setClean, freeze: (value: boolean) => { freeze = value; if(value)for(const water of waters)water.material.uniforms.uTime.value=0; needsRender=true; },
     viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
     openIntro, dispose,
