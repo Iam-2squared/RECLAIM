@@ -126,8 +126,15 @@ export class RegionTileStream<T> {
     requireCurrent();
     // Obsolete unresolved operations still occupy real loader slots.
     const available = Math.max(0, REGION_TILE_RULES.loadLimit - this.unsettled.size);
-    plan = planRegionTiles(code, x, z, detail, [...this.resident.keys(), ...this.pending.keys()]);
-    for (const coord of plan.load.filter(coord=>!this.refilling||!this.failedAutoKeys.has(coord.key)).slice(0, available)) {
+    // The planner itself limits each load list to two. During automatic
+    // refill, represent failed keys as unavailable slots for PLANNING ONLY,
+    // otherwise two failed nearest tiles would hide healthy farther tiles.
+    // They are never inserted into resident and still require explicit retry.
+    plan = planRegionTiles(code,x,z,detail,[
+      ...this.resident.keys(),...this.pending.keys(),
+      ...(this.refilling?[...this.failedAutoKeys]:[]),
+    ]);
+    for (const coord of plan.load.slice(0, available)) {
       const controller = new AbortController(), generation = this.generation;
       this.pending.set(coord.key, { generation, controller });
       this.unsettled.add(controller); started.push(coord.key);
