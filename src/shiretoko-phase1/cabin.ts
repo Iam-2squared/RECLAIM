@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {ShiretokoTerrain} from './terrain.ts';
+import {ShiretokoTerrain,coastDistance,routeSample} from './terrain.ts';
 
 /** Original, opt-in headland cabin in the standalone 2400m review.
  * Floor and stair heights are queried from the SAME rectangles drawn in 3D.
@@ -12,14 +12,23 @@ export type CabinReview = Readonly<{
   blockedAt: (x:number,z:number)=>boolean;
   stairs: number;
   parts: number;
+  supports: number;
   entrance: Readonly<{x:number;z:number}>;
 }>;
-const X=-218, Z=882, WIDTH=18, DEPTH=14, WALL=.34;
+const X=-100, Z=835, WIDTH=18, DEPTH=14, WALL=.34;
 const DOOR_HALF=1.15, PERSON=.23;
 export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   const left=X-WIDTH/2,right=X+WIDTH/2,back=Z-DEPTH/2,front=Z+DEPTH/2;
   const samples=[[left,back],[left,front],[right,back],[right,front],[X,Z],
     [right+9,Z],[right+5,Z]] as const;
+  // The previous footprint spanned 16.6m of vertical cliff relief. Ground
+  // height and the shoreline are sampled from the actual immutable 5m terrain.
+  const footprint=[[left,back],[left,front],[right,back],[right,front],[X,Z]] as const;
+  const sampled=footprint.map(([x,z])=>terrain.heightAt(x,z));
+  if(Math.max(...sampled)-Math.min(...sampled)>2.0 ||
+     footprint.some(([x,z])=>terrain.inWater(x,z) ||
+     coastDistance(x,z)<45 || routeSample(x,z).distance<20))
+    throw new RangeError('Cabin requires stable inland headland footing and route clearance');
   const floorY=Math.max(...samples.map(([x,z])=>terrain.heightAt(x,z)))+.38;
   const outsideX=right+9, outsideGround=terrain.heightAt(outsideX,Z);
   const rise=floorY-outsideGround;
@@ -49,6 +58,17 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   // plinth stays underneath and cannot overwrite the walking Y coordinate.
   box('cabin / real wooden floor',X,floorY-.13,Z,WIDTH,.26,DEPTH,mats.wood);
   box('cabin / stone foundation',X,floorY-.78,Z,WIDTH,1.05,DEPTH,mats.stone);
+  const pierSites=[
+    [left+1,back+1],[X,back+1],[right-1,back+1],
+    [left+1,front-1],[X,front-1],[right-1,front-1],
+    [left+1,Z],[right-1,Z],
+  ] as const;
+  for(const [px,pz] of pierSites){
+    const foundation=terrain.heightAt(px,pz),height=floorY-.12-foundation;
+    if(!(height>.1 && height<3))
+      throw new RangeError('Foundation pier must connect house and real 5m ground');
+    box('cabin / terrain foundation pier',px,foundation+height/2,pz,.68,height,.68,mats.stone);
+  }
   const wallTop=floorY+3.25;
   box('cabin / west wall',left+WALL/2,floorY+1.625,Z,WALL,3.25,DEPTH,mats.wall);
   box('cabin / north wall',X,floorY+1.625,back+WALL/2,WIDTH,3.25,WALL,mats.wall);
@@ -130,5 +150,5 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     const bunk=rect(x,z,X-5.3,Z-3.4,2.7,4.05);
     return west||north||south||east||table||bunk;
   };
-  return {group,floorY,heightAt,blockedAt,stairs,parts,entrance:{x:right+1.7,z:Z}};
+  return {group,floorY,heightAt,blockedAt,stairs,parts,supports:pierSites.length,entrance:{x:right+1.7,z:Z}};
 }

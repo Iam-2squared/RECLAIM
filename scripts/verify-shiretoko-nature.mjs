@@ -49,9 +49,9 @@ try{
     if(!e||!a.walker.place(e.x,e.z))throw Error('cannot enter real cabin stairs');
     a.walker.yaw=Math.PI/2;
     for(let i=0;i<245;i++)a.walker.step({forward:1,right:0,sprint:false,jump:false},1/60);
-    if(a.walker.x>=-212||a.walker.x<=-226.7||Math.abs(a.walker.y-d.cabinReview.floorY)>1e-5)
+    if(a.walker.x>=-94||a.walker.x<=-108.7||Math.abs(a.walker.y-d.cabinReview.floorY)>1e-5)
       throw Error('cabin doorway/stair walking and real floor are inconsistent');
-    if(!a.cabinBlockedAt(-227,882)||a.cabinBlockedAt(-209,882))
+    if(!a.cabinBlockedAt(-109,835)||a.cabinBlockedAt(-91,835))
       throw Error('cabin real wall/door collision contract failed');
     if(d.shaderError||d.contextLost||d.renderCallsTotal<1)throw Error('WebGL not rendering');
     const u=a.route[3],v=a.route[4],x=(u.x+v.x)/2,z=(u.z+v.z)/2;
@@ -73,7 +73,7 @@ try{
   const views=[
     {name:'wooden-wetland',x:-50,z:610,tx:-118,tz:500,elevation:10},
     {name:'flora-wetland',x:-130,z:410,tx:-210,tz:370,elevation:6},
-    {name:'headland-cabin',x:-172,z:909,tx:-218,tz:882,elevation:11}
+    {name:'headland-cabin',x:-38,z:881,tx:-100,tz:835,elevation:12}
   ];
   for(const view of views){
     const before=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);

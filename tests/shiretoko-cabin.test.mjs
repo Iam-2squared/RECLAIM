@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
-import {ShiretokoTerrain} from '../src/shiretoko-phase1/terrain.ts';
+import {ShiretokoTerrain,coastDistance,routeSample} from '../src/shiretoko-phase1/terrain.ts';
 import {TerrainWalker} from '../src/shiretoko-phase1/walker.ts';
 import {createCliffCabinReview} from '../src/shiretoko-phase1/cabin.ts';
 
 const terrain=new ShiretokoTerrain();
 const cabin=createCliffCabinReview(terrain);
-const X=-218,Z=882,left=X-9,right=X+9,back=Z-7;
+const X=-100,Z=835,left=X-9,right=X+9,back=Z-7;
 test('cliff cabin has a real 3D furnished room, two pitched roof sides and bounded steps',()=>{
   assert(cabin.group instanceof T.Group);
   assert(cabin.parts>25 && cabin.parts<140);
@@ -17,6 +17,22 @@ test('cliff cabin has a real 3D furnished room, two pitched roof sides and bound
   assert(cabin.group.children.some(x=>x.name==='cabin / table'));
   assert(cabin.group.children.some(x=>x.name==='cabin / bunk base'));
   assert(cabin.floorY>terrain.heightAt(X,Z));
+});
+test('original cabin sits inland on bounded 5m terrain relief with eight ground-contact piers',()=>{
+  const corners=[[left,back],[left,Z+7],[right,back],[right,Z+7],[X,Z]];
+  const heights=corners.map(([x,z])=>terrain.heightAt(x,z));
+  assert(Math.max(...heights)-Math.min(...heights)<2,
+    'whole 18x14m real surface must not span an unsupported cliff face');
+  assert(corners.every(([x,z])=>coastDistance(x,z)>45));
+  assert(corners.every(([x,z])=>routeSample(x,z).distance>20));
+  const piers=cabin.group.children.filter(x=>x.name==='cabin / terrain foundation pier');
+  assert.equal(piers.length,8);
+  assert.equal(cabin.supports,8);
+  for(const pier of piers){
+    const bottom=pier.position.y-pier.geometry.parameters.height/2;
+    assert(Math.abs(bottom-terrain.heightAt(pier.position.x,pier.position.z))<1e-7);
+    assert(pier.position.y+pier.geometry.parameters.height/2<cabin.floorY);
+  }
 });
 test('every visible stair tread and the occupied floor share their exact top surface with walking',()=>{
   const treads=cabin.group.children.filter(x=>x.name.startsWith('cabin / tread '));
