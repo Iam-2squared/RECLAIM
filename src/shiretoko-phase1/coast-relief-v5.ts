@@ -5,7 +5,10 @@
  * Real 5/20/80m mesh, 360-degree visuals and footprint still require review.
  */
 export const RELIEF_V5=Object.freeze({
-  zStart:-4240,zFull:-4480,zFade:-5000,zEnd:-5600,
+  // Blend well before the z=-4200 near/far join; the old cutoff at -4240
+  // left a measured 171.60m rise over one 20m sample at x=1760,z=-4220.
+  // This is entirely outside the 2.4km walk mesh and its saved positions.
+  zStart:-3880,zFull:-4200,zFade:-5000,zEnd:-5600,
   coastSeaStart:-460,coastSeaFull:-220,
   coastLandFull:300,coastLandEnd:740,
   sampleOffset:140,maxBaseSamplesPerVertex:9,
@@ -18,8 +21,9 @@ const smoothstep=(a:number,b:number,x:number):number=>{
 };
 /**
  * A bounded symmetric 3x3 low-pass for near-shore cliffs in both axes.
- * Samples the raw source, NEVER itself. No smoothing within protected
- * walkable bounds, the entire preserved near mesh, or the 20/80m join row.
+ * Samples the raw source, NEVER itself. Smoothing is restricted to distant
+ * coastal scenery; the near/far boundary reads one identical height source.
+ * Main walking collision and the entire existing 2.4km walk region are intact.
  */
 export function farCoastReliefV5(
   x:number,z:number,base:(x:number,z:number)=>number,
