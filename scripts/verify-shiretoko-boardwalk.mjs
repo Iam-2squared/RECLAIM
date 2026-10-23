@@ -76,6 +76,22 @@ try {
       await writeFile(resolve(output,name),Buffer.from(info.image.split(',')[1],'base64'));
       delete info.image;
       result.images.push({name,viewport:[1600,900],surface:'preserved WebGL framebuffer without DOM'});
+      // Same player-usable corridor seen near eye level, not only a distant map.
+      const beforeClose=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
+      await page.evaluate(()=>{
+        const api=window.__SHIRETOKO_TERRAIN__,y=api.terrain.heightAt(-95,545);
+        api.viewFrom([-48,y+17,615],[-95,y+.8,545]);
+      });
+      await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,beforeClose);
+      const close=await page.evaluate(()=>{
+        const canvas=document.querySelector('canvas'),gl=canvas.getContext('webgl2');
+        gl.finish();
+        return {image:canvas.toDataURL('image/png'),glError:gl.getError()};
+      });
+      assert.equal(close.glError,0);
+      const closeName=enabled?'boardwalk-close-webgl.png':'baseline-close-webgl.png';
+      await writeFile(resolve(output,closeName),Buffer.from(close.image.split(',')[1],'base64'));
+      result.images.push({name:closeName,viewport:[1600,900],surface:'preserved WebGL close-up, deck-facing camera'});
       result.snapshots.push({enabled,diagnostics:info.d,ground:info.ground,deck:info.deck,playerY:info.playerY,glError:info.glError});
       const storage=await page.evaluate(()=>window.__boardwalkStorage);
       result.saveAccess.push(...storage);
