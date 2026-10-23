@@ -1,7 +1,7 @@
 import {expect} from '@playwright/test';
 import {arrowSteps} from './native-arrow-input.mjs';
 import {walkObserverOptions} from './walk-observer-options.mjs';
-import {observeActualWalkSegment} from './walk-progress-probe.mjs';
+import {waitForDriverWalkObservation} from './driver-walk-observer.mjs';
 import {withNativePrecisionInputGuard} from './native-precision-input-guard.mjs';
 export const snapshot=page=>page.evaluate(()=>window.__RECLAIM__.snapshot());
 export async function enter(page,{low=true}={}) {
@@ -67,12 +67,12 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
  const probe=async(simSeconds,mode,initialTargetDistance)=>{
   const remaining=deadline-Date.now();if(remaining<=0)return;
   const stopRange=mode==='far'?nearRange:mode==='walk'?precisionRange:null;
-  let handle,keepForward=false;
+  let keepForward=false;
   try{
-   // Read-only timer observation runs in the browser, independently of a
-   // software GPU starving requestAnimationFrame callbacks. Real movement,
-   // original arrival predicates and the five-second deadline remain intact.
-   handle=await page.waitForFunction(observeActualWalkSegment,{
+   // Schedule read-only observations from the driver, not a timer inside
+   // the busy WebGL page. Native input, genuine Mission snapshots, original
+   // geometric predicates and the five-second segment deadline stay intact.
+   const reason=await waitForDriverWalkObservation(page,{
     target,radius,stopRange,firstElapsed:null,simSeconds,initialTargetDistance,
     // Observation checkpoints are not arrival tolerances; all exact
     // geometric criteria and 5s/50s deadlines remain unchanged.
@@ -81,13 +81,12 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
    // Release sprint at eight metres but keep genuine walking continuous until
    // the final precision zone. Arrival still requires the fresh stopped pose.
    if(mode!=='precision'){
-    const reason=await handle.jsonValue();
     if(mode==='far'&&reason==='near')await setSprint(false);
     keepForward=reason==='elapsed'||reason==='progress'||(mode==='far'&&reason==='near');
    }
   }finally{
-   // Release a short near-target pulse before the handle-disposal round trip.
-   try{if(!keepForward)await stopForward();}finally{await handle?.dispose();}
+   // Release the real near-target key before the next sampled observation.
+   if(!keepForward)await stopForward();
   }
  };
  try{
