@@ -35,6 +35,25 @@ try {
     });
     await page.addInitScript(() => {
       window.__floraStorageReadsAndWrites = [];
+      // Track real GL allocations separately from Three.js renderer.info.memory.
+      // The former detects live GPU handles; the latter may retain internal caches.
+      const glProto = WebGL2RenderingContext.prototype;
+      const originalCreateTexture = glProto.createTexture;
+      const originalDeleteTexture = glProto.deleteTexture;
+      window.__floraGpuTextureAudit = { created: 0, deleted: 0, live: new Map() };
+      glProto.createTexture = function (...args) {
+        const texture = originalCreateTexture.apply(this, args);
+        const audit = window.__floraGpuTextureAudit;
+        audit.created++;
+        if (texture) audit.live.set(texture, { id: audit.created, allocation: new Error().stack?.slice(0, 900) });
+        return texture;
+      };
+      glProto.deleteTexture = function (texture) {
+        const audit = window.__floraGpuTextureAudit;
+        audit.deleted++;
+        if (texture) audit.live.delete(texture);
+        return originalDeleteTexture.call(this, texture);
+      };
       for (const method of ['getItem', 'setItem', 'removeItem', 'clear']) {
         Storage.prototype[method] = function () {
           window.__floraStorageReadsAndWrites.push(method);
@@ -91,12 +110,22 @@ try {
       assert.deepEqual(pageErrors, [], 'no JavaScript failures or network requests');
       await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.dispose());
       const final = await page.evaluate(() => window.__SHIRETOKO_TERRAIN__.diagnostics());
+      const gpuAudit = await page.evaluate(() => ({
+        created: window.__floraGpuTextureAudit.created,
+        deleted: window.__floraGpuTextureAudit.deleted,
+        live: Array.from(window.__floraGpuTextureAudit.live.values()),
+      }));
+      console.log('Flora texture disposal audit ' + quality + ': ' + JSON.stringify({
+        rendererReportedTextures: final.textures, created: gpuAudit.created,
+        deleted: gpuAudit.deleted, stillLive: gpuAudit.live.length,
+      }));
+      // Save the failed case before assertions so leaks remain diagnosable in CI.
+      evidence.cases.push({ quality, baseline, frames, final, storage, pageErrors, gpuAudit });
       assert.equal(final.disposed, true);
       assert.equal(await page.locator('canvas').count(), 0);
       assert.equal(final.geometries, 0);
       assert.equal(final.textures, 0);
       assert.equal(await page.locator('[data-flora-review]').count(), 0);
-      evidence.cases.push({ quality, baseline, frames, final, storage, pageErrors });
       console.log('Flora real-WebGL review PASS: ' + quality + ' (' + frames.length + ' frames)');
     } finally {
       await context.close();
