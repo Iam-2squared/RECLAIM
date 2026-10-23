@@ -52,7 +52,7 @@ jobs:
           RECLAIM_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install browser and Japanese text rendering
         run: |
-          npx playwright install --with-deps ${{ matrix.browser }}
+          # Hosted Ubuntu already provides browser runtime libraries. Avoid\n          # rerunning the system dependency installer in five simultaneous jobs;\n          # the real Playwright launch and image checks remain mandatory.\n          npx playwright install ${{ matrix.browser }}
           sudo apt-get install -y fonts-noto-cjk
       - name: Existing PC, world and iPhone regression suites
         if: ${{ !startsWith(matrix.suite, 'mobile-') }}
