@@ -268,3 +268,29 @@ test('visible door and window joinery shares one real draw batch without narrowi
   assert(walker.x<right-3&&Math.abs(walker.y-cabin.floorY)<1e-5,
     'an actual walker still enters and crosses the existing interior');
 });
+
+test('four visible open cedar shutters frame rather than obstruct both real cabin windows',()=>{
+  const shutters=cabin.group.getObjectByName('cabin / folded cedar window shutters / instanced');
+  assert(shutters instanceof T.InstancedMesh,'shutters are genuine instanced geometry');
+  assert.equal(shutters.count,16,'four cedar leaves and three framing battens per leaf');
+  assert(shutters.instanceColor && shutters.instanceColor.count===shutters.count);
+  assert(shutters.boundingSphere && Number.isFinite(shutters.boundingSphere.radius));
+  const m=new T.Matrix4(),p=new T.Vector3(),q=new T.Quaternion(),s=new T.Vector3();
+  for(let i=0;i<shutters.count;i++){
+    shutters.getMatrixAt(i,m);m.decompose(p,q,s);
+    assert([p.x,p.y,p.z,s.x,s.y,s.z].every(Number.isFinite));
+    assert(Math.abs(p.x-(X-4))>=1.6,'all timber stays outside the 3m window aperture');
+    assert(p.y>cabin.floorY+1.3&&p.y<cabin.floorY+2.5);
+    assert(s.x>.08&&s.y>.09&&s.z>.08);
+    assert(Math.abs(p.z-(i<8?back:Z+7))<.4,'shutters are on actual north/south exterior walls');
+  }
+  cabin.group.updateMatrixWorld(true);
+  for(const [z,dz] of [[back-2,1],[Z+9,-1]]){
+    const ray=new T.Raycaster(new T.Vector3(X-4,cabin.floorY+1.86,z),
+      new T.Vector3(0,0,dz),0,4);
+    assert.equal(ray.intersectObject(shutters,false).length,0,
+      'real eye-height sightline remains open through both glass panes');
+  }
+  assert.equal(cabin.blockedAt(right,Z),false,'east doorway stays usable');
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,'shutters create no new floor or collision');
+});

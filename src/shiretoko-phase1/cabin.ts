@@ -239,6 +239,39 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   joinery.computeBoundingSphere();
   group.add(joinery);parts++;
 
+  // The existing two transparent north/south windows gain outward-folded
+  // cedar shutters. They stay on opaque wall either side of each genuine
+  // aperture; the centre sightline, sill collider and campaign remain intact.
+  // Panels and twelve battens share ONE instanced box/material draw group.
+  const shutterParts:{center:T.Vector3;size:T.Vector3;color:number}[]=[];
+  for(const wallZ of [back,front]){
+    const outward=wallZ===back?-1:1;
+    const faceZ=wallZ+outward*.17;
+    for(const side of [-1,1] as const){
+      const cx=WINDOW_X+side*(WINDOW_W/2+.52);
+      shutterParts.push({center:new T.Vector3(cx,floorY+1.86,faceZ),
+        size:new T.Vector3(.76,1.22,.09),color:0x69543c});
+      for(const offset of [-.40,.40]){
+        shutterParts.push({center:new T.Vector3(cx,floorY+1.86+offset,faceZ+outward*.075),
+          size:new T.Vector3(.72,.095,.10),color:0x957653});
+      }
+      shutterParts.push({center:new T.Vector3(cx,floorY+1.86,faceZ+outward*.075),
+        size:new T.Vector3(.10,1.04,.10),color:0x856b4b});
+    }
+  }
+  const shutters=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),shutterParts.length);
+  shutters.name='cabin / folded cedar window shutters / instanced';
+  for(let i=0;i<shutterParts.length;i++){
+    const {center,size,color}=shutterParts[i];
+    shutters.setMatrixAt(i,new T.Matrix4().compose(center,new T.Quaternion(),size));
+    shutters.setColorAt(i,new T.Color(color));
+  }
+  shutters.instanceMatrix.needsUpdate=true;
+  if(shutters.instanceColor)shutters.instanceColor.needsUpdate=true;
+  shutters.computeBoundingSphere();
+  group.add(shutters);parts++;
+
   // Furniture has explicit footprint collision below. The room is navigable:
   // the centerline from entrance to the opposite interior wall stays clear.
   box('cabin / table',X-2,floorY+.83,Z+3,2.1,.19,1.45,mats.wood);
