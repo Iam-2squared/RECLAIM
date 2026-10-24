@@ -12,7 +12,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   assert.equal(layer.quality,'low');
   assert.equal(layer.instanceBytes,layer.instances*76);
   const seen=new Set(),trees=new Set(),matrix=new THREE.Matrix4(),translation=new THREE.Vector3();
-  let total=0;
+  let total=0,foundTalus=false;
   layer.group.traverse(node=>{
     if(!(node instanceof THREE.InstancedMesh))return;
     assert(node.count>0 && node.count<=layer.instances);
@@ -34,6 +34,22 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       assert(node.geometry.getAttribute('position').count<500,
         'visual improvement must not explode per-instance vertex cost');
     }
+    if(node.name.endsWith('/stone')){
+      foundTalus=true;
+      const geometry=node.geometry, bounds=geometry.boundingBox;
+      const vertices=geometry.getAttribute('position'), colours=geometry.getAttribute('color');
+      assert(bounds, 'instanced stone cluster must have a shared bounding box');
+      assert(vertices.count>=120&&vertices.count<350,
+        'three-facet talus replaces one pebble without excessive per-instance vertices');
+      assert(bounds.min.y>=-.12&&bounds.max.y<1.05,
+        'talus boulders remain rooted at the sampled physical ground, never hovering');
+      assert(bounds.max.x-bounds.min.x>1.7,
+        'stone silhouette must include separate lateral talus fragments');
+      const swatches=new Set();
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert.equal(swatches.size,3,'three different rock faces share vertex colour material');
+    }
     seen.add(node.geometry);total+=node.count;
     const sampled=[0,Math.floor(node.count/2),node.count-1];
     for(const i of sampled){
@@ -49,6 +65,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   assert.equal(total,layer.instances);
   assert(seen.size<=6,'all 600m culling groups must share species geometries');
   assert.deepEqual([...trees].sort(),['birch','spruce'],'both mature species rendered in low-quality mode');
+  assert(foundTalus,'real terrain should render talus in the low setting');
   assert.equal(layer.group.children.filter(x=>x.isLight).length,2,'review-only light setup');
   for(const g of seen)g.dispose();
   for(const node of layer.group.children)if(node instanceof THREE.InstancedMesh)node.dispose();

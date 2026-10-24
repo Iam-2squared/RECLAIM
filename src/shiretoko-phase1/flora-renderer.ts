@@ -81,7 +81,19 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       break;
     }
     case 'stone':
-      part(parts,new T.DodecahedronGeometry(1,0),0x6e7772,g=>{g.scale(.82,.44,.71);g.rotateY(.22);g.translate(0,.40,0);});
+      // A grounded, irregular talus cluster replaces the solitary repeated
+      // dodecahedron. Three faceted fragments share ONE merged geometry,
+      // material and existing instanced draw group; bases sit slightly inside
+      // the exact 5m ground rather than floating above their sampled origin.
+      part(parts,new T.DodecahedronGeometry(1,0),0x6d756e,g=>{
+        g.scale(.88,.46,.72);g.rotateY(.27);g.translate(-.10,.41,0);
+      });
+      part(parts,new T.DodecahedronGeometry(1,0),0x555f5b,g=>{
+        g.scale(.39,.31,.36);g.rotateY(.73);g.translate(.65,.28,-.26);
+      });
+      part(parts,new T.IcosahedronGeometry(1,0),0x879082,g=>{
+        g.scale(.33,.23,.40);g.rotateY(-.37);g.translate(-.62,.19,.34);
+      });
       break;
   }
   const merged=mergeGeometries(parts,false);
