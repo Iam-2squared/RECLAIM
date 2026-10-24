@@ -358,6 +358,42 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   chairs.computeBoundingSphere();
   group.add(chairs);parts++;
 
+
+  // Flat woven floor runner provides human-scale cabin interior detail
+  // without modifying the 5m terrain, original physical timber floor,
+  // collision or campaign save contract. Fourteen stripes/bindings share
+  // ONE reusable geometry, material and instanced draw call. The upper face
+  // is just 3mm above the known walkable floor; the thin weave is inlaid into
+  // the planks, so the existing authoritative walking Y remains unchanged.
+  // Keep the east-west door corridor (z=Z) and the table/chairs clear.
+  const runnerX=X+2.0,runnerZ=Z+2.7;
+  const runnerTones=[0x6e7766,0x828a70,0x9a8e73,0x65705e,0x7f876c,0x887c65];
+  const runnerPieces:{matrix:T.Matrix4;color:number}[]=[];
+  const runnerRotation=new T.Quaternion();
+  for(let i=0;i<12;i++){
+    runnerPieces.push({matrix:new T.Matrix4().compose(
+      new T.Vector3(runnerX,floorY-.007,runnerZ+(i-5.5)*.22),
+      runnerRotation,new T.Vector3(2.46,.020,.218)),
+      color:runnerTones[i%runnerTones.length]});
+  }
+  for(const side of [-1,1] as const){
+    runnerPieces.push({matrix:new T.Matrix4().compose(
+      new T.Vector3(runnerX+side*1.25,floorY-.007,runnerZ),
+      runnerRotation,new T.Vector3(.13,.020,2.64)),
+      color:0x554d40});
+  }
+  const runner=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),runnerPieces.length);
+  runner.name='cabin / grounded woven floor runner / instanced';
+  for(let i=0;i<runnerPieces.length;i++){
+    runner.setMatrixAt(i,runnerPieces[i].matrix);
+    runner.setColorAt(i,new T.Color(runnerPieces[i].color));
+  }
+  runner.instanceMatrix.needsUpdate=true;
+  if(runner.instanceColor)runner.instanceColor.needsUpdate=true;
+  runner.computeBoundingSphere();
+  group.add(runner);parts++;
+
   // Hand-placed colour variation on the original, physically supported shelf:
   // sixteen real book volumes share ONE GPU draw call and no new textures.
   // Their lower corners overlap the existing shelf top by millimetres instead
