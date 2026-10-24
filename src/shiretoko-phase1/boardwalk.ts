@@ -49,6 +49,9 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   const railMatrices: T.Matrix4[] = [];
   const railPostMatrices: T.Matrix4[] = [];
   const railEdges: { a: Pt; b: Pt }[] = [];
+  // Trailheads share existing guarded plank corners: no new collision area
+  // and no sign appears in the full-width open central approach.
+  const trailheads: { anchor: Pt; tangentX: number; tangentZ: number }[] = [];
   // Visual battens follow the SAME actual corner heights as the walkable
   // triangles. This is cosmetic geometry, never a second collision surface.
   const segmentMatrix = (a: Pt, b: Pt, lift: number): T.Matrix4 => {
@@ -126,6 +129,11 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
         railPostMatrices.push(new T.Matrix4().makeTranslation(v.x, v.y + .47, v.z));
       if (k % 3 === 0) { railPost(a); railPost(b); }
       if (k === count - 1) { railPost(c); railPost(d); }
+
+      if (segment === 0 && k === 0)
+        trailheads.push({ anchor: a, tangentX, tangentZ });
+      if (segment === routeLengths.length - 1 && k === count - 1)
+        trailheads.push({ anchor: d, tangentX: -tangentX, tangentZ: -tangentZ });
 
       if (panels % 5 === 0) for (const side of [-1, 1]) {
         const pos = at(centre((t0 + t1) / 2), (t0 + t1) / 2, side * .92);
@@ -245,6 +253,47 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   }
   upright.instanceMatrix.needsUpdate = true;
   upright.computeBoundingSphere();
+
+  // Two unobtrusive trailhead arrows make both ends of the marsh route legible.
+  // Each arrow is *extruded* wooden geometry, not a textured plane or distant
+  // billboard. Taller posts overlap the original deck-grounded guard uprights,
+  // so there are no floating signs, no new player blockers and no extra terrain
+  // or save changes. The deck's real triangle sampler supplies their roots.
+  if (trailheads.length !== 2) throw new RangeError('Boardwalk trailheads missing');
+  const arrowProfile = new T.Shape();
+  arrowProfile.moveTo(-.52, -.15);
+  arrowProfile.lineTo(.09, -.15);
+  arrowProfile.lineTo(.09, -.25);
+  arrowProfile.lineTo(.73, 0);
+  arrowProfile.lineTo(.09, .25);
+  arrowProfile.lineTo(.09, .15);
+  arrowProfile.lineTo(-.52, .15);
+  arrowProfile.closePath();
+  const signposts = new T.InstancedMesh(new T.BoxGeometry(.16, .94, .16),
+    new T.MeshLambertMaterial({ color: 0x554537 }), 2);
+  signposts.name = 'boardwalk / deck-anchored trailhead signposts / instanced';
+  const signs = new T.InstancedMesh(new T.ExtrudeGeometry(arrowProfile, {
+    depth: .085, steps: 1, bevelEnabled: false,
+  }), new T.MeshLambertMaterial({ color: 0x927049 }), 2);
+  signs.name = 'boardwalk / double-ended solid wood trail arrows / instanced';
+  for (let i = 0; i < trailheads.length; i++) {
+    const { anchor, tangentX, tangentZ } = trailheads[i];
+    const y = heightAt(anchor.x, anchor.z);
+    if (y === null || !blockedAt(anchor.x, anchor.z))
+      throw new RangeError('Trailhead sign must sit on guarded physical deck');
+    signposts.setMatrixAt(i, new T.Matrix4().makeTranslation(anchor.x, y + 1.22, anchor.z));
+    const angle = Math.atan2(-tangentZ, tangentX);
+    signs.setMatrixAt(i, new T.Matrix4().compose(
+      new T.Vector3(anchor.x, y + 1.36, anchor.z),
+      new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), angle),
+      new T.Vector3(1, 1, 1)));
+    signs.setColorAt(i, new T.Color(i === 0 ? 0x9b7651 : 0x806447));
+  }
+  for (const mesh of [signposts, signs]) {
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    group.add(mesh);
+  }
 
   // CPU inspection returns the exact triangle surface. Three uploads vertices
   // as Float32, so sub-millimetre display quantization is allowed in tests.
