@@ -64,7 +64,7 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
   state=stopped;
   return inspect(stopped)?stopped:null;
  };
- const probe=async(simSeconds,mode,initialTargetDistance)=>{
+ const probe=async(simSeconds,mode,initialTargetDistance,firstElapsed)=>{
   const remaining=deadline-Date.now();if(remaining<=0)return;
   const stopRange=mode==='far'?nearRange:mode==='walk'?precisionRange:null;
   let keepForward=false;
@@ -77,7 +77,7 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
    // restarting elapsed time at that read loses genuine simulation progress.
    // Native input, arrival radius, and the 5s/50s budgets are unchanged.
    const reason=await waitForDriverWalkObservation(page,{
-    target,radius,stopRange,firstElapsed:before.elapsed,simSeconds,initialTargetDistance,
+    target,radius,stopRange,firstElapsed,simSeconds,initialTargetDistance,
     // Observation checkpoints are not arrival tolerances; all exact
     // geometric criteria and 5s/50s deadlines remain unchanged.
     progressMetres:mode==='far'?.6:mode==='walk'?.25:null,
@@ -143,8 +143,8 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
     // Under SwiftShader the read-only polling callback may stall while KeyW
     // keeps advancing the real 60Hz player. Guard only the near-target pulse
     // via Playwright's native keyup, without changing radius or deadlines.
-    if(precision) await withNativePrecisionInputGuard(stopForward,()=>probe(simSeconds,mode,distance));
-    else await probe(simSeconds,mode,distance);
+    if(precision) await withNativePrecisionInputGuard(stopForward,()=>probe(simSeconds,mode,distance,before.elapsed));
+    else await probe(simSeconds,mode,distance,before.elapsed);
    }catch(error){
     await stopForward();
     const final=(await snapshot(page)).mission;
