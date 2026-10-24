@@ -12,7 +12,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   assert.equal(layer.quality,'low');
   assert.equal(layer.instanceBytes,layer.instances*76);
   const seen=new Set(),trees=new Set(),matrix=new THREE.Matrix4(),translation=new THREE.Vector3();
-  let total=0,foundTalus=false;
+  let total=0,foundTalus=false,foundHighlandShrub=false;
   layer.group.traverse(node=>{
     if(!(node instanceof THREE.InstancedMesh))return;
     assert(node.count>0 && node.count<=layer.instances);
@@ -44,6 +44,19 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
         assert(bounds.min.x<-.9&&bounds.max.x>.9,
           'uneven emerging forks extend outside the bare trunk silhouette');
       }
+    }
+    if(node.name.endsWith('/alpine-shrub')){
+      foundHighlandShrub=true;
+      const geometry=node.geometry,bounds=geometry.boundingBox;
+      assert(bounds,'highland shrubs need real culling bounds');
+      assert(bounds.min.y>=-.05 && bounds.max.y>1.35 && bounds.max.y<1.7,
+        'rooted uneven highland shoots must have separate raised crowns');
+      assert(geometry.getAttribute('position').count<450,
+        'woody shoots and seed heads remain within one low-poly species geometry');
+      const swatches=new Set(),colours=geometry.getAttribute('color');
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert(swatches.size>=7,'shoot bark, crowns and seed tips use actual distinct vertex colours');
     }
     if(node.name.endsWith('/sedge')){
       const geometry=node.geometry,bounds=geometry.boundingBox;
@@ -90,6 +103,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   assert(seen.size<=6,'all 600m culling groups must share species geometries');
   assert.deepEqual([...trees].sort(),['birch','spruce'],'both mature species rendered in low-quality mode');
   assert(foundTalus,'real terrain should render talus in the low setting');
+  assert(foundHighlandShrub,'highland must include natural rooted shrubs in low setting');
   assert.equal(layer.group.children.filter(x=>x.isLight).length,2,'review-only light setup');
   for(const g of seen)g.dispose();
   for(const node of layer.group.children)if(node instanceof THREE.InstancedMesh)node.dispose();
