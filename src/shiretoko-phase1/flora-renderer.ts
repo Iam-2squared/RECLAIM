@@ -78,6 +78,15 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
           g.translate(0,sedge?.39:.53,0);g.rotateZ(sedge?.22:.42);g.rotateY(angle);
         });
       }
+      // Marsh sedges now carry a real low-poly seed spike above their
+      // blades. Stem and seed share the existing species geometry/material:
+      // no new draw calls, textures, instances, route or water occupancy.
+      if(sedge){
+        part(parts,new T.CylinderGeometry(.024,.035,1.12,4,1),
+          0x728356,g=>g.translate(.05,.56,.01));
+        part(parts,new T.CylinderGeometry(.048,.06,.25,5,1),
+          0x826947,g=>g.translate(.05,1.21,.01));
+      }
       break;
     }
     case 'stone':
