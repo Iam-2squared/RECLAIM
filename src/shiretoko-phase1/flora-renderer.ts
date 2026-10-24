@@ -44,16 +44,25 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
   };
   switch(kind){
     case 'spruce':
-      trunk(0x514335,3.3,.16);
-      rock(0x314b39,-.23,2.03,.10,.84,.92,.70);
-      rock(0x3f6046,.21,2.80,-.16,.67,.89,.63);
-      rock(0x37513c,-.11,3.49,.05,.46,.73,.47);
+      // Layer irregular boughs along a mature trunk instead of repeating
+      // three large, evenly spaced tree-shaped blobs. Reuse the same shared
+      // species geometry and existing instance/draw-call budget.
+      trunk(0x514335,8.0,.20);
+      rock(0x314b39,-.42,3.85,.10,1.14,1.55,.97);
+      rock(0x3f6046,.22,4.96,-.15,1.28,1.48,1.06);
+      rock(0x37513c,-.30,6.05,.22,1.02,1.30,.96);
+      rock(0x35543e,.25,7.11,-.12,.79,1.00,.81);
+      rock(0x416149,-.07,7.95,.04,.49,.80,.52);
       break;
     case 'birch':
-      trunk(0xbab3a0,4.6,.14);
-      rock(0x6b8554,-.52,3.64,.06,.90,.91,.75);
-      rock(0x6e925c,.43,4.11,.28,.87,1.01,.73);
-      rock(0x4e7651,.04,4.94,-.24,.65,.68,.67);
+      // A split, offset deciduous crown makes birch read differently from
+      // spruce in both distant silhouette and low-density SwiftShader mode.
+      trunk(0xbab3a0,7.25,.16);
+      rock(0x6b8554,-.75,5.35,.08,1.11,1.18,.99);
+      rock(0x6e925c,.60,5.86,-.31,1.28,1.16,1.10);
+      rock(0x4e7651,-.19,6.77,.52,1.11,1.13,1.02);
+      rock(0x729057,.46,7.49,.11,.73,.87,.78);
+      rock(0x547a52,-.51,6.79,-.58,.79,.95,.77);
       break;
     case 'alpine-shrub':
       rock(0x546647,-.42,.47,.04,.64,.52,.62);
@@ -145,7 +154,15 @@ export function createFloraReviewLayer(
       const x=Math.fround(p.x),z=Math.fround(p.z);
       origin.set(x,Math.fround(terrain.heightAt(x,z)),z);
       rotation.setFromAxisAngle(axis,p.rotation);
-      scale.set(s,s,s);matrix.compose(origin,rotation,scale);
+      // Species-specific, deterministic nonuniform silhouettes prevent
+      // identical trees without extra instances, materials or draw calls.
+      if(kind==='spruce' || kind==='birch'){
+        const width=.90+.14*Math.abs(Math.sin(p.rotation*1.7));
+        const depth=.90+.14*Math.abs(Math.cos(p.rotation*1.3));
+        const height=.93+.12*Math.abs(Math.sin(p.rotation+.75));
+        scale.set(s*width,s*height,s*depth);
+      } else scale.set(s,s,s);
+      matrix.compose(origin,rotation,scale);
       mesh.setMatrixAt(i,matrix);
       mesh.setColorAt(i,tint(p.x,p.z));
     }
