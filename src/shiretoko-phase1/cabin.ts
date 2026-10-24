@@ -178,6 +178,46 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   box('cabin / mattress',X-5.3,floorY+.78,Z-3.4,2.5,.25,3.8,mats.cloth);
   box('cabin / shelf',X+3,floorY+1.28,Z-5.15,3,.13,.7,mats.wood);
 
+  // The exterior uses one shared, instance-coloured cedar clapboard batch,
+  // instead of dozens of individual draw calls. Each strip is placed only
+  // over an EXISTING opaque wall box, so the north/south actual openings
+  // remain open. East doorway, 2D physical walls and save logic are unchanged.
+  const exteriorSections=group.children.filter((object):object is T.Mesh<T.BoxGeometry,T.Material>=>
+    object instanceof T.Mesh && object.material===mats.wall);
+  const sidingMatrices:T.Matrix4[]=[];
+  const rotateAlongZ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI/2);
+  const rotateAlongX=new T.Quaternion();
+  for(const section of exteriorSections){
+    const {width,height,depth}=(section.geometry as T.BoxGeometry).parameters;
+    const horizontal=width>depth;
+    const length=horizontal?width:depth;
+    const rows=Math.max(1,Math.floor(height/.44));
+    const pitch=height/rows;
+    // The east entrance is a genuine void between the two door-pier boxes.
+    const outward=section.name.startsWith('cabin / south wall') ||
+      section.name.startsWith('cabin / door ') ? 1 : -1;
+    for(let i=0;i<rows;i++){
+      const position=section.position.clone();
+      position.y+=-height/2+(i+.5)*pitch;
+      if(horizontal)position.z+=outward*(WALL/2+.043);
+      else position.x+=outward*(WALL/2+.043);
+      sidingMatrices.push(new T.Matrix4().compose(position,
+        horizontal?rotateAlongX:rotateAlongZ,new T.Vector3(length,1,1)));
+    }
+  }
+  const siding=new T.InstancedMesh(new T.BoxGeometry(1,.34,.055),
+    new T.MeshLambertMaterial({color:0xffffff}),sidingMatrices.length);
+  siding.name='cabin / cedar cladding / instanced';
+  const cedarColours=[0x836e59,0x927d65,0x786754,0x9b8268,0x88725b];
+  for(let i=0;i<sidingMatrices.length;i++){
+    siding.setMatrixAt(i,sidingMatrices[i]);
+    siding.setColorAt(i,new T.Color(cedarColours[(i*3+Math.floor(i/7))%cedarColours.length]));
+  }
+  siding.instanceMatrix.needsUpdate=true;
+  if(siding.instanceColor)siding.instanceColor.needsUpdate=true;
+  siding.computeBoundingSphere();
+  group.add(siding);parts++;
+
   const heightAt=(x:number,z:number):number|null=>{
     if(!Number.isFinite(x)||!Number.isFinite(z))return null;
     if(x>=left&&x<=right+.04&&z>=back&&z<=front)return floorY;
