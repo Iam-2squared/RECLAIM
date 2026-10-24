@@ -1,8 +1,8 @@
 {
-  "version": 3,
-  "as_of_jst": "2026-10-24 22:11:38 JST",
+  "version": 4,
+  "as_of_jst": "2026-10-25 04:22:21 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "2c37329730af45c0b90fc771b63e818ca875257f",
+  "latest_known_main": "0b2a89625cfaa17a00310101d54ebdece51c4cad",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -42,12 +42,43 @@
       "pr": 85,
       "merged_main_sha": "f08db6ce603d11170ddd679fa4a4f1bf342fb21c",
       "state": "HISTORICAL_SUCCESS_AND_REGRESSION_SOURCE"
+    },
+    {
+      "id": "cabin-bookshelf",
+      "pr": 97,
+      "source_head": "f575c2c458258ae0b736d76220ca70cfb6be104a",
+      "merged_sha": "0b2a89625cfaa17a00310101d54ebdece51c4cad",
+      "source_runs": {
+        "preview": 40123786840,
+        "terrain": 40123786850,
+        "nature": 40123786919
+      },
+      "main_runs": {
+        "preview": 40124516604,
+        "terrain": 40124516510
+      },
+      "state": "MERGED_MAIN_PUSH_CI_IN_PROGRESS_AT_INTEGRATION"
+    },
+    {
+      "id": "lake-lapping-foam",
+      "pr": 98,
+      "source_head": "a4ef879d011995d01f305710d22d226dff182c47",
+      "from_base": "afdaa4356eab2402e48d4de344d37cdaea3a4a77",
+      "integration_base": "0b2a89625cfaa17a00310101d54ebdece51c4cad",
+      "integration_head": "RE_READ_EXACT_NEW_HEAD",
+      "source_runs": {
+        "preview": 40124147393,
+        "terrain": 40124147455,
+        "nature": 40124147405
+      },
+      "source_artifact": 12572053380,
+      "state": "COMBINED_HEAD_ALL_9_CI_PENDING"
     }
   ],
   "offline_review_candidate": "RECLAIM_SHIRETOKO_PR87_SASA_LAKE_VISUAL_REVIEW_20261024.zip",
   "next": [
-    "Collect new exact merged-head PR87 9 jobs and nature imagery",
-    "Conditionally merge PR87, then collect post-merge main 8 jobs",
-    "Update offline main scene package; retry existing Vercel only after authorized access"
+    "Verify PR97 main push CI 5+3 on 0b2a89625cfaa17a00310101d54ebdece51c4cad",
+    "Verify integrated PR98 exact new head 5+3+1 and merge only if green",
+    "Verify new main and publish SHA-identified offline ZIP; Vercel only after authorized access"
   ]
 }

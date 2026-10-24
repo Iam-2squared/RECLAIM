@@ -1,3 +1,22 @@
+# RECLAIM — development handoff (2026-10-25 04:22:21 JST)
+Scope: `Iam-2squared/RECLAIM` and existing `reclaim-safari-preview` only. CI below is evidence for exact original heads; reread merged integration HEAD and attempts before any additional merge.
+
+## Production branch at integration start
+- Main: `0b2a89625cfaa17a00310101d54ebdece51c4cad`, squash merge of PR #97 from source `f575c2c458258ae0b736d76220ca70cfb6be104a`. Adds 16 genuinely supported, colored 3D cabin shelf books in ONE instance batch, plus native 60Hz walker regression. Source PR #97: preview 40123786840 attempt 1 **5/5 success**, terrain 40123786850 attempt 1 **3/3 success**, actual native WebGL 40123786919 attempt 1 **1/1 success**; real images artifact 12572122707. Under identical PR #96/97 CI scene settings, 98→99 draw calls, 140→141 geometries, 244210→244402 triangles, textures 2→2. The external camera screenshots prove actual world/entry, NOT a close-up of new interior book volumes.
+- Post-merge main runs `40124516604` (preview) and `40124516510` (terrain) were **not fully completed** at integration preparation. Verify both exact main SHA, run attempt and all 5+3 jobs before treating that main as release-ready.
+- PR #98 source `a4ef879d011995d01f305710d22d226dff182c47` contains only inland-lake depth-driven foam GLSL and one focused test, from earlier main `afdaa4356eab2402e48d4de344d37cdaea3a4a77`. Source terrain run 40124147455 **3/3**, preview 40124147393 **5/5**, and nature WebGL 40124147405 **1/1**, all attempt 1 success. Actual WebGL artifact 12572053380; comparison with PR #96 shows changes localised to the real lake water pixels; same 98 draw calls, 140 geometries, 2 textures in source CI. Original ocean foam math, water mesh vertices, 5m terrain and collision unchanged.
+- This branch integrates PR #98's exact original feature blobs with the NEW main tree `0b2a89625cfaa17a00310101d54ebdece51c4cad` via an ordinary non-forced two-parent commit. Canonical checkpoint and JSON queue included. The **new integration head is unverified**; all 3 terrain + 5 preview + 1 native WebGL need fresh exact SHA/attempt validation before PR #98 may merge. Do not reuse source-green after tree changes.
+- User-visible route after merged and main CI: local `shiretoko-terrain.html` → nature selection or opt-in `?cabin=1&flora=1&boardwalk=1` / `?lookout=1&flora=1`. TITLE/HOME, old 480m world and save, nationwide progression, and mobile FPS guard remain untouched. No claim of Windows GPU FPS.
+- Existing Vercel project `prj_c5CQvrRjQRcesZC6GMoMv89evR69` / team `team_ovY3gbfsldk7aCRexivv2MkF` has prior normal GET **403 FORBIDDEN**; no new authorization observed, no deployment or bypass attempted here.
+
+## Next three concrete actions
+1. Collect the 5+3 completed post-merge main #97 CI jobs for `0b2a89625cfaa17a00310101d54ebdece51c4cad`, preserving any red/pending evidence.
+2. Inspect PR #98's NEW integration HEAD and all 3+5+1 new workflow run/attempt jobs and actual lake image; only after all green, confirm newest main and merge PR #98 with expected HEAD.
+3. Collect final main post-merge CI, package a self-contained PC preview with SHA-identified verified scene HTML and actual screenshots, then publish to the existing Vercel project only after normal authorized access (previously 403).
+
+---
+## Preserved prior checkpoint history (not current status)
+
 # RECLAIM — Autonomous checkpoint (2026-10-24 22:11:38 JST)
 Scope: Iam-2squared/RECLAIM and existing Vercel reclaim-safari-preview only. Exact HEAD/CI must be re-read next run.
 
