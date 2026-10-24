@@ -123,7 +123,15 @@ export function waterMaterial(detail: T.Texture, height: T.Texture, level: numbe
       vec2 uv=(vP.xz+1200.)/2400.*(480./481.)+.5/481.;
       vec2 encoded=texture2D(uHeight,clamp(uv,0.,1.)).rg;
       float floorY=(encoded.r*255.*256.+encoded.g*255.)/65535.*1200.-100.;
-      float foam=uLevel>1.?0.:(1.-smoothstep(0.,11.,uLevel-floorY))*(.3+wave*.45+grain*.25);
+      // The highland lake and marsh pools get a narrow, moving *visual* edge.
+      // Shore depth comes from the same 5m height texture as the rendered land;
+      // water vertices, basin boundaries and physical collision never move.
+      float shoreDepth=max(0.,uLevel-floorY);
+      float lapping=.5+.5*sin(uTime*.0014+vP.x*.078+vP.z*.092+wave*4.);
+      float lakeFoam=(1.-smoothstep(.15,2.6,shoreDepth))*(.11+.16*lapping);
+      // Preserve the original ocean shoreline shading exactly.
+      float seaFoam=(1.-smoothstep(0.,11.,uLevel-floorY))*(.3+wave*.45+grain*.25);
+      float foam=uLevel>1.?lakeFoam:seaFoam;
       if(abs(vP.x)<1199.&&abs(vP.z)<1199.)color=mix(color,vec3(.34,.4,.41),foam*.83);
       vec3 reflection=reflect(-normalize(vec3(-.65,.69,.32)),normal);
       float glint=pow(max(0.,dot(reflection,view)),130.);
