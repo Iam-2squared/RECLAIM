@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as T from 'three';
 import { ShiretokoTerrain, ROUTE, TERRAIN } from '../src/shiretoko-phase1/terrain.ts';
 import { createBoardwalkReview } from '../src/shiretoko-phase1/boardwalk.ts';
 import { TerrainWalker } from '../src/shiretoko-phase1/walker.ts';
@@ -13,8 +14,15 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert(boardwalk.panels>30&&boardwalk.panels<=260);
   assert.equal(boardwalk.indexedTriangles,boardwalk.panels*2);
   assert(boardwalk.supports>8&&boardwalk.supports<boardwalk.panels);
-  assert.equal(boardwalk.group.children.length,2);
-  const [deck,posts]=boardwalk.group.children;
+  assert.equal(boardwalk.group.children.length,4);
+  const [deck,posts,seams,edging]=boardwalk.group.children;
+  assert.equal(seams.name,'boardwalk / plank seams / instanced');
+  assert.equal(edging.name,'boardwalk / side edging / instanced');
+  assert(seams.isInstancedMesh && edging.isInstancedMesh);
+  assert.equal(seams.count,boardwalk.panels);
+  assert.equal(edging.count,boardwalk.panels*2);
+  assert.equal(seams.geometry.parameters.height,.025);
+  assert.equal(edging.geometry.parameters.height,.09);
   assert.equal(deck.type,'Mesh');
   assert.equal(posts.type,'Mesh'); // This Three.js build retains the Mesh type tag; isInstancedMesh is authoritative.
   assert(posts.isInstancedMesh);
@@ -74,4 +82,22 @@ test('step and jump settle on the same indexed plank sampled for rendering',()=>
   const off=new TerrainWalker(terrain);
   assert.equal(off.place(midpoint.x,midpoint.z),true);
   assert.equal(off.y,terrain.heightAt(midpoint.x,midpoint.z));
+});
+
+
+test('visible plank seams share the real indexed deck height, not a phantom walkway',()=>{
+  const seams=boardwalk.group.children[2];
+  const m=new T.Matrix4(),p=new T.Vector3();
+  const stride=Math.max(1,Math.floor(seams.count/21));
+  for(let i=0;i<seams.count;i+=stride){
+    seams.getMatrixAt(i,m);
+    p.setFromMatrixPosition(m);
+    const realTop=boardwalk.heightAt(p.x,p.z);
+    assert.notEqual(realTop,null,'instanced seam must lie on a real wooden panel');
+    assert(Math.abs(p.y-realTop-.012)<.007,
+      'displayed seam must be grounded on the same indexed collision triangles');
+  }
+  // A seam marker does not obstruct the centre, nor alter exact deck contact.
+  assert.equal(boardwalk.heightAt(midpoint.x,midpoint.z)!==null,true);
+  assert(boardwalk.group.children.every(mesh=>mesh.geometry && mesh.material));
 });
