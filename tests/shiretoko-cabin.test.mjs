@@ -12,7 +12,8 @@ test('cliff cabin has a real 3D furnished room, two pitched roof sides and bound
   assert(cabin.group instanceof T.Group);
   assert(cabin.parts>25 && cabin.parts<140);
   assert(cabin.stairs>=3 && cabin.stairs<=36);
-  assert.equal(cabin.group.children.filter(x=>x.name.includes('pitched roof')).length,2);
+  assert.equal(cabin.group.children.filter(x=>x.name.endsWith('pitched roof')).length,2,
+    'only the two original true roof-face meshes count as roof surfaces');
   assert(cabin.group.children.some(x=>x.name==='cabin / doorway lintel'));
   assert(cabin.group.children.some(x=>x.name==='cabin / table'));
   assert(cabin.group.children.some(x=>x.name==='cabin / bunk base'));
