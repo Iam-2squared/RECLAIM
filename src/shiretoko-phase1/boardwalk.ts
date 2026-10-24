@@ -43,6 +43,20 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   const bins = new Map<string, TopTriangle[]>();
   const allTriangles: TopTriangle[] = [];
   const postMatrices: T.Matrix4[] = [];
+  const seamMatrices: T.Matrix4[] = [];
+  const edgeMatrices: T.Matrix4[] = [];
+  // Visual battens follow the SAME actual corner heights as the walkable
+  // triangles. This is cosmetic geometry, never a second collision surface.
+  const segmentMatrix = (a: Pt, b: Pt, lift: number): T.Matrix4 => {
+    const direction = new T.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    const length = direction.length();
+    if (length < 1e-6) throw new RangeError('Zero-length timber detail');
+    const rotation = new T.Quaternion().setFromUnitVectors(
+      new T.Vector3(1, 0, 0), direction.multiplyScalar(1 / length));
+    return new T.Matrix4().compose(
+      new T.Vector3((a.x + b.x) / 2, (a.y + b.y) / 2 + lift, (a.z + b.z) / 2),
+      rotation, new T.Vector3(length, 1, 1));
+  };
   const wood = [0x765744, 0x866649, 0x806047, 0x906d52, 0x715341];
   let panels = 0, travelled = 0;
 
@@ -86,6 +100,11 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
       for (let j = 0; j < 4; j++) colors.push(color.r, color.g, color.b);
       indices.push(start, start + 2, start + 1, start + 1, start + 2, start + 3);
       store(a, c, b); store(b, c, d);
+      // A dark 4cm plank end gap plus slim side edging gives each real plank
+      // an identifiable silhouette, without dividing or offsetting its exact
+      // two indexed walk triangles (including at a change of route heading).
+      seamMatrices.push(segmentMatrix(c, d, .012));
+      edgeMatrices.push(segmentMatrix(a, c, .016), segmentMatrix(b, d, .016));
 
       if (panels % 5 === 0) for (const side of [-1, 1]) {
         const pos = at(centre((t0 + t1) / 2), (t0 + t1) / 2, side * .92);
@@ -120,6 +139,21 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   posts.instanceMatrix.needsUpdate = true;
   posts.computeBoundingSphere();
   group.add(posts);
+  // Two additional instanced draw calls, irrespective of panel count.
+  // The decorative timber stays close to the actual deck, never blocks the
+  // open central 3.2m corridor and owns its resources via the same group.
+  const addDetail = (name: string, matrices: T.Matrix4[], height: number,
+    depth: number, color: number) => {
+    const detail = new T.InstancedMesh(new T.BoxGeometry(1, height, depth),
+      new T.MeshLambertMaterial({ color }), matrices.length);
+    detail.name = name;
+    for (let i = 0; i < matrices.length; i++) detail.setMatrixAt(i, matrices[i]);
+    detail.instanceMatrix.needsUpdate = true;
+    detail.computeBoundingSphere();
+    group.add(detail);
+  };
+  addDetail('boardwalk / plank seams / instanced', seamMatrices, .025, .045, 0x514033);
+  addDetail('boardwalk / side edging / instanced', edgeMatrices, .09, .085, 0x70573c);
 
   const heightAt: DeckHeight = (x, z) => {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
