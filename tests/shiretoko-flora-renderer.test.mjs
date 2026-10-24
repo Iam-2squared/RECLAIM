@@ -11,7 +11,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   assert(layer.drawGroups>0 && layer.drawGroups<=96);
   assert.equal(layer.quality,'low');
   assert.equal(layer.instanceBytes,layer.instances*76);
-  const seen=new Set(),matrix=new THREE.Matrix4(),translation=new THREE.Vector3();
+  const seen=new Set(),trees=new Set(),matrix=new THREE.Matrix4(),translation=new THREE.Vector3();
   let total=0;
   layer.group.traverse(node=>{
     if(!(node instanceof THREE.InstancedMesh))return;
@@ -22,6 +22,18 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
     assert(node.boundingSphere && Number.isFinite(node.boundingSphere.radius));
     assert(node.geometry.getAttribute('color')?.count===node.geometry.getAttribute('position')?.count);
     assert(node.geometry.getAttribute('normal')?.count===node.geometry.getAttribute('position')?.count);
+    if(node.name.endsWith('/spruce')||node.name.endsWith('/birch')){
+      const species=node.name.split('/').at(-1);
+      trees.add(species);
+      const bounds=node.geometry.boundingBox;
+      assert(bounds,'shared tree geometry must have CPU bounds for frustum culling');
+      assert(bounds.min.y>=-.001,'tree geometry must be rooted at the ground');
+      assert(bounds.max.y>(species==='spruce'?8.4:8.0) && bounds.max.y<10,
+        'mature tree silhouette remains distinct and within the draw-budget envelope');
+      assert(bounds.max.x-bounds.min.x>2.5,'crown must have real lateral branches');
+      assert(node.geometry.getAttribute('position').count<500,
+        'visual improvement must not explode per-instance vertex cost');
+    }
     seen.add(node.geometry);total+=node.count;
     const sampled=[0,Math.floor(node.count/2),node.count-1];
     for(const i of sampled){
@@ -36,6 +48,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   });
   assert.equal(total,layer.instances);
   assert(seen.size<=6,'all 600m culling groups must share species geometries');
+  assert.deepEqual([...trees].sort(),['birch','spruce'],'both mature species rendered in low-quality mode');
   assert.equal(layer.group.children.filter(x=>x.isLight).length,2,'review-only light setup');
   for(const g of seen)g.dispose();
   for(const node of layer.group.children)if(node instanceof THREE.InstancedMesh)node.dispose();
