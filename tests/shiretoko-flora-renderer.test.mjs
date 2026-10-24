@@ -145,6 +145,25 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       for(let v=0;v<colours.count;v++)
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
       assert(swatches.size>=5,'bark, two branch woods and moss use merged vertex colours');
+      // Confirm BOTH oriented crosscut faces are actually baked into the
+      // same instanced woodland mesh (not loose decoration/draw calls).
+      const positions=geometry.getAttribute('position');
+      const ends=[new Set(),new Set()];
+      for(let v=0;v<positions.count;v++){
+        const x=positions.getX(v),y=positions.getY(v),z=positions.getZ(v);
+        if(Math.abs(Math.abs(x)-1.581)>.012 || Math.abs(y-.205)>.215 || Math.abs(z)>.215)continue;
+        const rgb=[0,1,2].map(k=>Math.round(colours.getComponent(v,k)*255)).join(',');
+        ends[x<0?0:1].add(rgb);
+      }
+      for(const side of ends){
+        for(const hex of [0xbba17e,0x88694e]){
+          const c=new THREE.Color(hex);
+          const colour=[c.r,c.g,c.b].map(n=>Math.round(n*255)).join(',');
+          assert(side.has(colour),'both end faces show genuine concentric wood colours');
+        }
+      }
+      assert(bounds.min.y>=-.05&&bounds.max.y<1.1,
+        'thin end-grain faces may not raise deadfall or invalidate 5m ground contact');
     }
     if(node.name.endsWith('/stone')){
       foundTalus=true;

@@ -253,6 +253,23 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       part(parts,new T.IcosahedronGeometry(1,0),0x617850,g=>{
         g.scale(.35,.08,.19);g.translate(.52,.39,-.05);
       });
+      // Both saw-cut ends reveal pale sapwood and darker heartwood instead
+      // of terminating in blank bark-coloured cylinder caps. Each end disc
+      // sits directly on the original 3.15m log axis, just 3-9mm outside its
+      // respective cap. All four thin faces merge into the SAME existing
+      // vertex-coloured deadwood species geometry: no new draw calls, texture,
+      // standing obstacle, ground height or clearing/route changes.
+      for(const side of [-1,1] as const){
+        const radius=side<0?.174:.208;
+        part(parts,new T.CircleGeometry(radius,6),0xbba17e,g=>{
+          g.rotateY(side*Math.PI/2);
+          g.translate(side*1.578,.205,0);
+        });
+        part(parts,new T.CircleGeometry(radius*.38,5),0x88694e,g=>{
+          g.rotateY(side*Math.PI/2);
+          g.translate(side*1.584,.205,0);
+        });
+      }
       break;
     }
     case 'stone':
