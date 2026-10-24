@@ -63,6 +63,25 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       rock(0x4e7651,-.19,6.77,.52,1.11,1.13,1.02);
       rock(0x729057,.46,7.49,.11,.73,.87,.78);
       rock(0x547a52,-.51,6.79,-.58,.79,.95,.77);
+      // Two uneven pale fork limbs, partly emerging between crown lobes.
+      // Their geometry and bark scars are merged into this SAME shared birch
+      // species mesh. No new textures, draw calls, instances or collision.
+      part(parts,new T.CylinderGeometry(.045,.10,2.35,4,1),0xa59f8a,g=>{
+        g.rotateZ(.51);g.translate(.43,5.54,.18);
+      });
+      part(parts,new T.CylinderGeometry(.04,.085,1.84,4,1),0xb4ad98,g=>{
+        g.rotateZ(-.63);g.translate(-.53,6.10,-.18);
+      });
+      // Lenticel scars break up the bright, formerly featureless trunk from
+      // near walking distance. Six double-sided planes, not six scene meshes.
+      for(let i=0;i<6;i++){
+        const back=i%2===1;
+        part(parts,new T.PlaneGeometry(.22+(i%3)*.025,.065+(i%2)*.015),
+          i%2?0x4c5046:0x3e453f,g=>{
+            if(back)g.rotateY(Math.PI);
+            g.translate((i%3-1)*.012,1.35+i*.73,back?-.145:.145);
+          });
+      }
       break;
     case 'alpine-shrub':
       rock(0x546647,-.42,.47,.04,.64,.52,.62);
