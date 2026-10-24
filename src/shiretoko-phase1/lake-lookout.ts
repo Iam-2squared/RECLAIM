@@ -171,6 +171,40 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   });
   benches.instanceMatrix.needsUpdate=true;benches.computeBoundingSphere();group.add(benches);
 
+  // Seventeen dark joins contour the two ACTUAL pitched deck triangles.
+  // Each narrow strip is divided at the shared diagonal to prevent clipping
+  // or floating. All joinery is ONE draw call and changes no walking surface.
+  const seamVertices:number[]=[],seamIndices:number[]=[];
+  const seamCount=17,grooveWidth=.044,grooveClearance=.014;
+  const diagonalX=(z:number)=>right-(z-back)/(front-back)*(right-left);
+  const grooveVertex=(x:number,z:number)=>{
+    const deckY=surface(x,z);
+    if(deckY===null)throw new RangeError('Plank seam must follow displayed deck triangles');
+    seamVertices.push(x,deckY+grooveClearance,z);
+  };
+  const grooveQuad=(x0:number,z0:number,x1:number,z1:number,
+    x2:number,z2:number,x3:number,z3:number)=>{
+    const start=seamVertices.length/3;
+    grooveVertex(x0,z0);grooveVertex(x1,z1);
+    grooveVertex(x2,z2);grooveVertex(x3,z3);
+    seamIndices.push(start,start+2,start+1,start,start+3,start+2);
+  };
+  for(let seam=1;seam<=seamCount;seam++){
+    const z=back+(front-back)*seam/(seamCount+1);
+    const near=z-grooveWidth/2,far=z+grooveWidth/2;
+    grooveQuad(left,near,diagonalX(near),near,diagonalX(far),far,left,far);
+    grooveQuad(diagonalX(near),near,right,near,right,far,diagonalX(far),far);
+  }
+  const seamGeometry=new T.BufferGeometry();
+  seamGeometry.setAttribute('position',new T.Float32BufferAttribute(seamVertices,3));
+  seamGeometry.setIndex(seamIndices);
+  seamGeometry.computeVertexNormals();seamGeometry.computeBoundingSphere();
+  const plankSeams=new T.Mesh(seamGeometry,new T.MeshLambertMaterial({
+    color:0x463727,side:T.DoubleSide,
+  }));
+  plankSeams.name='lake-lookout / terrain-conforming real plank grooves';
+  group.add(plankSeams);
+
   const blockedAt=(x:number,z:number):boolean=>{
     if(!Number.isFinite(x)||!Number.isFinite(z))return true;
     // These solids match the three visible rails, not the traversable entrance.
