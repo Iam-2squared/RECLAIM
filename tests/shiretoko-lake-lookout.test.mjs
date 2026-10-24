@@ -65,7 +65,7 @@ test('lake supports, three visible rails and two benches are shared lightweight 
   assert(piers instanceof T.InstancedMesh && rails instanceof T.InstancedMesh &&
     posts instanceof T.InstancedMesh && benches instanceof T.InstancedMesh);
   assert.equal(piers.count,6);
-  assert.equal(rails.count,3);
+  assert.equal(rails.count,6,'two sloped guard heights share one instanced draw group');
   assert.equal(posts.count,6);
   assert.equal(benches.count,2);
   const m=new T.Matrix4(),pos=new T.Vector3(),scale=new T.Vector3(),rot=new T.Quaternion();
@@ -115,23 +115,25 @@ test('all eight bench legs physically bridge the actual pitched deck and visible
 test('all three visible rails meet real sloped deck at both ends and still match posts',()=>{
   const rails=review.group.getObjectByName('lake-lookout / instanced three-sided guard rails');
   assert(rails instanceof T.InstancedMesh);
-  assert.equal(rails.count,3,'retain the existing one-draw-call guard group');
+  assert.equal(rails.count,6,'upper and lower three-sided guard share the same one-draw-call group');
   const edges=[
     [[site.x+4,site.z-5],[site.x+4,site.z+5]],
     [[site.x-4,site.z-5],[site.x+4,site.z-5]],
     [[site.x-4,site.z+5],[site.x+4,site.z+5]],
   ];
   const matrix=new T.Matrix4();
-  for(let i=0;i<edges.length;i++){
-    rails.getMatrixAt(i,matrix);
-    for(const [endpoint,localX] of [[edges[i][0],-.5],[edges[i][1],.5]]){
-      const actual=new T.Vector3(localX,0,0).applyMatrix4(matrix);
-      const expectedY=review.heightAt(endpoint[0],endpoint[1]);
-      assert.notEqual(expectedY,null);
-      assert(Math.hypot(actual.x-endpoint[0],actual.z-endpoint[1])<.0002,
-        'rail end must stay directly over the true deck edge');
-      assert(Math.abs(actual.y-expectedY-.95)<.0002,
-        'rail end must meet its ground-following post, even on a pitched edge');
+  for(const [band,offset] of [.95,.48].entries()){
+    for(let i=0;i<edges.length;i++){
+      rails.getMatrixAt(i+band*edges.length,matrix);
+      for(const [endpoint,localX] of [[edges[i][0],-.5],[edges[i][1],.5]]){
+        const actual=new T.Vector3(localX,0,0).applyMatrix4(matrix);
+        const expectedY=review.heightAt(endpoint[0],endpoint[1]);
+        assert.notEqual(expectedY,null);
+        assert(Math.hypot(actual.x-endpoint[0],actual.z-endpoint[1])<.0002,
+          'both rail bands must stay directly over the true deck edge');
+        assert(Math.abs(actual.y-expectedY-offset)<.0002,
+          'upper and lower rails must follow actual pitched deck at both ends');
+      }
     }
   }
   assert.equal(review.blockedAt(site.x+3.9,site.z),true,
