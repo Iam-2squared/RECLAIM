@@ -55,6 +55,8 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     glass:new T.MeshBasicMaterial({color:0xb2d5dc,transparent:true,opacity:.38,depthWrite:false,side:T.DoubleSide}),
     stair:new T.MeshLambertMaterial({color:0x92775c}),
     cloth:new T.MeshLambertMaterial({color:0x8d9280}),
+    iron:new T.MeshLambertMaterial({color:0x343b3b}),
+    ember:new T.MeshLambertMaterial({color:0xa45a37}),
   };
   const cache=new Map<string,T.BoxGeometry>();
   let parts=0;
@@ -222,6 +224,23 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   box('cabin / mattress',X-5.3,floorY+.78,Z-3.4,2.5,.25,3.8,mats.cloth);
   box('cabin / shelf',X+3,floorY+1.28,Z-5.15,3,.13,.7,mats.wood);
 
+  // The headland shelter gains a small real iron stove beside the north wall.
+  // Its hearth is a true grounded solid: the same footprint is returned by
+  // blockedAt, while the westward interior path and east door remain open.
+  // The flue terminates just below the ACTUAL pitched roof surface, rather
+  // than visually passing through or floating above the roof.
+  const stoveX=X-2.5,stoveZ=Z-4.8;
+  box('cabin / stone stove hearth',stoveX,floorY+.05,stoveZ,1.9,.10,1.65,mats.stone);
+  box('cabin / iron stove body',stoveX,floorY+.66,stoveZ,1.1,1.1,1,mats.iron);
+  box('cabin / iron stove top',stoveX,floorY+1.25,stoveZ,1.24,.12,1.14,mats.iron);
+  box('cabin / stove firebox door',stoveX+.57,floorY+.66,stoveZ,.055,.70,.73,mats.trim);
+  box('cabin / firebox glass',stoveX+.602,floorY+.66,stoveZ,.025,.37,.42,mats.ember);
+  const stoveRoofY=peak-(peak-eave)*Math.abs(stoveX-X)/(WIDTH/2+1);
+  const flueBottom=floorY+1.31,flueTop=stoveRoofY-.05;
+  if(flueTop<=flueBottom)throw new RangeError('Stove flue cannot reach pitched roof');
+  box('cabin / roof-contact stove flue',stoveX,(flueBottom+flueTop)/2,stoveZ,
+    .25,flueTop-flueBottom,.25,mats.iron);
+
   // The exterior uses one shared, instance-coloured cedar clapboard batch,
   // instead of dozens of individual draw calls. Each strip is placed only
   // over an EXISTING opaque wall box, so the north/south actual openings
@@ -282,10 +301,11 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
       rect(x,z,right-WALL/2,front-sideDepth/2,WALL,sideDepth);
     const table=rect(x,z,X-2,Z+3,2.1,1.45);
     const bunk=rect(x,z,X-5.3,Z-3.4,2.7,4.05);
+    const stove=rect(x,z,stoveX,stoveZ,1.9,1.65);
     // Guardrails are solid at the stair edges; never obstruct the centerline.
     const rail=x>=right+.25&&x<=outsideX&&
       Math.abs(z-Z)>=DOOR_HALF-.09&&Math.abs(z-Z)<=DOOR_HALF+.45;
-    return west||north||south||east||table||bunk||rail;
+    return west||north||south||east||table||bunk||stove||rail;
   };
   return {group,floorY,heightAt,blockedAt,stairs,parts,supports:pierSites.length,entrance:{x:right+1.7,z:Z}};
 }

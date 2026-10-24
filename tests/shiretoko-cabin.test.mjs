@@ -18,6 +18,33 @@ test('cliff cabin has a real 3D furnished room, two pitched roof sides and bound
   assert(cabin.group.children.some(x=>x.name==='cabin / bunk base'));
   assert(cabin.floorY>terrain.heightAt(X,Z));
 });
+test('a grounded stove and roof-contact flue are tangible and keep entrance/corridor clear',()=>{
+  const hearth=cabin.group.getObjectByName('cabin / stone stove hearth');
+  const stove=cabin.group.getObjectByName('cabin / iron stove body');
+  const top=cabin.group.getObjectByName('cabin / iron stove top');
+  const firebox=cabin.group.getObjectByName('cabin / firebox glass');
+  const flue=cabin.group.getObjectByName('cabin / roof-contact stove flue');
+  for(const part of [hearth,stove,top,firebox,flue])
+    assert(part instanceof T.Mesh,'visible interior has real box geometry, not a decal');
+  assert(Math.abs(hearth.position.y-hearth.geometry.parameters.height/2-cabin.floorY)<1e-8,
+    'hearth sits exactly on the original floor');
+  assert(Math.abs(stove.position.y-stove.geometry.parameters.height/2-
+    (cabin.floorY+.11))<1e-8,'heavy stove rests on the visible hearth');
+  const stoveX=X-2.5,stoveZ=Z-4.8;
+  const peak=cabin.floorY+3.25+2.3,eave=cabin.floorY+3.25+.16;
+  const roofY=peak-(peak-eave)*Math.abs(stoveX-X)/10;
+  const end=flue.position.y+flue.geometry.parameters.height/2;
+  assert(Math.abs(end-(roofY-.05))<.0001,'flue reaches true pitched roof underside');
+  assert.equal(cabin.blockedAt(stoveX,stoveZ),true,'visible stove is physical');
+  assert.equal(cabin.blockedAt(X,Z),false,'original central passage remains open');
+  assert.equal(cabin.blockedAt(right,Z),false,'east doorway remains open');
+  const walker=new TerrainWalker(terrain,cabin.heightAt,cabin.blockedAt);
+  assert.equal(walker.place(stoveX,stoveZ),false,'cannot walk through hot stove');
+  assert.equal(walker.place(X,Z),true,'can still stand inside room');
+  assert.equal(walker.place(right,Z),true,'can still enter and exit');
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,'no fake floors or save transform');
+});
+
 test('original cabin sits inland on bounded 5m terrain relief with eight ground-contact piers',()=>{
   const corners=[[left,back],[left,Z+7],[right,back],[right,Z+7],[X,Z]];
   const heights=corners.map(([x,z])=>terrain.heightAt(x,z));
