@@ -61,7 +61,7 @@ test('real indexed wooden triangles are authoritative for collision and render',
 
 test('lake supports, three visible rails and two benches are shared lightweight instanced draw groups',()=>{
   const [deck,piers,rails,posts,benches]=review.group.children;
-  assert.equal(review.group.children.length,7,'seventeen plank seams and grounded bench legs each use one draw group');
+  assert.equal(review.group.children.length,8,'seven original groups plus one real indexed walking ramp');
   assert(piers instanceof T.InstancedMesh && rails instanceof T.InstancedMesh &&
     posts instanceof T.InstancedMesh && benches instanceof T.InstancedMesh);
   assert.equal(piers.count,6);
@@ -116,7 +116,7 @@ test('both lake benches have wooden backs physically joined to seats within exis
   const benches=review.group.getObjectByName('lake-lookout / instanced rest benches');
   assert(benches instanceof T.InstancedMesh);
   assert.equal(benches.count,4,'reuses two original seat instances plus two backs');
-  assert.equal(review.group.children.length,7,'no extra draw group');
+  assert.equal(review.group.children.length,8,'one added accessible 3D ramp, no extra bench draw group');
   const seatMatrix=new T.Matrix4(),backMatrix=new T.Matrix4();
   const seatPosition=new T.Vector3(),backPosition=new T.Vector3();
   const seatRotation=new T.Quaternion(),backRotation=new T.Quaternion();
@@ -217,6 +217,45 @@ test('all 17 visible lookout deck grooves follow the real walkable 3D triangles'
     'genuine walker entrance is still open');
 });
 
+test('actual landward access ramp links 5m terrain to lake deck for the same native walker',()=>{
+  const ramp=review.group.getObjectByName('lake-lookout / real surveyed landward access ramp');
+  const deck=review.group.getObjectByName('lake-lookout / real indexed wooden walk top');
+  assert(ramp instanceof T.Mesh && deck instanceof T.Mesh,'both floor pieces are rendered meshes');
+  assert.equal(ramp.material,deck.material,'new real floor reuses the original wood material');
+  const p=ramp.geometry.getAttribute('position'),indices=ramp.geometry.getIndex();
+  assert.equal(p.count,9*7,'0.4m survey mesh, no giant ungrounded flat triangle');
+  assert.equal(indices.count,8*6*6,'96 real triangles use a single additional draw call');
+  assert(ramp.geometry.boundingSphere && ramp.geometry.getAttribute('normal'),
+    'normal-lit real 3D ramp participates in frustum culling');
+  const left=site.x-4,west=left-3.2,z=site.z;
+  for(let iz=1;iz<6;iz++)for(let ix=1;ix<8;ix++){
+    const i=iz*9+ix,x=p.getX(i),y=p.getY(i),v=p.getZ(i);
+    const collisionY=review.heightAt(x,v);
+    assert.notEqual(collisionY,null,'every visible inner ramp vertex is a real walker floor');
+    assert(Math.abs(collisionY-y)<.0008,'rendered ramp and contact agree at all surveyed vertices');
+    assert(y>=terrain.heightAt(x,v)-.001,'the approach does not disappear under actual ground');
+  }
+  assert.equal(review.heightAt(west-.15,z),null,
+    'no review-only platform floor far outside the visible approach');
+  assert.equal(review.blockedAt(west+1.2,z),false,'full 2.4m entrance stays open');
+  assert(Math.abs(review.heightAt(left,z)-p.getY(4*9+8))<.0008,
+    'landward ramp edge joins the exact old deck height without step or gap');
+  const rider=new TerrainWalker(terrain,review.heightAt,review.blockedAt);
+  assert(rider.place(west+.08,z),'native preview walker starts on real ramp near ground');
+  rider.yaw=-Math.PI/2;
+  for(let i=0;i<210;i++)rider.step({
+    forward:1,right:0,sprint:false,jump:false,
+  },1/60);
+  assert(rider.x>site.x+.2,'walker physically traverses the ramp and reaches the lake-facing half');
+  assert(rider.x<site.x+4,'the original visible east guard still blocks the native walker');
+  assert(rider.grounded && Math.abs(rider.y-review.heightAt(rider.x,rider.z))<.00001,
+    'walker never falls through either indexed wood surface');
+  const original=new TerrainWalker(terrain);
+  assert(original.place(west+.08,z),'old 5m world remains independently walkable');
+  assert.equal(original.y,terrain.heightAt(west+.08,z),
+    'ramp never rewrites terrain heights or campaign save coordinates');
+});
+
 test('all review-only meshes dispose geometry without affecting campaign',()=>{
   const geometries=new Set(),materials=new Set();
   review.group.traverse(obj=>{
@@ -226,7 +265,7 @@ test('all review-only meshes dispose geometry without affecting campaign',()=>{
       if(obj instanceof T.InstancedMesh)obj.dispose();
     }
   });
-  assert(geometries.size<=7,'one shared bench-leg geometry, never per-support draw calls');
+  assert(geometries.size<=8,'the real approach adds only one terrain-conforming geometry');
   assert(materials.size<=4,'the extra grooves use one shared material only');
   for(const geom of geometries)geom.dispose();
   for(const material of materials)material.dispose();
