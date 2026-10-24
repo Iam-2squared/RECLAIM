@@ -98,8 +98,9 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
     [left,back],[left,site.z],[left,front],
     [right,back],[right,site.z],[right,front],
   ];
+  const railColor=new T.MeshLambertMaterial({color:0x624b39});
   const piers=new T.InstancedMesh(new T.BoxGeometry(.18,1,.18),
-    new T.MeshLambertMaterial({color:0x514638}),supports.length);
+    railColor,supports.length);
   piers.name='lake-lookout / instanced grounded support piers';
   const matrix=new T.Matrix4();
   supports.forEach(([x,z],index)=>{
@@ -114,7 +115,6 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
 
   // A rail on the lake-facing eastern edge and the two lateral edges leaves
   // the west approach open. Visual rails and 2D collision use these same edges.
-  const railColor=new T.MeshLambertMaterial({color:0x624b39});
   const rails=new T.InstancedMesh(new T.BoxGeometry(1,.14,.13),railColor,3);
   rails.name='lake-lookout / instanced three-sided guard rails';
   const railRuns=[
