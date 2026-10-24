@@ -62,7 +62,9 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   const b={x:right,y:top(right,back),z:back};
   const c={x:left,y:top(left,front),z:front};
   const d={x:right,y:top(right,front),z:front};
-  const triangles:TopTriangle[]=[{a,c,b},{a:b,b:c,c:d}];
+  // The two ordered tuples MUST agree with indices [0,2,1] and [1,2,3]:
+  // only anticlockwise top faces produce normal +Y and correct barycentric contact.
+  const triangles:TopTriangle[]=[{a,b:c,c:b},{a:b,b:c,c:d}];
   if(triangles.some(t=>crossXZ(t.a,t.b,t.c)<=0))
     throw new RangeError('Lake lookout must have upward-facing walk triangles');
   const group=new T.Group();
