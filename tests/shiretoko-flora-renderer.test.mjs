@@ -33,6 +33,22 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       assert(bounds.max.x-bounds.min.x>2.5,'crown must have real lateral branches');
       assert(node.geometry.getAttribute('position').count<500,
         'visual improvement must not explode per-instance vertex cost');
+      if(species==='spruce'){
+        // The lower boughs must be physical three-dimensional silhouettes,
+        // not a billboard or extra instanced/material draw group.
+        const p=node.geometry.getAttribute('position'),c=node.geometry.getAttribute('color');
+        const quadrants=new Set(),swatches=new Set();
+        for(let v=0;v<p.count;v++){
+          const x=p.getX(v),y=p.getY(v),z=p.getZ(v);
+          if(y>2.6&&y<4.9&&Math.hypot(x,z)>1.55)
+            quadrants.add(`${x>=0?'+':'-'}${z>=0?'+':'-'}`);
+          swatches.add([0,1,2].map(component=>Math.round(c.getComponent(v,component)*255)).join(','));
+        }
+        assert(quadrants.size>=4,
+          'grounded spruce needs distinct drooping 3D lower boughs in all lateral directions');
+        assert(swatches.size>=10,
+          'multiple lower needle colours must remain in the original vertex-coloured species mesh');
+      }
       if(species==='birch'){
         // Fork limbs and dark lenticels remain vertex colours in the one
         // cullable instanced mesh, not separate expensive transparent planes.
