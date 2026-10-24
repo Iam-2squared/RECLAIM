@@ -222,6 +222,25 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
     }
     return highest;
   };
+  // In a curved walkway, adjacent physical indexed panels may overlap at
+  // waypoint joins. GPU instance matrices also quantize X/Z to Float32.
+  // Seat each upright against the *same highest indexed deck top* queried
+  // by the walker at its final render-space X/Z, not a pre-quantized corner.
+  // This prevents a visible post bottom from being buried beneath the
+  // authoritative walk surface, without altering terrain or deck collision.
+  const postMatrix = new T.Matrix4(), postPosition = new T.Vector3();
+  for (let i=0;i<upright.count;i++) {
+    upright.getMatrixAt(i,postMatrix);
+    postPosition.setFromMatrixPosition(postMatrix);
+    const physicalTop = heightAt(postPosition.x,postPosition.z);
+    if (physicalTop === null)
+      throw new RangeError('Boardwalk guard upright has no indexed deck support');
+    postMatrix.makeTranslation(postPosition.x,physicalTop+.47,postPosition.z);
+    upright.setMatrixAt(i,postMatrix);
+  }
+  upright.instanceMatrix.needsUpdate = true;
+  upright.computeBoundingSphere();
+
   // CPU inspection returns the exact triangle surface. Three uploads vertices
   // as Float32, so sub-millimetre display quantization is allowed in tests.
   return { group, heightAt, blockedAt, panels, supports: postMatrices.length,
