@@ -77,3 +77,12 @@ test('pre-keydown elapsed origin never shortens the same simulated-time predicat
  const p=pageOf([sample(19,4.633,{keys:['KeyW']})]);
  await assert.rejects(waitForDriverWalkObservation(p,o,{timeout:25,polling:5}),/exceeded 25ms/);
 });
+
+test('real pre-input elapsed is threaded into BOTH precision-guard and normal walking probes',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('./mission-helpers.mjs',import.meta.url),'utf8');
+ assert.match(source,/const probe=async\(simSeconds,mode,initialTargetDistance,firstElapsed\)=>/);
+ assert.match(source,/target,radius,stopRange,firstElapsed,simSeconds,initialTargetDistance/);
+ assert.match(source,/withNativePrecisionInputGuard\(stopForward,\(\)=>probe\(simSeconds,mode,distance,before\.elapsed\)\)/);
+ assert.match(source,/else await probe\(simSeconds,mode,distance,before\.elapsed\)/);
+});
