@@ -8,6 +8,7 @@ import { TerrainWalker } from './walker.ts';
 import { createFloraReviewLayer } from './flora-renderer.ts';
 import { createBoardwalkReview } from './boardwalk.ts';
 import { createCliffCabinReview } from './cabin.ts';
+import { natureReviewFocus } from './review-focus.ts';
 import { TerrainFrameDemand } from './frame-demand.ts';
 import { TerrainGpuFrameGate } from './gpu-frame-gate.ts';
 import { createSky, detailTexture, heightTexture, terrainMaterial, waterMaterial } from './materials.ts';
@@ -287,6 +288,23 @@ async function boot() {
   on(window, 'resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); needsRender = true; });
   on(renderer.domElement, 'webglcontextlost', event => { event.preventDefault(); contextLost = true; closeIntro(); keys.clear(); if (walking) exitWalk(); fail('描画コンテキストが失われました。ページを再読み込みして地形を再構築してください。保存データへの変更はありません。'); });
   selectView(0, true);
+  // The default V4 baseline keeps its untouched all-map opening. Nature-only
+  // links land directly on their visible 3D subject, not an empty distant sky.
+  const firstLook = natureReviewFocus(query, (x,z) => terrain.heightAt(x,z));
+  if (firstLook) {
+    camera.position.set(...firstLook.position);
+    controls.target.set(...firstLook.target);
+    controls.update();
+    $('scene-title').textContent = firstLook.title;
+    $('scene-description').textContent = firstLook.description;
+    // The baseline caption remains byte-for-byte in ordinary terrain mode.
+    const caption = document.querySelector('.study-caption');
+    if (caption) for (const node of caption.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent?.includes('建物・植生は次の工程'))
+        node.textContent = node.textContent.replace('建物・植生は次の工程','自然・木道・住宅の開発レビュー');
+    }
+    needsRender = true;
+  }
   function frame(time: number) {
     if (disposed) return;
     animation = requestAnimationFrame(frame);
