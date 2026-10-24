@@ -131,7 +131,7 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
 
   // A rail on the lake-facing eastern edge and the two lateral edges leaves
   // the west approach open. Visual rails and 2D collision use these same edges.
-  const rails=new T.InstancedMesh(new T.BoxGeometry(1,.14,.13),railColor,3);
+  const rails=new T.InstancedMesh(new T.BoxGeometry(1,.14,.13),railColor,6);
   rails.name='lake-lookout / instanced three-sided guard rails';
   // A single straight rail per edge must meet the actual deck surface at
   // BOTH ends. The large indexed deck triangles slope independently in X
@@ -142,17 +142,23 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
     {from:[left,back],to:[right,back]},
     {from:[left,front],to:[right,front]},
   ] as const;
-  railRuns.forEach((run,index)=>{
-    const fromY=surface(...run.from),toY=surface(...run.to);
-    if(fromY===null||toY===null)throw new Error('lookout handrail needs both deck endpoints');
-    const from=new T.Vector3(run.from[0],fromY+.95,run.from[1]);
-    const to=new T.Vector3(run.to[0],toY+.95,run.to[1]);
-    const vector=to.clone().sub(from),length=vector.length();
-    const rotation=new T.Quaternion().setFromUnitVectors(
-      new T.Vector3(1,0,0),vector.normalize());
-    matrix.compose(from.clone().lerp(to,.5),rotation,new T.Vector3(length,1,1));
-    rails.setMatrixAt(index,matrix);
-  });
+  // Two height bands share the ORIGINAL rail geometry, material and GPU draw
+  // group. A lower barrier keeps the lake-facing and lateral guards visually
+  // substantial without changing the west entrance, footprint or walker
+  // collision. Both bands follow the SAME indexed deck, including its pitch.
+  for(const [band,elevation] of [.95,.48].entries()){
+    railRuns.forEach((run,index)=>{
+      const fromY=surface(...run.from),toY=surface(...run.to);
+      if(fromY===null||toY===null)throw new Error('lookout handrail needs both deck endpoints');
+      const from=new T.Vector3(run.from[0],fromY+elevation,run.from[1]);
+      const to=new T.Vector3(run.to[0],toY+elevation,run.to[1]);
+      const vector=to.clone().sub(from),length=vector.length();
+      const rotation=new T.Quaternion().setFromUnitVectors(
+        new T.Vector3(1,0,0),vector.normalize());
+      matrix.compose(from.clone().lerp(to,.5),rotation,new T.Vector3(length,1,1));
+      rails.setMatrixAt(band*railRuns.length+index,matrix);
+    });
+  }
   rails.instanceMatrix.needsUpdate=true;rails.computeBoundingSphere();group.add(rails);
   const posts=new T.InstancedMesh(new T.BoxGeometry(.14,.95,.14),railColor,6);
   posts.name='lake-lookout / instanced rail posts';
