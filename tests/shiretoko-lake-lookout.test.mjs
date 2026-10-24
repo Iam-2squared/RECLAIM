@@ -22,7 +22,8 @@ test('lake lookout is surveyed on real dry 5m terrain near the highland lake',()
   }
   assert.equal(review.supports,6);
   assert.equal(review.panels,1);
-  assert.deepEqual(review.entrance,{x:site.x-3.2,z:site.z});
+  assert(Math.abs(review.entrance.x-(site.x-3.2))<1e-9);
+  assert.equal(review.entrance.z,site.z);
 });
 
 test('real indexed wooden triangles are authoritative for collision and render',()=>{
