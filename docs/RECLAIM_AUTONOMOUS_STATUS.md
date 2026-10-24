@@ -1,3 +1,26 @@
+# RECLAIM — autonomous integration checkpoint (2026-10-25 08:26:31 JST)
+Scope: ONLY Iam-2squared/RECLAIM and existing reclaim-safari-preview Vercel.
+
+## Fully verified before integrating PR108
+- Current main `70fc44b5f26b73897c43c0024283c20ec48ba050` (expected SHA squash merge of PR #107); PR #107 exact source `c856edbec4b58250913a31a505d03effa03f731e` terrain #40141264367 attempt 1 3/3, preview #40141264337 attempt 1 5/5, native WebGL #40141264336 attempt 1 1/1 ALL SUCCESS. Actual indexed-deck grounded wooden two-end 3D arrows, no new colliders or saves. Main push EXACT HEAD terrain #40141921028 attempt 1 **3/3 SUCCESS** and preview #40141921023 attempt 1 **5/5 SUCCESS**.
+- PR #106 improved wetland sedge and meadow-grass physical 3D leaves, source `0e586ac49d35e298fead8f4380b5005885b2dbb6`, source terrain #40137833902 3/3, preview #40137833832 5/5, nature #40137833820 1/1, all attempt 1 success. Merged main `78e8cbddac3fb872bdbf262d214efff0ccc27b1b` push terrain #40140998678 3/3, preview #40140998693 5/5. No measured Windows GPU FPS.
+
+## Independent cabin chimney PR #108, original failure preserved
+- True pitched-roof-connected iron chimney and weather flashing, collar and rain cap in one InstancedMesh GPU batch. Stove body, flue, roof pitch, collisions and 480m/2400m save boundaries preserved. Native PR source WebGL first-look cabin visibly changes the actual roof silhouette, artifact #12579366878.
+- Original HEAD `00b22f0b2d5a8b1ff79c9bf4f1f3bda1ca2255fb` **FAILED** terrain #40141493109, preview #40141493112, nature #40141493148 due to the pre-existing roof-count selector `.name.includes('pitched roof')` incorrectly counting the new chimney as a third roof-face mesh: 3 !== 2. Did not skip or loosen real geometry gates. Corrected selector to `.name.endsWith('pitched roof')`, preserving the 2 actual sloped roof meshes and a separate new stack/flash/cap/entrance test.
+- Corrected exact source `f07ff609d98ed2bd1f75815327497b5366be439f` attempt 1 terrain #40141937895 **3/3 SUCCESS**, preview #40141937851 **5/5 SUCCESS**, native real WebGL #40141937849 **1/1 SUCCESS**. This branch is being combined non-forced with now-green main `70fc44b5f26b73897c43c0024283c20ec48ba050`; its new two-parent integration HEAD must be reread, and all 3+5+1 combined-SHA gates are still **PENDING**. NEVER merge merely on old source green.
+
+## User-visible delivery and protected boundaries
+- Latest fully green main local PC ZIP `RECLAIM_SHIRETOKO_MAIN_70fc44b_TRAILHEADS_OFFLINE_20261025.zip`; source SHA verified self-contained HTML, six clickable real 3D scene links, actual Chromium/SwiftShader JPEGs, SHA256 manifest. Native PR107 standard camera does not directly frame terminal arrows; focused real geometry/contact/walker tests passed. Offline Windows physical GPU/file:// opening not verified (local headless Chromium screenshot attempt timed out). Do not claim Windows FPS or a Vercel deployment.
+- Existing Vercel project `prj_c5CQvrRjQRcesZC6GMoMv89evR69` / team `team_ovY3gbfsldk7aCRexivv2MkF`: last normal access 403, status BLOCKED_AUTH; no authorization change, no bypass or deployment. Tokyo TITLE, Shiretoko HOME, old 480m campaign saves, mobile FPS guard and other repos/tasks untouched.
+
+## Next 3
+1. Read exact two-parent PR #108 integration HEAD and its 3 terrain + 5 preview + 1 nature CI attempts and artifact; preserve failures.
+2. When all nine gates truly success, verify expected HEAD and current main, merge PR #108 and separately collect new main push 3+5.
+3. Produce refreshed SHA-pinned PC ZIP only from fully green main; existing Vercel only after legitimate auth. Next scenery task: improve actual near-scene tree silhouettes/LOD and real WebGL camera proof.
+
+---
+## Prior canonical history (preserved)
 # RECLAIM — Autonomous integration checkpoint (2026/10/25 6:40:25 JST)
 Scope ONLY: Iam-2squared/RECLAIM and existing reclaim-safari-preview Vercel.
 
