@@ -101,7 +101,7 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       }
       rock(0x546647,-.42,.67,.04,.64,.52,.62);
       rock(0x68804e,.40,.74,-.17,.67,.58,.58);
-      rock(0x475943,.03,.87,.31,.64,.55,.52);
+      rock(0x475943,.03,.95,.31,.64,.55,.52);
       part(parts,new T.IcosahedronGeometry(.105,0),0x9c6347,
         g=>g.translate(-.76,1.15,.19));
       part(parts,new T.IcosahedronGeometry(.09,0),0xb08058,
