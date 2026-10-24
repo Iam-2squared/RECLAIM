@@ -93,6 +93,37 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   else kind=species<.57?'spruce':species<.82?'birch':random(gx,gz,19)<.5?'sasa':'meadow-grass';
   const scale=.8+random(gx,gz,5)*.47;
   instances.push(Object.freeze({kind,x,y,z,rotation:random(gx,gz,6)*Math.PI*2,scale}));
+  // A few rooted neighbours make real meadow grasses and marsh sedges read
+  // as *clumps*, not isolated plants on a regular 10m lattice. Derive each
+  // satellite from its already-selected parent (never a new global grid).
+  // Re-sample the authoritative physical ground AND every exclusion at the
+  // satellite's own coordinates: a safe parent does not imply a safe child.
+  // Quality-independent offsets retain low as a strict subset of balanced.
+  if((kind==='sedge'||kind==='meadow-grass') && slope<.32 &&
+     random(gx,gz,39)<.68){
+   const angle=random(gx,gz,40)*Math.PI*2;
+   const radius=.65+random(gx,gz,41)*1.35;
+   const px=x+Math.cos(angle)*radius,pz=z+Math.sin(angle)*radius;
+   try {
+    const py=surface.height(px,pz);
+    const path=surface.routeDistance(px,pz);
+    const pslope=surface.slope(px,pz);
+    const pwet=surface.wetness(px,pz,py);
+    const building=surface.structureDistance?.(px,pz);
+    if([py,path,pslope,pwet].every(Number.isFinite) &&
+       (!surface.structureDistance || (Number.isFinite(building) && building!>=FLORA_RULES.structureClearance)) &&
+       surface.water(px,pz)===false &&
+       path>=FLORA_RULES.trailClearance && pslope>=0 && pslope<.32 &&
+       Math.abs(py-y)<.23 &&
+       (kind!=='sedge'||pwet>.72) &&
+       (kind!=='meadow-grass'||pwet<.72)){
+     instances.push(Object.freeze({
+      kind,x:px,y:py,z:pz,rotation:random(gx,gz,42)*Math.PI*2,
+      scale:scale*(.56+random(gx,gz,43)*.22),
+     }));
+    }
+   }catch { /* A bad child sample cannot hide its valid parent. */ }
+  }
  }
  return Object.freeze(instances);
 }
