@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {natureReviewFocus} from '../src/shiretoko-phase1/review-focus.ts';
+import {ShiretokoTerrain} from '../src/shiretoko-phase1/terrain.ts';
 
 const height = (x,z) => 100 + x / 100 + z / 200;
 const focus = (search) => natureReviewFocus(new URLSearchParams(search),height);
@@ -38,6 +39,20 @@ test('review camera tracks the real terrain elevation at BOTH camera and target'
     assert.match(view.title,/。$/);
   }
   const cabin=focus('cabin=1');
-  assert.deepEqual(cabin.position,[-38,height(-38,881)+12,881]);
+  assert.deepEqual(cabin.position,[-60,height(-60,820)+12,820]);
   assert.deepEqual(cabin.target,[-100,height(-100,835)+2,835]);
+});
+
+
+test('real 5m terrain initial nature cameras remain above their subjects without OrbitControls clamp',()=>{
+  const terrain=new ShiretokoTerrain();
+  for(const [query,kind] of [['cabin=1','cabin'],['flora=low','flora'],['boardwalk=1','boardwalk']]) {
+    const view=natureReviewFocus(new URLSearchParams(query),(x,z)=>terrain.heightAt(x,z));
+    assert.equal(view.kind,kind);
+    const [x,y,z]=view.position,[tx,ty,tz]=view.target;
+    const horizontal=Math.hypot(x-tx,z-tz),polar=Math.atan2(horizontal,y-ty);
+    assert(y>ty,kind+' viewer must be above target on actual terrain');
+    assert(polar<Math.PI*.49,kind+' initial camera must not be clamped by OrbitControls');
+    assert(y>terrain.heightAt(x,z) && ty>terrain.heightAt(tx,tz));
+  }
 });

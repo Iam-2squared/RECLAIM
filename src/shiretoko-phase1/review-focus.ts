@@ -19,12 +19,14 @@ export function natureReviewFocus(
     : on('boardwalk') ? 'boardwalk'
     : ['1', 'low', 'balanced'].includes(query.get('flora') ?? '') ? 'flora' : null;
   if (!kind) return null;
+  // Choose camera sites above their actual subjects; an old coastal camera
+  // was 80m below the cliff house, making OrbitControls clamp the opening.
   const positions = {
-    cabin: {from: [-38, 881, 12], to: [-100, 835, 2],
+    cabin: {from: [-60, 820, 12], to: [-100, 835, 2],
       title: '崖上の家を見つける。', description: '室内と階段のある住宅。視点を回し、木道へ向かえます。'},
     boardwalk: {from: [-50, 610, 10], to: [-118, 500, 2],
       title: '湿原の木道を辿る。', description: '地形から浮いた木道をたどり、湿原と森林を観察します。'},
-    flora: {from: [-130, 410, 6], to: [-210, 370, 2],
+    flora: {from: [-130, 410, 15], to: [-210, 370, 2],
       title: '森と低湿地を歩く。', description: '低負荷・標準密度の植生と、地形に沿う草木を比較します。'},
   } as const;
   const spec = positions[kind];

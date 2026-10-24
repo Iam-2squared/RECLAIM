@@ -36,6 +36,42 @@ try{
   await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,{},{timeout:60000});
   renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
   await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+
+  // The standalone URL must FIRST display its selected real cabin, not only
+  // a manually forced camera used for downstream vegetation/deck screenshots.
+  await page.waitForFunction(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a?.diagnostics();
+    return d?.renderCallsTotal>=2 && d.mode==='orbit' && d.cabinReview?.enabled;
+  },{},{timeout:30000});
+  const firstLook=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics(),t=a.terrain;
+    return {camera:d.camera,renderCalls:d.renderCallsTotal,
+      expectedPosition:[-60,t.heightAt(-60,820)+12,820],
+      expectedTarget:[-100,t.heightAt(-100,835)+2,835],
+      label:document.getElementById('scene-title')?.textContent,
+      reviewMode:document.querySelector('[data-nature-review]')?.textContent};
+  });
+  for(const field of ['position','target']) {
+    const expected=field==='position'?firstLook.expectedPosition:firstLook.expectedTarget;
+    for(let i=0;i<3;i++)assert.ok(Math.abs(firstLook.camera[field][i]-expected[i])<.01,
+      'native cabin first-look '+field+' must match actual 5m terrain elevation');
+  }
+  assert.match(firstLook.label??'',/崖上の家/);
+  assert.match(firstLook.reviewMode??'',/崖上住宅/);
+  const firstFrame=await page.evaluate(captureTerrainFramebuffer);
+  assert.equal(firstFrame.glError,0);
+  assert.ok(firstFrame.max-firstFrame.min>20,'first-open cabin WebGL view must contain actual scene pixels');
+  assert.ok(firstFrame.image.startsWith('data:image/jpeg;base64,'),'native opening JPEG MIME missing');
+  const firstBytes=Buffer.from(firstFrame.image.split(',')[1],'base64');
+  assert.ok(firstBytes.length>2000,'first-open real framebuffer image missing');
+  await writeFile(resolve(out,'first-look-cabin-actual-webgl.jpg'),firstBytes);
+  result.images.push({name:'first-look-cabin',filename:'first-look-cabin-actual-webgl.jpg',
+    bytes:firstBytes.length,width:firstFrame.width,height:firstFrame.height,
+    min:firstFrame.min,max:firstFrame.max,frameCount:firstFrame.renderCallsTotal,
+    camera:firstFrame.cameraPosition});
+  result.tests.push({name:'native first-open camera frames real cabin and preserves opt-in review',
+    pass:true,camera:firstLook.camera,renderCalls:firstLook.renderCalls});
+
   const review=await page.evaluate(()=>{
     const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
     if(!d.floraReview.enabled||d.floraReview.quality!=='low'||d.floraReview.instances<=1000||
