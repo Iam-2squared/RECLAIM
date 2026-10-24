@@ -61,7 +61,7 @@ test('real indexed wooden triangles are authoritative for collision and render',
 
 test('lake supports, three visible rails and two benches are shared lightweight instanced draw groups',()=>{
   const [deck,piers,rails,posts,benches]=review.group.children;
-  assert.equal(review.group.children.length,6,'seventeen plank seams share one draw group');
+  assert.equal(review.group.children.length,7,'seventeen plank seams and grounded bench legs each use one draw group');
   assert(piers instanceof T.InstancedMesh && rails instanceof T.InstancedMesh &&
     posts instanceof T.InstancedMesh && benches instanceof T.InstancedMesh);
   assert.equal(piers.count,6);
@@ -78,6 +78,38 @@ test('lake supports, three visible rails and two benches are shared lightweight 
       'support touches the physical displayed deck triangle');
   }
   assert(rails.geometry && deck.material);
+});
+
+test('all eight bench legs physically bridge the actual pitched deck and visible seats',()=>{
+  const seats=review.group.getObjectByName('lake-lookout / instanced rest benches');
+  const legs=review.group.getObjectByName('lake-lookout / instanced grounded bench legs');
+  assert(seats instanceof T.InstancedMesh && legs instanceof T.InstancedMesh);
+  assert.equal(seats.count,2);
+  assert.equal(legs.count,8,'four real supports per seat, one extra draw call');
+  const matrix=new T.Matrix4(),position=new T.Vector3(),scale=new T.Vector3();
+  const rotation=new T.Quaternion();
+  for(let bench=0;bench<2;bench++){
+    seats.getMatrixAt(bench,matrix);
+    matrix.decompose(position,rotation,scale);
+    const seatX=position.x,seatZ=position.z,underside=position.y-.085;
+    assert.equal(review.blockedAt(seatX,seatZ),true,
+      'visible seats remain collision solids');
+    for(let j=0;j<4;j++){
+      legs.getMatrixAt(bench*4+j,matrix);
+      matrix.decompose(position,rotation,scale);
+      assert(Math.abs(position.x-seatX)<=.51 && Math.abs(position.z-seatZ)<=.13,
+        'leg remains within the original bench collision footprint');
+      const foot=position.y-scale.y/2,top=position.y+scale.y/2;
+      assert(Math.abs(foot-review.heightAt(position.x,position.z))<.0002,
+        'no leg may float above or bury into the displayed deck triangles');
+      assert(Math.abs(top-underside)<.0002,
+        'leg top must actually touch the visible underside of the bench seat');
+    }
+  }
+  assert.equal(review.blockedAt(site.x,site.z),false,
+    'the centre walking strip is open between benches');
+  assert.equal(review.blockedAt(review.entrance.x,review.entrance.z),false,
+    'original west entrance and story save guards are untouched');
 });
 
 test('all three visible rails meet real sloped deck at both ends and still match posts',()=>{
@@ -158,7 +190,7 @@ test('all review-only meshes dispose geometry without affecting campaign',()=>{
       if(obj instanceof T.InstancedMesh)obj.dispose();
     }
   });
-  assert(geometries.size<=6,'one shared indexed groove mesh, never per-plank draw calls');
+  assert(geometries.size<=7,'one shared bench-leg geometry, never per-support draw calls');
   assert(materials.size<=4,'the extra grooves use one shared material only');
   for(const geom of geometries)geom.dispose();
   for(const material of materials)material.dispose();
