@@ -437,6 +437,34 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   if(flueTop<=flueBottom)throw new RangeError('Stove flue cannot reach pitched roof');
   box('cabin / roof-contact stove flue',stoveX,(flueBottom+flueTop)/2,stoveZ,
     .25,flueTop-flueBottom,.25,mats.iron);
+  // A genuine above-roof stove outlet finishes the previously concealed flue.
+  // Stack bottom overlaps the indoor flue by 3cm THROUGH the true sloping
+  // roof. The pitched steel flashing follows its exact western roof face;
+  // a joined collar and rain cap finish the outlet. Four parts, one instance
+  // draw batch, no glass/door/ground/saved-world changes or fake roof floor.
+  const stackBase=stoveRoofY-.08,stackTop=stoveRoofY+1.43;
+  const chimneyParts:{matrix:T.Matrix4;color:number}[]=[];
+  const chimneyPart=(y:number,w:number,h:number,d:number,color:number,
+    rotation=new T.Quaternion())=>chimneyParts.push({
+      matrix:new T.Matrix4().compose(new T.Vector3(stoveX,y,stoveZ),
+        rotation,new T.Vector3(w,h,d)),color,
+    });
+  chimneyPart((stackBase+stackTop)/2,.36,stackTop-stackBase,.36,0x495453);
+  const roofSlopeRotation=new T.Quaternion().setFromAxisAngle(
+    new T.Vector3(0,0,1),roofPitch);
+  chimneyPart(stoveRoofY+.025,.98,.07,.84,0x70837e,roofSlopeRotation);
+  chimneyPart(stoveRoofY+.24,.54,.13,.54,0x65716c);
+  chimneyPart(stackTop+.075,.75,.15,.75,0x394a49);
+  const chimney=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),chimneyParts.length);
+  chimney.name='cabin / pitched roof grounded chimney stack and flashing / instanced';
+  for(let i=0;i<chimneyParts.length;i++){
+    chimney.setMatrixAt(i,chimneyParts[i].matrix);
+    chimney.setColorAt(i,new T.Color(chimneyParts[i].color));
+  }
+  chimney.instanceMatrix.needsUpdate=true;
+  if(chimney.instanceColor)chimney.instanceColor.needsUpdate=true;
+  chimney.computeBoundingSphere();group.add(chimney);parts++;
 
   // The exterior uses one shared, instance-coloured cedar clapboard batch,
   // instead of dozens of individual draw calls. Each strip is placed only
