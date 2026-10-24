@@ -182,7 +182,7 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   // instead of dozens of individual draw calls. Each strip is placed only
   // over an EXISTING opaque wall box, so the north/south actual openings
   // remain open. East doorway, 2D physical walls and save logic are unchanged.
-  const exteriorSections=group.children.filter(object=>
+  const exteriorSections=group.children.filter((object):object is T.Mesh<T.BoxGeometry,T.Material>=>
     object instanceof T.Mesh && object.material===mats.wall);
   const sidingMatrices:T.Matrix4[]=[];
   const rotateAlongZ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI/2);
