@@ -255,7 +255,7 @@ try{
     const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics(),terrain=a.terrain;
     return {camera:d.camera,instances:d.floraReview.instances,
       ground:terrain.heightAt(170,-850),
-      expectedPosition:[145,terrain.heightAt(145,-810)+100,-810],
+      expectedPosition:[145,terrain.heightAt(145,-810)+35,-810],
       expectedTarget:[170,terrain.heightAt(170,-850)+2,-850],
       label:document.querySelector('#scene-title')?.textContent};
   });
