@@ -22,6 +22,18 @@ function random(x:number,z:number,salt:number):number {
  h^=h>>>16;h=Math.imul(h,0x7feb352d);h^=h>>>15;h=Math.imul(h,0x846ca68b);h^=h>>>16;
  return (h>>>0)/4294967296;
 }
+// Smoothly interpolated 90m woodland stands form natural groves and open
+// gaps rather than uniformly scattering every species across each 10m cell.
+// Global lattice indices ensure the same stand survives 300m chunk seams.
+// The 5m terrain, local jitter, seed, routing and structure gates are unchanged.
+function woodlandStand(gx:number,gz:number):number {
+ const u=gx/9,v=gz/9,ix=Math.floor(u),iz=Math.floor(v);
+ const fx=u-ix,fz=v-iz,tx=fx*fx*(3-2*fx),tz=fz*fz*(3-2*fz);
+ const a=random(ix,iz,23),b=random(ix+1,iz,23);
+ const c=random(ix,iz+1,23),d=random(ix+1,iz+1,23);
+ return (a+(b-a)*tx)*(1-tz)+(c+(d-c)*tx)*tz;
+}
+
 /** Chunk-local 30x30 lattice with coordinate-derived jitter: no seam duplicates. */
 export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quality:'low'|'balanced'):readonly FloraInstance[] {
  if(!Number.isInteger(chunkX)||!Number.isInteger(chunkZ)||chunkX<0||chunkX>=8||chunkZ<0||chunkZ>=8)throw new RangeError('outside Shiretoko chunk grid');
@@ -35,10 +47,15 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   // strength is shared across the quality modes so low stays a strict subset
   // of balanced. Ground/water/route/structure gates remain authoritative.
   const choose=random(gx,gz,1);
-  const woodlandLimit=quality==='low'?.23:.54;
   const patch=random(Math.floor(gx/5),Math.floor(gz/5),17);
   const highlandLimit=quality==='low'?.28+.18*patch:.56+.24*patch;
   if(choose>highlandLimit)continue;
+  // Sparse glades and tighter spruce/birch stands keep almost the same
+  // average population; low remains a true subset of balanced at every
+  // lattice cell. The existing wetland, trail, lake and cabin guards run
+  // after this selection exactly as before.
+  const stand=woodlandStand(gx,gz);
+  const woodlandLimit=quality==='low'?.06+.38*stand:.16+.74*stand;
   const x=x0+(ix+.22+.56*random(gx,gz,2))*FLORA_RULES.cellMetres;
   const z=z0+(iz+.22+.56*random(gx,gz,3))*FLORA_RULES.cellMetres;
   // Unloaded/ambiguous terrain classification must not grow vegetation into a
