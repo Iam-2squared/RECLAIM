@@ -1,0 +1,39 @@
+name: Shiretoko opt-in nature real-WebGL evidence
+on:
+  pull_request:
+    paths:
+      - 'src/shiretoko-phase1/**'
+      - 'scripts/verify-shiretoko-nature.mjs'
+      - '.github/workflows/shiretoko-nature-review.yml'
+permissions:
+  contents: read
+jobs:
+  nature-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.0-noble
+      options: --init
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Trust exact checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: node --test tests/shiretoko-cabin.test.mjs
+      - run: node scripts/package-shiretoko-terrain.mjs
+      - name: Real framebuffer, ground contact, saves and resource release
+        run: node scripts/verify-shiretoko-nature.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shiretoko-nature-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: release/shiretoko-nature-review/
+          retention-days: 14
+          if-no-files-found: error

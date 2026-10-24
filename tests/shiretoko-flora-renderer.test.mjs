@@ -1,0 +1,131 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { ShiretokoTerrain, routeSample } from '../src/shiretoko-phase1/terrain.ts';
+import { createFloraReviewLayer } from '../src/shiretoko-phase1/flora-renderer.ts';
+
+test('opt-in flora creates physical-grounded instanced 3D with bounded draw calls and safe travel clearances',()=>{
+  const terrain=new ShiretokoTerrain();
+  const layer=createFloraReviewLayer(terrain,'low');
+  assert(layer.instances>1200 && layer.instances<16_000, 'bounded sparse low-quality flora');
+  assert(layer.drawGroups>0 && layer.drawGroups<=96);
+  assert.equal(layer.quality,'low');
+  assert.equal(layer.instanceBytes,layer.instances*76);
+  const seen=new Set(),trees=new Set(),matrix=new THREE.Matrix4(),translation=new THREE.Vector3();
+  let total=0,foundTalus=false,foundHighlandShrub=false,foundDeadwood=false;
+  layer.group.traverse(node=>{
+    if(!(node instanceof THREE.InstancedMesh))return;
+    assert(node.count>0 && node.count<=layer.instances);
+    assert(node.name.startsWith('flora/review/600m-'));
+    assert(node.instanceColor && node.instanceColor.count===node.count);
+    assert(node.frustumCulled, '600m cells must remain frustum-cullable');
+    assert(node.boundingSphere && Number.isFinite(node.boundingSphere.radius));
+    assert(node.geometry.getAttribute('color')?.count===node.geometry.getAttribute('position')?.count);
+    assert(node.geometry.getAttribute('normal')?.count===node.geometry.getAttribute('position')?.count);
+    if(node.name.endsWith('/spruce')||node.name.endsWith('/birch')){
+      const species=node.name.split('/').at(-1);
+      trees.add(species);
+      const bounds=node.geometry.boundingBox;
+      assert(bounds,'shared tree geometry must have CPU bounds for frustum culling');
+      assert(bounds.min.y>=-.001,'tree geometry must be rooted at the ground');
+      assert(bounds.max.y>(species==='spruce'?8.4:8.0) && bounds.max.y<10,
+        'mature tree silhouette remains distinct and within the draw-budget envelope');
+      assert(bounds.max.x-bounds.min.x>2.5,'crown must have real lateral branches');
+      assert(node.geometry.getAttribute('position').count<500,
+        'visual improvement must not explode per-instance vertex cost');
+      if(species==='birch'){
+        // Fork limbs and dark lenticels remain vertex colours in the one
+        // cullable instanced mesh, not separate expensive transparent planes.
+        const colours=node.geometry.getAttribute('color'),swatches=new Set();
+        for(let v=0;v<colours.count;v++)
+          swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+        assert(swatches.size>=8,
+          'pale fork wood and two-tone dark bark marks must be real geometry');
+        assert(bounds.min.x<-.9&&bounds.max.x>.9,
+          'uneven emerging forks extend outside the bare trunk silhouette');
+      }
+    }
+    if(node.name.endsWith('/alpine-shrub')){
+      foundHighlandShrub=true;
+      const geometry=node.geometry,bounds=geometry.boundingBox;
+      assert(bounds,'highland shrubs need real culling bounds');
+      assert(bounds.min.y>=-.05 && bounds.max.y>1.35 && bounds.max.y<1.7,
+        'rooted uneven highland shoots must have separate raised crowns');
+      assert(geometry.getAttribute('position').count<450,
+        'woody shoots and seed heads remain within one low-poly species geometry');
+      const swatches=new Set(),colours=geometry.getAttribute('color');
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert(swatches.size>=7,'shoot bark, crowns and seed tips use actual distinct vertex colours');
+    }
+    if(node.name.endsWith('/sedge')){
+      const geometry=node.geometry,bounds=geometry.boundingBox;
+      assert(bounds,'each sedge shared geometry needs a culling bound');
+      assert(bounds.min.y>=-.05 && bounds.max.y>1.3 && bounds.max.y<1.55,
+        'native wetland sedges should have rooted stalks and visible mature seed spikes');
+      assert(geometry.getAttribute('position').count<240,
+        'wetland silhouette detail must stay inside the software-WebGL vertex budget');
+      const swatches=new Set(),colours=geometry.getAttribute('color');
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert(swatches.size>=3,
+        'seed, stem and blades remain separate colours in a single instanced draw group');
+    }
+    if(node.name.endsWith('/deadwood')){
+      foundDeadwood=true;
+      const geometry=node.geometry,bounds=geometry.boundingBox;
+      assert(bounds,'deadfall must have real frustum bounds');
+      assert(bounds.min.y>=-.05&&bounds.max.y<1.1,
+        'mossy fallen trunks remain low and physically rooted');
+      assert(bounds.max.x-bounds.min.x>3,
+        'deadfall must be recognisably horizontal rather than another cone-tree');
+      assert(geometry.getAttribute('position').count<400,
+        'shared bark, twigs and moss must stay inside the vertex budget');
+      const swatches=new Set(),colours=geometry.getAttribute('color');
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert(swatches.size>=5,'bark, two branch woods and moss use merged vertex colours');
+    }
+    if(node.name.endsWith('/stone')){
+      foundTalus=true;
+      const geometry=node.geometry, bounds=geometry.boundingBox;
+      const vertices=geometry.getAttribute('position'), colours=geometry.getAttribute('color');
+      assert(bounds, 'instanced stone cluster must have a shared bounding box');
+      assert(vertices.count>=120&&vertices.count<350,
+        'three-facet talus replaces one pebble without excessive per-instance vertices');
+      assert(bounds.min.y>=-.12&&bounds.max.y<1.05,
+        'talus boulders remain rooted at the sampled physical ground, never hovering');
+      assert(bounds.max.x-bounds.min.x>1.7,
+        'stone silhouette must include separate lateral talus fragments');
+      const swatches=new Set();
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert.equal(swatches.size,3,'three different rock faces share vertex colour material');
+    }
+    seen.add(node.geometry);total+=node.count;
+    const sampled=[0,Math.floor(node.count/2),node.count-1];
+    for(const i of sampled){
+      node.getMatrixAt(i,matrix);translation.setFromMatrixPosition(matrix);
+      for(const c of translation.toArray())assert(Number.isFinite(c));
+      assert(translation.x>=-1200 && translation.x<1200);
+      assert(translation.z>=-1200 && translation.z<1200);
+      assert(Math.abs(translation.y-terrain.heightAt(translation.x,translation.z))<.0001,'same 5m collision surface');
+      assert(routeSample(translation.x,translation.z).distance>=8,'no props in route');
+      assert(!terrain.inWater(translation.x,translation.z),'no submerged props');
+    }
+  });
+  assert.equal(total,layer.instances);
+  assert(seen.size<=7,'all 600m culling groups must share species geometries');
+  assert.deepEqual([...trees].sort(),['birch','spruce'],'both mature species rendered in low-quality mode');
+  assert(foundTalus,'real terrain should render talus in the low setting');
+  assert(foundDeadwood,'real dry Shiretoko forest must contain some low-cost fallen logs');
+  assert(foundHighlandShrub,'highland must include natural rooted shrubs in low setting');
+  assert.equal(layer.group.children.filter(x=>x.isLight).length,2,'review-only light setup');
+  for(const g of seen)g.dispose();
+  for(const node of layer.group.children)if(node instanceof THREE.InstancedMesh)node.dispose();
+  layer.group.clear();
+});
+
+test('invalid quality is rejected before allocating scene resources',()=>{
+  assert.throws(()=>createFloraReviewLayer({},'ultra'),RangeError);
+});

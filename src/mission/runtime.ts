@@ -5,6 +5,7 @@ import { CharacterController, PLAYER_TUNING } from './controller.ts';
 import { SimulationClock, SIMULATION_TIMING } from './clock.ts';
 import { ScoutDrone, COMBAT_TUNING, WEAPON_TUNING, raySphere, obstructionDistance } from './combat.ts';
 import { WeaponFeedback, DroneCrashRig } from './feedback.ts';
+import { MissionRenderBackpressure } from './render-backpressure.ts';
 import type { HomePreview } from '../home-state.ts';
 import './mission.css';
 const node=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id)! as E;
@@ -29,9 +30,9 @@ export type MissionHooks={returnHome:()=>void;announce:(s:string)=>void;invalida
 export class Mission {
  loader:AreaLoader;camera=new T.PerspectiveCamera(74,1,.055,900);controller:CharacterController;drone:ScoutDrone|null=null;droneArt:ReturnType<typeof createDroneModel>|null=null;weapon:T.Group;weaponFeedback=new WeaponFeedback();droneCrash=new DroneCrashRig();
  paused=true;disposed=false;hp:number=COMBAT_TUNING.playerHp;keys=new Set<string>();clock=new SimulationClock();elapsed=0;checkpointClock=0;hudClock=0;nextShot=0;shots=0;misses=0;lastHit=false;hitFlash=0;lastUI='';locked=false;transitions=0;frames=0;frameTimes:number[]=[];loadMs=0;storyShowing=false;endShowing=false;lockSettledAt=0;ignoreFirstMouseMove=false;jumpBuffered=false;
- canvas:HTMLCanvasElement;store:CampaignStore;renderer:T.WebGLRenderer;hooks:MissionHooks;preview:HomePreview;areaId:AreaId;quality:WorldQuality;debug:boolean;
+ canvas:HTMLCanvasElement;store:CampaignStore;renderer:T.WebGLRenderer;renderBackpressure:MissionRenderBackpressure;hooks:MissionHooks;preview:HomePreview;areaId:AreaId;quality:WorldQuality;debug:boolean;
  constructor(renderer:T.WebGLRenderer,store:CampaignStore,areaId:AreaId,quality:WorldQuality,preview:HomePreview,hooks:MissionHooks,resume:MissionCheckpoint|null=null,debug=false){
-  const start=performance.now();this.renderer=renderer;this.canvas=renderer.domElement;this.store=store;this.hooks=hooks;this.preview=preview;this.areaId=areaId;this.quality=quality;this.debug=debug;
+  const start=performance.now();this.renderer=renderer;this.renderBackpressure=new MissionRenderBackpressure(renderer.getContext() as WebGL2RenderingContext);this.canvas=renderer.domElement;this.store=store;this.hooks=hooks;this.preview=preview;this.areaId=areaId;this.quality=quality;this.debug=debug;
   this.loader=new AreaLoader(getAreaDefinition(areaId),quality);this.controller=new CharacterController(this.loader.terrain,()=>this.loader.colliders,getAreaDefinition(areaId).bounds,getAreaDefinition(areaId).spawn);
   const introNeedsCabin=areaId==='shiretoko'&&store.value.introStep<4;
   const resumeAllowed=resume&&resume.areaId===areaId&&(!introNeedsCabin||(Math.abs(resume.x)<=5&&resume.z>=-5&&resume.z<=5));
@@ -120,7 +121,7 @@ export class Mission {
  updateCamera(){const p=this.controller.position;this.camera.position.set(p.x,p.y+PLAYER_TUNING.eyeHeight,p.z);this.camera.rotation.set(this.controller.pitch,this.controller.yaw,0,'YXZ');const recoil=this.weaponFeedback.pose;this.weapon.position.y=-.25+(this.paused?0:Math.sin(this.elapsed*9)*Math.min(.012,this.keys.size*.004))-recoil.drop;this.weapon.position.z=-.44+recoil.rear;this.weapon.rotation.x=recoil.rise;}
  resize(){this.camera.aspect=innerWidth/innerHeight;this.camera.fov=innerWidth<700?82:74;this.camera.updateProjectionMatrix();}
  preferences(quality:WorldQuality){if(this.quality===quality)return;this.quality=quality;this.loader.setQuality(quality);this.hooks.invalidate();}
- render(){const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
+ render(){if(this.disposed||!this.renderBackpressure.canSubmit())return;const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.renderBackpressure.submitted();this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
  updateHUD(force=false){
   const step=this.store.value.introStep;
   let text=this.areaId==='sapporo'?'都市入口を徒歩で探索。廃車は装飾・運転不可。正式任務は開発中。':this.areaId!=='shiretoko'?'道標をたどり、歩ける環境を確かめる。正式任務は開発中。':step===0?'木造の家で目覚める。':step===1?'家のラジオへ近づき、Eで報道を聞く。':step===2?'親友から届いた連絡を読む。':step===3?'玄関を抜け、森へ出発する。':this.drone&&this.drone.hp>0?'林道の小型ドローンを停止させ、道標へ向かう。':'林道をたどり、次の区間の道標へ。';
@@ -133,9 +134,9 @@ export class Mission {
   node('mission-crosshair').dataset.hit=String(this.lastHit&&this.hitFlash>0);node('mission-damage').hidden=!(this.hitFlash>0);node('mission-interact').hidden=this.areaId!=='shiretoko'||step!==1;
   node('mission-save').textContent=this.debug?'開発プレビュー / 進行保存なし':this.store.saveStatus==='saved'?'進行をこの端末に保存':'進行はこのセッションで維持';
  }
- snapshot(){const values=[...this.frameTimes].sort((a,b)=>a-b);return {areaId:this.areaId,paused:this.paused,locked:this.locked,player:{...this.controller.position,yaw:this.controller.yaw,pitch:this.controller.pitch,grounded:this.controller.grounded,distance:this.controller.distance,recoveries:this.controller.recoveries,hp:this.hp},enemy:this.drone?{state:this.drone.state,hp:this.drone.hp,hits:this.drone.hits,position:{...this.drone.position}}:null,shots:this.shots,misses:this.misses,elapsed:this.elapsed,keys:[...this.keys],storyStep:this.store.value.introStep,frames:this.frames,loadMs:this.loadMs,renderCpuMs:{median:values[Math.floor(values.length*.5)]??0,p95:values[Math.floor(values.length*.95)]??0},world:this.loader.stats(),quality:this.quality,debug:this.debug};}
+ snapshot(){const values=[...this.frameTimes].sort((a,b)=>a-b);return {areaId:this.areaId,paused:this.paused,locked:this.locked,player:{...this.controller.position,yaw:this.controller.yaw,pitch:this.controller.pitch,grounded:this.controller.grounded,distance:this.controller.distance,recoveries:this.controller.recoveries,hp:this.hp},enemy:this.drone?{state:this.drone.state,hp:this.drone.hp,hits:this.drone.hits,position:{...this.drone.position}}:null,shots:this.shots,misses:this.misses,elapsed:this.elapsed,keys:[...this.keys],storyStep:this.store.value.introStep,frames:this.frames,renderQueue:this.renderBackpressure.snapshot(),loadMs:this.loadMs,renderCpuMs:{median:values[Math.floor(values.length*.5)]??0,p95:values[Math.floor(values.length*.95)]??0},world:this.loader.stats(),quality:this.quality,debug:this.debug};}
  dispose(){
-  if(this.disposed)return;this.save();this.disposed=true;this.hooks.stopEffects();this.keys.clear();if(document.pointerLockElement===this.canvas)document.exitPointerLock();
+  if(this.disposed)return;this.save();this.disposed=true;this.renderBackpressure.dispose();this.hooks.stopEffects();this.keys.clear();if(document.pointerLockElement===this.canvas)document.exitPointerLock();
   document.removeEventListener('keydown',this.keyDown);document.removeEventListener('keyup',this.keyUp);document.removeEventListener('mousemove',this.mouseMove);document.removeEventListener('pointerlockchange',this.lockChange);document.removeEventListener('pointerlockerror',this.lockError);document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('blur',this.blur);this.canvas.removeEventListener('mousedown',this.mouseDown);
   node('mission-lock').removeEventListener('click',this.lockClick);node('mission-home').removeEventListener('click',this.homeClick);node('mission-interact').removeEventListener('click',this.interactClick);node('mission-skip').removeEventListener('click',this.skipClick);node('mission-continue').removeEventListener('click',this.continueClick);node('mission-retry').removeEventListener('click',this.retryClick);node('mission-next').removeEventListener('click',this.nextClick);node('mission-pause-button').removeEventListener('click',this.pauseClick);
   this.loader.scene.remove(this.camera);sceneResources(this.weapon);if(this.droneArt){this.loader.scene.remove(this.droneArt.group);sceneResources(this.droneArt.group);}this.loader.dispose();this.renderer.renderLists.dispose();

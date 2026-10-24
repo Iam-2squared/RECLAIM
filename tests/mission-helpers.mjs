@@ -1,4 +1,8 @@
 import {expect} from '@playwright/test';
+import {arrowSteps} from './native-arrow-input.mjs';
+import {walkObserverOptions} from './walk-observer-options.mjs';
+import {waitForDriverWalkObservation} from './driver-walk-observer.mjs';
+import {withNativePrecisionInputGuard} from './native-precision-input-guard.mjs';
 export const snapshot=page=>page.evaluate(()=>window.__RECLAIM__.snapshot());
 export async function enter(page,{low=true}={}) {
  await page.goto('/');await expect(page.locator('body')).toHaveAttribute('data-ready','true');
@@ -9,8 +13,8 @@ export async function lock(page){await page.locator('#mission-lock').click();awa
 export async function turnToward(page,target){
  const {player}= (await snapshot(page)).mission;
  const desired=Math.atan2(-(target.x-player.x),-(target.z-player.z));let delta=Math.atan2(Math.sin(desired-player.yaw),Math.cos(desired-player.yaw));
- const count=Math.round(Math.abs(delta)/.0484);for(let i=0;i<count;i++)await page.keyboard.press(delta>0?'ArrowLeft':'ArrowRight');
- if(target.y!==undefined){const pitch=Math.atan2(target.y-(player.y+1.62),Math.hypot(target.x-player.x,target.z-player.z)),dp=pitch-player.pitch;for(let i=0;i<Math.round(Math.abs(dp)/.0484);i++)await page.keyboard.press(dp>0?'ArrowUp':'ArrowDown');}
+ const count=Math.round(Math.abs(delta)/.0484);await arrowSteps(page.keyboard,delta>0?'ArrowLeft':'ArrowRight',count);
+ if(target.y!==undefined){const pitch=Math.atan2(target.y-(player.y+1.62),Math.hypot(target.x-player.x,target.z-player.z)),dp=pitch-player.pitch;await arrowSteps(page.keyboard,dp>0?'ArrowUp':'ArrowDown',Math.round(Math.abs(dp)/.0484));}
 }
 
 async function forwardInput(page,observe,{sprint=false,maxMs=5000,keepHeld=false}={}){
@@ -60,34 +64,29 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
   state=stopped;
   return inspect(stopped)?stopped:null;
  };
- const probe=async(simSeconds,mode)=>{
+ const probe=async(simSeconds,mode,initialTargetDistance)=>{
   const remaining=deadline-Date.now();if(remaining<=0)return;
   const stopRange=mode==='far'?nearRange:mode==='walk'?precisionRange:null;
-  let handle,keepForward=false;
+  let keepForward=false;
   try{
-   // Read-only RAF observation runs in the browser, avoiding repeated round
-   // trips while keys are held. Arrival, pause and real elapsed time are observed.
-   handle=await page.waitForFunction(observation=>{
-    const {target,radius,stopRange,simSeconds}=observation;
-    const m=window.__RECLAIM__.snapshot().mission;if(!m||m.paused)return'paused';
-    const distance=Math.hypot(target.x-m.player.x,target.z-m.player.z);
-    if(distance<=radius)return'reached';
-    if(stopRange!==null&&distance<=stopRange)return'near';
-    // Anchor this test-owned observation after genuine keydown, so idle time
-    // between the prior snapshot and keydown cannot consume the walk pulse.
-    if(observation.firstElapsed===null)observation.firstElapsed=m.elapsed;
-    return m.elapsed-observation.firstElapsed>=simSeconds?'elapsed':false;
-   },{target,radius,stopRange,firstElapsed:null,simSeconds},{polling:'raf',timeout:Math.min(5000,remaining)});
+   // Schedule read-only observations from the driver, not a timer inside
+   // the busy WebGL page. Native input, genuine Mission snapshots, original
+   // geometric predicates and the five-second segment deadline stay intact.
+   const reason=await waitForDriverWalkObservation(page,{
+    target,radius,stopRange,firstElapsed:null,simSeconds,initialTargetDistance,
+    // Observation checkpoints are not arrival tolerances; all exact
+    // geometric criteria and 5s/50s deadlines remain unchanged.
+    progressMetres:mode==='far'?.6:mode==='walk'?.25:null,
+   },walkObserverOptions(remaining));
    // Release sprint at eight metres but keep genuine walking continuous until
    // the final precision zone. Arrival still requires the fresh stopped pose.
    if(mode!=='precision'){
-    const reason=await handle.jsonValue();
     if(mode==='far'&&reason==='near')await setSprint(false);
-    keepForward=reason==='elapsed'||(mode==='far'&&reason==='near');
+    keepForward=reason==='elapsed'||reason==='progress'||(mode==='far'&&reason==='near');
    }
   }finally{
-   // Release a short near-target pulse before the handle-disposal round trip.
-   try{if(!keepForward)await stopForward();}finally{await handle?.dispose();}
+   // Release the real near-target key before the next sampled observation.
+   if(!keepForward)await stopForward();
   }
  };
  try{
@@ -137,7 +136,11 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
    const simSeconds=precision?Math.max(1/60,Math.min(.12,(distance-radius)/(3.1*2))):.4;
    await startForward();
    try{
-    await probe(simSeconds,mode);
+    // Under SwiftShader the read-only polling callback may stall while KeyW
+    // keeps advancing the real 60Hz player. Guard only the near-target pulse
+    // via Playwright's native keyup, without changing radius or deadlines.
+    if(precision) await withNativePrecisionInputGuard(stopForward,()=>probe(simSeconds,mode,distance));
+    else await probe(simSeconds,mode,distance);
    }catch(error){
     await stopForward();
     const final=(await snapshot(page)).mission;

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>RECLAIM · SHIRETOKO — Terrain / Phase 01 v4</title>
+    <meta name="description" content="RECLAIM 知床・独立したPC地形プレビュー。岬、湿原、湖と高原、内陸山岳。Phase 1。" />
+  </head>
+  <body>
+    <div id="terrain-app">
+      <div id="terrain-view" aria-label="知床の3D地形"></div>
+      <header class="terrain-ui masthead">
+        <div class="identity"><strong>RECLAIM</strong><span>SHIRETOKO / 知床</span></div>
+        <div class="phase"><span class="live-dot"></span>WORLD STUDY <b>01</b><span class="phase-label">地形 v4 / TERRAIN</span></div>
+        <div class="view-tools">
+          <button id="overview" class="active" aria-pressed="true">全景 <span>0</span></button>
+          <button id="elevation" aria-pressed="false">標高</button>
+          <button id="route" aria-pressed="false">ルート</button>
+          <button id="intro-open">イントロ試作</button>
+          <button id="clean" aria-label="表示を隠す（Hキーで戻る）">UI非表示 <span>H</span></button>
+        </div>
+      </header>
+      <aside class="terrain-ui scene-note">
+        <span class="eyebrow">A PLACE TO BEGIN AGAIN.</span>
+        <h1 id="scene-title">海と、崖と、<br />まだ名のない道。</h1>
+        <p id="scene-description">岬から湿原へ。湖を越え、内陸の山々へ。</p>
+      </aside>
+      <nav class="terrain-ui locations" aria-label="地形の確認地点">
+        <button data-location="0"><span class="number">01</span><span><b>崖上の敷地</b><small>THE HEADLAND</small></span></button>
+        <button data-location="1"><span class="number">02</span><span><b>知床の湿原</b><small>THE WETLAND</small></span></button>
+        <button data-location="2"><span class="number">03</span><span><b>湖と高原</b><small>LAKE & PLATEAU</small></span></button>
+        <button data-location="3"><span class="number">04</span><span><b>内陸の山岳</b><small>THE HIGHLANDS</small></span></button>
+      </nav>
+      <footer class="terrain-ui bottom-bar">
+        <div class="study-caption"><span>PHASE 01</span> 地形確認用 / 建物・植生は次の工程 <span class="divider">/</span> <span id="altitude">2,400 × 2,400 m</span></div>
+        <div id="controls-hint">ドラッグ：回転 <span>·</span> 右ドラッグ：移動 <span>·</span> ホイール：拡大</div>
+        <button id="walk">この場所を歩く <span>↗</span></button>
+      </footer>
+      <div id="walk-overlay" hidden><span class="reticle"></span><div id="walk-message">画面をクリックして視点操作を再開</div></div>
+      <section id="intro-panel" hidden aria-label="独立した全景イントロの試作">
+        <div class="intro-heading"><span>SHIRETOKO</span><h2>この土地から、始める。</h2><p id="intro-description">海と断崖、湿原と湖。その奥に続く山々へ。</p></div>
+        <div id="intro-labels" aria-hidden="true"></div>
+        <div class="intro-actions"><span>知床 / 地形レビュー</span><div><button id="intro-cancel">俯瞰に戻る <small>Esc</small></button><button id="intro-fly">短い移動を試す</button><button id="intro-explore">探索を開始</button></div></div>
+      </section>
+      <div id="loading"><div class="load-mark">RECLAIM</div><p>知床の地形を構築しています</p><small>PHASE 01 / ORIGINAL TERRAIN</small></div>
+      <div id="error" hidden role="alert"></div>
+    </div>
+    <script type="module" src="/src/shiretoko-phase1/preview.ts"></script>
+  </body>
+</html>
