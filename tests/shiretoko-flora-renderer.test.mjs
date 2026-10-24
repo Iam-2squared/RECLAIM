@@ -34,6 +34,19 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       assert(node.geometry.getAttribute('position').count<500,
         'visual improvement must not explode per-instance vertex cost');
     }
+    if(node.name.endsWith('/sedge')){
+      const geometry=node.geometry,bounds=geometry.boundingBox;
+      assert(bounds,'each sedge's shared geometry needs a culling bound');
+      assert(bounds.min.y>=-.05 && bounds.max.y>1.3 && bounds.max.y<1.55,
+        'native wetland sedges should have rooted stalks and visible mature seed spikes');
+      assert(geometry.getAttribute('position').count<240,
+        'wetland silhouette detail must stay inside the software-WebGL vertex budget');
+      const swatches=new Set(),colours=geometry.getAttribute('color');
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert(swatches.size>=3,
+        'seed, stem and blades remain separate colours in a single instanced draw group');
+    }
     if(node.name.endsWith('/stone')){
       foundTalus=true;
       const geometry=node.geometry, bounds=geometry.boundingBox;
