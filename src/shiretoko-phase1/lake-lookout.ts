@@ -178,6 +178,32 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   });
   benches.instanceMatrix.needsUpdate=true;benches.computeBoundingSphere();group.add(benches);
 
+  // The two benches used to render as horizontal seats suspended 0.395m
+  // above the real sloped deck. Eight solid wooden legs now connect their
+  // undersides to the SAME two indexed walking triangles. Only one new
+  // instanced draw group is needed; bench collisions and walkable deck stay.
+  const benchLegs=new T.InstancedMesh(new T.BoxGeometry(.16,1,.16),
+    benchMaterial,8);
+  benchLegs.name='lake-lookout / instanced grounded bench legs';
+  let benchLegIndex=0;
+  [back+1,front-1].forEach(z=>{
+    const cx=site.x-1.5,seatY=surface(cx,z);
+    if(seatY===null)throw new RangeError('Bench seat has no real deck');
+    const underside=seatY+.48-benchGeometry.parameters.height/2;
+    for(const dx of [-.50,.50])for(const dz of [-.12,.12]){
+      const x=cx+dx,legZ=z+dz,foot=surface(x,legZ);
+      if(foot===null)throw new RangeError('Bench leg outside indexed deck');
+      const rise=underside-foot;
+      if(!(rise>.02 && rise<1))throw new RangeError('Bench leg cannot contact actual deck and seat');
+      matrix.compose(new T.Vector3(x,foot+rise/2,legZ),
+        new T.Quaternion(),new T.Vector3(1,rise,1));
+      benchLegs.setMatrixAt(benchLegIndex++,matrix);
+    }
+  });
+  benchLegs.instanceMatrix.needsUpdate=true;
+  benchLegs.computeBoundingSphere();
+  group.add(benchLegs);
+
   // Seventeen dark joins contour the two ACTUAL pitched deck triangles.
   // Each narrow strip is divided at the shared diagonal to prevent clipping
   // or floating. All joinery is ONE draw call and changes no walking surface.
