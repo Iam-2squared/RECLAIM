@@ -78,6 +78,8 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
         'sasa fans out in real 3D, not four identical coplanar billboards');
       assert(geometry.getAttribute('position').count<100,
         'six tapered leaves and one stalk stay in the existing single instanced mesh');
+      assert.equal(geometry.getAttribute('uv')?.count,geometry.getAttribute('position').count,
+        'tapered leaf UVs must merge with the rooted stem in the same real geometry');
       const swatches=new Set(),colours=geometry.getAttribute('color');
       for(let v=0;v<colours.count;v++)
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
