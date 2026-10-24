@@ -174,13 +174,27 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   // remains empty. All parts use a bounded common timber material.
   const benchMaterial=new T.MeshLambertMaterial({color:0x9c7a56});
   const benchGeometry=new T.BoxGeometry(1.65,.17,.49);
-  const benches=new T.InstancedMesh(benchGeometry,benchMaterial,2);
+  const benches=new T.InstancedMesh(benchGeometry,benchMaterial,4);
   benches.name='lake-lookout / instanced rest benches';
   [back+1,front-1].forEach((z,i)=>{
     const x=site.x-1.5,y=surface(x,z);
     if(y===null)throw new Error('bench cannot float outside deck');
     matrix.makeTranslation(x,y+.48,z);
     benches.setMatrixAt(i,matrix);
+  });
+  // Both backrests reuse the same seat box geometry, material and instanced
+  // GPU draw group. Each rises from its seat on the OUTER side, fully inside
+  // that bench's existing physical collision footprint. No extra object,
+  // floor, collider, draw call or persistent state is introduced.
+  const backUpright=new T.Quaternion().setFromAxisAngle(
+    new T.Vector3(1,0,0),Math.PI/2);
+  [back+1,front-1].forEach((z,i)=>{
+    const x=site.x-1.5,y=surface(x,z);
+    if(y===null)throw new RangeError('Bench back needs actual indexed deck contact');
+    const backZ=z+(i===0?-.19:.19);
+    matrix.compose(new T.Vector3(x,y+.805,backZ),
+      backUpright,new T.Vector3(1,1,1));
+    benches.setMatrixAt(2+i,matrix);
   });
   benches.instanceMatrix.needsUpdate=true;benches.computeBoundingSphere();group.add(benches);
 

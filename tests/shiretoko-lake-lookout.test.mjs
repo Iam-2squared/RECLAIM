@@ -67,7 +67,7 @@ test('lake supports, three visible rails and two benches are shared lightweight 
   assert.equal(piers.count,6);
   assert.equal(rails.count,6,'two sloped guard heights share one instanced draw group');
   assert.equal(posts.count,6);
-  assert.equal(benches.count,2);
+  assert.equal(benches.count,4,'two walk-blocking seats and two connected backs share one instanced draw group');
   const m=new T.Matrix4(),pos=new T.Vector3(),scale=new T.Vector3(),rot=new T.Quaternion();
   for(let i=0;i<piers.count;i++){
     piers.getMatrixAt(i,m);m.decompose(pos,rot,scale);
@@ -84,7 +84,7 @@ test('all eight bench legs physically bridge the actual pitched deck and visible
   const seats=review.group.getObjectByName('lake-lookout / instanced rest benches');
   const legs=review.group.getObjectByName('lake-lookout / instanced grounded bench legs');
   assert(seats instanceof T.InstancedMesh && legs instanceof T.InstancedMesh);
-  assert.equal(seats.count,2);
+  assert.equal(seats.count,4,'two seats plus two actual backrests share existing mesh and material');
   assert.equal(legs.count,8,'four real supports per seat, one extra draw call');
   const matrix=new T.Matrix4(),position=new T.Vector3(),scale=new T.Vector3();
   const rotation=new T.Quaternion();
@@ -110,6 +110,40 @@ test('all eight bench legs physically bridge the actual pitched deck and visible
     'the centre walking strip is open between benches');
   assert.equal(review.blockedAt(review.entrance.x,review.entrance.z),false,
     'original west entrance and story save guards are untouched');
+});
+
+test('both lake benches have wooden backs physically joined to seats within existing collisions',()=>{
+  const benches=review.group.getObjectByName('lake-lookout / instanced rest benches');
+  assert(benches instanceof T.InstancedMesh);
+  assert.equal(benches.count,4,'reuses two original seat instances plus two backs');
+  assert.equal(review.group.children.length,7,'no extra draw group');
+  const seatMatrix=new T.Matrix4(),backMatrix=new T.Matrix4();
+  const seatPosition=new T.Vector3(),backPosition=new T.Vector3();
+  const seatRotation=new T.Quaternion(),backRotation=new T.Quaternion();
+  const scale=new T.Vector3();
+  for(let i=0;i<2;i++){
+    benches.getMatrixAt(i,seatMatrix);
+    seatMatrix.decompose(seatPosition,seatRotation,scale);
+    benches.getMatrixAt(i+2,backMatrix);
+    backMatrix.decompose(backPosition,backRotation,scale);
+    // Rotating the same .49m-depth seat slab upright makes a .49m back.
+    const bottom=new T.Vector3(0,0,.245).applyMatrix4(backMatrix);
+    assert(Math.abs(bottom.y-(seatPosition.y+.085))<.01,
+      'upright back bottom must physically overlap the visible seat top');
+    assert(Math.abs(backPosition.x-seatPosition.x)<.0002,
+      'backrest stays aligned with its long seat plank');
+    assert(Math.abs(Math.abs(backPosition.z-seatPosition.z)-.19)<.0002,
+      'outer placement retains the entire original centre walking strip');
+    assert(review.blockedAt(backPosition.x,backPosition.z),
+      'backrest remains within the original bench collider');
+    assert(Math.abs(backRotation.angleTo(new T.Quaternion().setFromAxisAngle(
+      new T.Vector3(1,0,0),Math.PI/2)))<.0002,
+      'backrest is visibly upright rather than a duplicate flat seat');
+  }
+  assert.equal(review.blockedAt(site.x,site.z),false,
+    'two complete seats still leave the original central walking route');
+  assert.equal(review.blockedAt(review.entrance.x,review.entrance.z),false,
+    'west entry is open and walker footprint is unchanged');
 });
 
 test('all three visible rails meet real sloped deck at both ends and still match posts',()=>{
