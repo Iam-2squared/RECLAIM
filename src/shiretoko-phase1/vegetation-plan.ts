@@ -5,7 +5,7 @@
  * No geometry, textures, land-use claims or external assets in this module.
  */
 export const FLORA_RULES=Object.freeze({extent:1200,chunkMetres:300,cellMetres:10,seed:431071,maxSlope:.9,trailClearance:8,structureClearance:7});
-export type FloraKind='spruce'|'birch'|'alpine-shrub'|'sedge'|'sasa'|'stone'|'deadwood';
+export type FloraKind='spruce'|'birch'|'alpine-shrub'|'sedge'|'sasa'|'meadow-grass'|'stone'|'deadwood';
 export type FloraInstance=Readonly<{kind:FloraKind;x:number;y:number;z:number;rotation:number;scale:number}>;
 export type FloraSurface=Readonly<{
  height:(x:number,z:number)=>number;
@@ -83,11 +83,14 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   if(slope>FLORA_RULES.maxSlope)kind='stone';
   else if(wet>.72)kind='sedge';
   else if(y>300)kind=species<.65?'alpine-shrub':'stone';
-  else if(wet>.43)kind=species<.65?'sasa':'birch';
+  // Short meadow tufts occupy a portion of existing lowland positions: no
+  // increase in instance count, no woodland clearing filled with new grids.
+  // 10m spacing and the same water/trail/structure gates remain authoritative.
+  else if(wet>.43)kind=species<.52?'sasa':species<.82?'birch':'meadow-grass';
   // Rare fallen trunks occupy only relatively gentle, dry woodland. The
   // existing 8m trail / 7m structure clearances also protect their ~2m ends.
   else if(slope<.27&&species>.92)kind='deadwood';
-  else kind=species<.57?'spruce':species<.82?'birch':'sasa';
+  else kind=species<.57?'spruce':species<.82?'birch':random(gx,gz,19)<.5?'sasa':'meadow-grass';
   const scale=.8+random(gx,gz,5)*.47;
   instances.push(Object.freeze({kind,x,y,z,rotation:random(gx,gz,6)*Math.PI*2,scale}));
  }
