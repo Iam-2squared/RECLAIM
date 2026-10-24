@@ -1,3 +1,28 @@
+# RECLAIM — Autonomous checkpoint (2026-10-24 22:11:38 JST)
+Scope: Iam-2squared/RECLAIM and existing Vercel reclaim-safari-preview only. Exact HEAD/CI must be re-read next run.
+
+## Verified regression fix and current main
+- Main after PR #86: `2c37329730af45c0b90fc771b63e818ca875257f`. PR #86 source exact HEAD `99881ddc793c8b77db808c25b4468cc4cf41f951`, preview run **40093675697 attempt 1: all 5/5 SUCCESS**, including the real Chromium-world 18/18 tests (job 120871372359).
+- Post-merge main preview **40096250021 attempt 1: all 5/5 SUCCESS**, including Chromium-world. Exact main source terrain workflow did NOT trigger because PR #86 edits only test observer files, not the terrain workflow's monitored paths. Prior main `f08db6ce603d11170ddd679fa4a4f1bf342fb21c` terrain run **40091800587 attempt 1: 3/3 SUCCESS**. Never misreport prior terrain as 2c exact-HEAD terrain.
+- Preserved actual prior failure: main preview run 40091800705 attempt 1 job 120865835086 had genuine Shiretoko native walking snapshot z=19.868m, elapsed=4.6333s, KeyW held, 17/18 browser cases successful. PR #86 anchors read-only elapsed observation at actual pre-keydown snapshot; native input/collision/radii/timeouts are unchanged.
+
+## PR #87 tapered sasa, independent WebGL visual evidence
+- Feature source HEAD `d03e69658a58a93cf5c97140f945f1651a87a4a8` from base `f08db6c`: terrain run **40093911244 attempt 1 3/3 SUCCESS**; preview run **40093911252 attempt 1 5/5 SUCCESS**; opt-in native WebGL run **40093911235 attempt 1 1/1 SUCCESS**. Seven actual 1100x680 WebGL screenshots from artifact 12559803875 inspected; real lake deck, cabin, wetland and highland render. Source artifact JSON: 5,254 low-flora instances, 64 instanced groups, 245 wooden panels; native walker grounded and no save/network writes. 95 sampled draw calls is a CI scene value, not physical Windows FPS.
+- PR #87 changes only `src/shiretoko-phase1/flora-renderer.ts` and `tests/shiretoko-flora-renderer.test.mjs`; their blob SHAs on main `2c373297` match common ancestor `f08db6c` exactly. Six bent, tapered 3D sasa blades plus rooted stem reuse the original species GPU draw group; terrain footprint/seed/route and TITLE/HOME/save untouched.
+- This PR branch is being integrated via a **normal non-forced two-parent merge commit** joining verified main `2c37329730af45c0b90fc771b63e818ca875257f` and source `d03e69658a58a93cf5c97140f945f1651a87a4a8`, including this canonical checkpoint/queue. The NEW exact integration HEAD must be freshly read; all matching 3 terrain + 5 preview + 1 native WebGL are PENDING until GitHub confirms, and the branch MUST NOT merge to main before then.
+
+## Local visual review candidate / publication
+- Evidence: `RECLAIM_PR87_ACTUAL_WEBGL_CONTACT.jpg` and actual artifact ZIP downloaded. Local preview candidate `RECLAIM_SHIRETOKO_PR87_SASA_LAKE_VISUAL_REVIEW_20261024.zip` has 6 navigable scenes, genuine 3D self-contained HTML and 7 real source WebGL images. ZIP member checksum check passed. It is NOT a production deployment nor confirmed Windows browser run.
+- Existing Vercel project `reclaim-safari-preview` projectId `prj_c5CQvrRjQRcesZC6GMoMv89evR69`, teamId `team_ovY3gbfsldk7aCRexivv2MkF` returned **403 FORBIDDEN** on its normal GET. BLOCKED_AUTH, no deployment, alias or scope bypass. Await authorized team access before another deployment attempt.
+- Tokyo TITLE, Shiretoko HOME, older 480m campaign/saves, mobile FPS guard and PR #4 remain untouched. Other repositories and unrelated tasks untouched.
+
+## Next three concrete tasks
+1. Read the exact NEW PR #87 integration HEAD and all 3 terrain/5 preview/1 WebGL run IDs and attempts; inspect actual evidence and failure logs as required.
+2. Only if all new-head required checks pass and latest main base is unchanged/integrated, merge PR #87 with expected HEAD, then collect the exact post-merge main 8 required jobs; preserve failed/pending history.
+3. Refresh a verified offline main release with six scene links plus source manifest; existing Vercel release remains BLOCKED_AUTH until normal team authorization. Continue independently scoped real scenery/gameplay only with CI discipline.
+
+---
+## Prior retained historical checkpoint
 # RECLAIM — Autonomous Checkpoint (2026-10-24 20:42 JST)
 Scope: Iam-2squared/RECLAIM and pre-existing reclaim-safari-preview Vercel only. Verify current exact HEAD and jobs each run; this is a hand-off record, not a live-green substitute.
 
