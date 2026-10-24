@@ -35,3 +35,25 @@ test('invalid chunk index or detail does not generate uncontrolled geometry',()=
  assert.throws(()=>planFlora(0,-1,base,'low'),RangeError);
  assert.throws(()=>planFlora(0,0,base,'ultra'),RangeError);
 });
+
+test('highland density makes natural 50m shrub-rock patches without changing the valley or safety clearances',()=>{
+ const high={...base,height:()=>420};
+ const valleyLow=planFlora(3,4,base,'low');
+ const hillLow=planFlora(3,4,high,'low');
+ const hillBalanced=planFlora(3,4,high,'balanced');
+ assert(hillLow.length>valleyLow.length*1.2,'open highland gains meaningful, bounded silhouette density');
+ assert(hillLow.length<450,'the 300m highland low-density budget stays sparse');
+ assert(hillLow.every(x=>x.kind==='alpine-shrub'||x.kind==='stone'));
+ const highKeys=new Set(hillBalanced.map(x=>`${x.x},${x.z}`));
+ assert(hillLow.every(x=>highKeys.has(`${x.x},${x.z}`)),'balanced retains every low-density alpine sample');
+ const valleyKeys=new Set(valleyLow.map(x=>`${x.x},${x.z}`));
+ assert(valleyLow.every(x=>highKeys.has(`${x.x},${x.z}`)),'old lower-altitude samples remain present');
+ assert.equal(planFlora(3,4,{...high,routeDistance:()=>7.9},'low').length,0);
+ assert.equal(planFlora(3,4,{...high,structureDistance:()=>6.9},'balanced').length,0);
+ assert.equal(planFlora(3,4,{...high,water:()=>true},'balanced').length,0);
+ assert.equal(planFlora(3,4,{...high,wetness:()=>.9},'low').length,valleyLow.length,
+   'open wet highland retains the old sedge density');
+ assert.equal(planFlora(3,4,{...high,slope:()=>1.2},'low').length,valleyLow.length,
+   'very steep highland keeps only existing sparse stone positions');
+ const repeat=planFlora(3,4,high,'low'); assert.deepEqual(repeat,hillLow);
+});
