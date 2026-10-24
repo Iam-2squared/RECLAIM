@@ -61,7 +61,7 @@ test('real indexed wooden triangles are authoritative for collision and render',
 
 test('lake supports, three visible rails and two benches are shared lightweight instanced draw groups',()=>{
   const [deck,piers,rails,posts,benches]=review.group.children;
-  assert.equal(review.group.children.length,5,'no mesh-per-plank or 6 separate support draw calls');
+  assert.equal(review.group.children.length,6,'seventeen plank seams share one draw group');
   assert(piers instanceof T.InstancedMesh && rails instanceof T.InstancedMesh &&
     posts instanceof T.InstancedMesh && benches instanceof T.InstancedMesh);
   assert.equal(piers.count,6);
@@ -104,6 +104,24 @@ test('native fixed-step walker can enter west side and stops at real lake-facing
     'normal 5m world has no experimental deck collision');
 });
 
+test('all 17 visible lookout deck grooves follow the real walkable 3D triangles',()=>{
+  const grooves=review.group.getObjectByName('lake-lookout / terrain-conforming real plank grooves');
+  assert(grooves instanceof T.Mesh,'genuine lookout review includes the groove geometry');
+  const positions=grooves.geometry.getAttribute('position'),indices=grooves.geometry.getIndex();
+  assert.equal(positions.count,17*2*4,'every strip is split on the diagonal');
+  assert.equal(indices.count,17*2*6,'compact indexed geometry, not 17 draw calls');
+  assert.equal(review.panels,1,'no secondary floor was introduced');
+  for(let i=0;i<positions.count;i++){
+    const x=positions.getX(i),y=positions.getY(i),z=positions.getZ(i);
+    const expected=review.heightAt(x,z);
+    assert.notEqual(expected,null,'grooves must remain inside the deck');
+    assert(Math.abs(y-expected-.014)<.0002,'grooves track the real sloped floor');
+    assert(z>site.z-5&&z<site.z+5,'leave railing endpoints unobstructed');
+  }
+  assert.equal(review.blockedAt(review.entrance.x,review.entrance.z),false,
+    'genuine walker entrance is still open');
+});
+
 test('all review-only meshes dispose geometry without affecting campaign',()=>{
   const geometries=new Set(),materials=new Set();
   review.group.traverse(obj=>{
@@ -113,8 +131,8 @@ test('all review-only meshes dispose geometry without affecting campaign',()=>{
       if(obj instanceof T.InstancedMesh)obj.dispose();
     }
   });
-  assert(geometries.size<=5);
-  assert(materials.size<=3,'same timber material shared between most pieces');
+  assert(geometries.size<=6,'one shared indexed groove mesh, never per-plank draw calls');
+  assert(materials.size<=4,'the extra grooves use one shared material only');
   for(const geom of geometries)geom.dispose();
   for(const material of materials)material.dispose();
   review.group.clear();
