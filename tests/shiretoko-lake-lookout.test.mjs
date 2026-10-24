@@ -80,6 +80,33 @@ test('lake supports, three visible rails and two benches are shared lightweight 
   assert(rails.geometry && deck.material);
 });
 
+test('all three visible rails meet real sloped deck at both ends and still match posts',()=>{
+  const rails=review.group.getObjectByName('lake-lookout / instanced three-sided guard rails');
+  assert(rails instanceof T.InstancedMesh);
+  assert.equal(rails.count,3,'retain the existing one-draw-call guard group');
+  const edges=[
+    [[site.x+4,site.z-5],[site.x+4,site.z+5]],
+    [[site.x-4,site.z-5],[site.x+4,site.z-5]],
+    [[site.x-4,site.z+5],[site.x+4,site.z+5]],
+  ];
+  const matrix=new T.Matrix4();
+  for(let i=0;i<edges.length;i++){
+    rails.getMatrixAt(i,matrix);
+    for(const [endpoint,localX] of [[edges[i][0],-.5],[edges[i][1],.5]]){
+      const actual=new T.Vector3(localX,0,0).applyMatrix4(matrix);
+      const expectedY=review.heightAt(endpoint[0],endpoint[1]);
+      assert.notEqual(expectedY,null);
+      assert(Math.hypot(actual.x-endpoint[0],actual.z-endpoint[1])<.0002,
+        'rail end must stay directly over the true deck edge');
+      assert(Math.abs(actual.y-expectedY-.95)<.0002,
+        'rail end must meet its ground-following post, even on a pitched edge');
+    }
+  }
+  assert.equal(review.blockedAt(site.x+3.9,site.z),true,
+    'existing physical east rail and open west entrance are unchanged');
+  assert.equal(review.blockedAt(review.entrance.x,review.entrance.z),false);
+});
+
 test('native fixed-step walker can enter west side and stops at real lake-facing rail',()=>{
   const surface=(x,z)=>review.heightAt(x,z);
   const rider=new TerrainWalker(terrain,surface,review.blockedAt);

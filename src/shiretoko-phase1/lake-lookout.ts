@@ -133,17 +133,24 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   // the west approach open. Visual rails and 2D collision use these same edges.
   const rails=new T.InstancedMesh(new T.BoxGeometry(1,.14,.13),railColor,3);
   rails.name='lake-lookout / instanced three-sided guard rails';
+  // A single straight rail per edge must meet the actual deck surface at
+  // BOTH ends. The large indexed deck triangles slope independently in X
+  // and Z, so a horizontal rail at the midpoint clips or floats at its posts.
+  // Rotating the original three instanced bars adds no draw calls or floors.
   const railRuns=[
-    {x:right,z:site.z,axis:'z',length:2*HALF_Z},
-    {x:site.x,z:back,axis:'x',length:2*HALF_X},
-    {x:site.x,z:front,axis:'x',length:2*HALF_X},
+    {from:[right,back],to:[right,front]},
+    {from:[left,back],to:[right,back]},
+    {from:[left,front],to:[right,front]},
   ] as const;
   railRuns.forEach((run,index)=>{
-    const y=surface(run.x,run.z);
-    if(y===null)throw new Error('lookout handrail needs deck top');
-    matrix.compose(new T.Vector3(run.x,y+.95,run.z),
-      new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),
-        run.axis==='z'?Math.PI/2:0),new T.Vector3(run.length,1,1));
+    const fromY=surface(...run.from),toY=surface(...run.to);
+    if(fromY===null||toY===null)throw new Error('lookout handrail needs both deck endpoints');
+    const from=new T.Vector3(run.from[0],fromY+.95,run.from[1]);
+    const to=new T.Vector3(run.to[0],toY+.95,run.to[1]);
+    const vector=to.clone().sub(from),length=vector.length();
+    const rotation=new T.Quaternion().setFromUnitVectors(
+      new T.Vector3(1,0,0),vector.normalize());
+    matrix.compose(from.clone().lerp(to,.5),rotation,new T.Vector3(length,1,1));
     rails.setMatrixAt(index,matrix);
   });
   rails.instanceMatrix.needsUpdate=true;rails.computeBoundingSphere();group.add(rails);
