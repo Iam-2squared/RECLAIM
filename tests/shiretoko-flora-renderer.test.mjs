@@ -36,7 +36,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
     }
     if(node.name.endsWith('/sedge')){
       const geometry=node.geometry,bounds=geometry.boundingBox;
-      assert(bounds,'each sedge's shared geometry needs a culling bound');
+      assert(bounds,'each sedge shared geometry needs a culling bound');
       assert(bounds.min.y>=-.05 && bounds.max.y>1.3 && bounds.max.y<1.55,
         'native wetland sedges should have rooted stalks and visible mature seed spikes');
       assert(geometry.getAttribute('position').count<240,
