@@ -29,11 +29,12 @@ test('two authentic grounded timber chairs are geometry, not uncollidable decals
     if(relative>=1&&relative<=4){
       assert(Math.abs(pos.y-scale.y/2-cabin.floorY)<.0001,
         'all eight visible leg feet touch the SAME walking floor');
-      assert.equal(scale.y,.45);
+      assert(Math.abs(scale.y-.45)<.00001);
     }
     if(relative===0){
       assert(Math.abs(pos.y-cabin.floorY-.52)<.0001);
-      assert(scale.x===.8&&scale.z===.72,'seat covers its physical collision footprint');
+      assert(Math.abs(scale.x-.8)<.00001&&Math.abs(scale.z-.72)<.00001,
+        'seat covers its physical collision footprint');
     }
     if(relative>=5){
       assert(pos.y>cabin.floorY+.9 && pos.y<cabin.floorY+1.5,
