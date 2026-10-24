@@ -90,13 +90,18 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       assert(bounds,'each sedge shared geometry needs a culling bound');
       assert(bounds.min.y>=-.05 && bounds.max.y>1.3 && bounds.max.y<1.55,
         'native wetland sedges should have rooted stalks and visible mature seed spikes');
-      assert(geometry.getAttribute('position').count<240,
-        'wetland silhouette detail must stay inside the software-WebGL vertex budget');
+      const vertices=geometry.getAttribute('position');
+      assert(vertices.count>190&&vertices.count<240,
+        'six real tapered sedge leaf ribbons and seed spikes share a bounded GPU species mesh');
+      assert.equal(geometry.getAttribute('uv')?.count,vertices.count,
+        'leaf, stalk and seed UV attributes must merge into one real sedge mesh');
+      assert(bounds.max.x-bounds.min.x>.30 && bounds.max.z-bounds.min.z>.30,
+        'wetland sedges must bend outward in two world axes, not repeat five flat upright quads');
       const swatches=new Set(),colours=geometry.getAttribute('color');
       for(let v=0;v<colours.count;v++)
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
-      assert(swatches.size>=3,
-        'seed, stem and blades remain separate colours in a single instanced draw group');
+      assert(swatches.size>=8,
+        'six genuine blade colours, stalk and small seeds share a single existing draw group');
     }
     if(node.name.endsWith('/deadwood')){
       foundDeadwood=true;
