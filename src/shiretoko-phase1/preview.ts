@@ -119,7 +119,7 @@ async function boot() {
   if (floraReview) root.add(floraReview.group);
   if (cabinReview) root.add(cabinReview.group);
   if (lakeLookoutReview) root.add(lakeLookoutReview.group);
-  if (lakeLookoutReview && !cabinReview && !boardwalkReview && !floraReview) {
+  if (lakeLookoutReview && !cabinReview && !boardwalkReview) {
     root.add(new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 1.8));
     const lookoutSun=new T.DirectionalLight(0xffdab0, 2.0);
     lookoutSun.position.set(-260,640,340);root.add(lookoutSun);
@@ -333,7 +333,7 @@ async function boot() {
   // This dedicated lake-only URL starts with its actual dynamically surveyed
   // dry shoreline deck, not an unrelated all-map/cape camera. Combined nature
   // URLs retain the existing cabin-first camera and all review scripts.
-  const firstLook = lakePoint && !cabinReview && !boardwalkReview && !floraReview
+  const firstLook = lakePoint && !cabinReview && !boardwalkReview
     ? {
         kind:'lookout' as const,
         position:[lakePoint.x-18,
@@ -390,7 +390,7 @@ async function boot() {
   let geometryAttributeBytes=0,indexBytes=0;
   scene.traverse(object=>{if(object instanceof T.Mesh || object instanceof T.Line){for(const a of Object.values(object.geometry.attributes) as T.BufferAttribute[])geometryAttributeBytes+=a.array.byteLength;indexBytes+=object.geometry.index?.array.byteLength??0;}});
   const diagnostics = () => ({
-    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview && !cabinReview,
+    ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview && !cabinReview && !lakeLookoutReview,
     floraReview: floraReview ? { enabled: true, quality: floraReview.quality,
       instances: floraReview.instances, drawGroups: floraReview.drawGroups,
       instanceBytes: floraReview.instanceBytes, saveWrites: 0 } : { enabled: false },
