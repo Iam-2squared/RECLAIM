@@ -159,7 +159,7 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   const roofPitch=Math.atan2(peak-eave,roofHalf);
   const ribMatrices:T.Matrix4[]=[],ribColours:number[]=[];
   const seamColours=[0x70898a,0x5b777a,0x80908a,0x617779];
-  const length=Math.hypot(roofHalf,peak-eave);
+  const roofRibLength=Math.hypot(roofHalf,peak-eave);
   for(const side of [-1,1] as const){
     const angle=-side*roofPitch;
     const angleQ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),angle);
@@ -170,7 +170,7 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
         X+side*roofHalf/2-Math.sin(angle)*.039,
         (peak+eave)/2+Math.cos(angle)*.039,z);
       ribMatrices.push(new T.Matrix4().compose(
-        centre,angleQ,new T.Vector3(length,.08,.12)));
+        centre,angleQ,new T.Vector3(roofRibLength,.08,.12)));
       ribColours.push(seamColours[(i+side+3)%seamColours.length]);
     }
   }
