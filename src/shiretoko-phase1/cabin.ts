@@ -1,5 +1,6 @@
 import * as T from 'three';
 import {ShiretokoTerrain,coastDistance,routeSample} from './terrain.ts';
+import {CABIN_SITE} from './cabin-site.ts';
 
 /** Original, opt-in headland cabin in the standalone 2400m review.
  * Floor and stair heights are queried from the SAME rectangles drawn in 3D.
@@ -15,7 +16,8 @@ export type CabinReview = Readonly<{
   supports: number;
   entrance: Readonly<{x:number;z:number}>;
 }>;
-const X=-100, Z=835, WIDTH=18, DEPTH=14, WALL=.34;
+const {x:X,z:Z,width:WIDTH,depth:DEPTH}=CABIN_SITE;
+const WALL=.34;
 const DOOR_HALF=1.15, PERSON=.23;
 export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   const left=X-WIDTH/2,right=X+WIDTH/2,back=Z-DEPTH/2,front=Z+DEPTH/2;

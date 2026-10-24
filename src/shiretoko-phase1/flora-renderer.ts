@@ -2,6 +2,7 @@ import * as T from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { planFlora, type FloraKind } from './vegetation-plan.ts';
 import { ShiretokoTerrain, routeSample, wetnessAt } from './terrain.ts';
+import { cabinSiteClearanceDistance } from './cabin-site.ts';
 
 /**
  * Opt-in, non-campaign Shiretoko foliage review.
@@ -107,7 +108,13 @@ export function createFloraReviewLayer(
       wetness:wetnessAt,
       routeDistance:(x,z)=>routeSample(x,z).distance,
       water:(x,z)=>terrain.inWater(x,z),
-      structureDistance:(x,z)=>Math.min(Math.hypot(x+170,z-850)-65,Math.hypot(x+140,z+310)-18),
+      // Existing clearings remain; the actual relocated cabin and east stairs
+      // require their own margin, or vegetation can pierce walls/decking.
+      structureDistance:(x,z)=>Math.min(
+        Math.hypot(x+170,z-850)-65,
+        Math.hypot(x+140,z+310)-18,
+        cabinSiteClearanceDistance(x,z),
+      ),
     },quality);
     for(const plant of planned){
       instances++;
