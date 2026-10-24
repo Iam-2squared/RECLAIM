@@ -1,19 +1,24 @@
-# RECLAIM Autonomous Development Checkpoint
-Updated: 2026-10-24 08:18 JST. Scope: **Iam-2squared/RECLAIM** only. Always re-read exact latest PR/branch/main HEAD, CI run/attempt, and Vercel authority before changing anything.
+# RECLAIM Autonomous Development — Current Checkpoint
 
-## Verified GitHub state at this checkpoint
-- Initial main: `a754a839f48dee12c32368a3ef44d35515b0acba`, main terrain 3/3 and preview 5/5 GREEN.
-- PR #53: verified attack wind-up fix (source `97ac91061c885c5088a39d0dc68a280183d97b2c`), preview run `40036800233` 5/5 GREEN, squash merged to main `15b9fdf3a59de7c518a388dcc706845eff04d74b`. Post-merge preview run `40038025194` **pending** at this snapshot; do not call main green until confirmed.
-- PR #52: first source `6ab27a34579cefd05159956fc332f93040bfa25d` verified with terrain `40036726054` 3/3 and preview `40036726108` 5/5. Imported existing 3D instanced flora and real indexed marsh boardwalk, opt-in only `/shiretoko-terrain.html?flora=low&boardwalk=1` or `flora=balanced&boardwalk=1`. Terrain and preview also GREEN on later HEAD `2b9d6fe71d3aa3f1a65d89622b282297211bbb61` (runs `40037987149`, `40037987139`).
-- **Actual opt-in SwiftShader WebGL** evidence `40037987225`, attempt 1, previous HEAD `2b9d6fe`, artifact `12537842696`: 2 genuine 1100×680 RGB framebuffer JPG; 5009 low flora instances/56 groups; 245 indexed timber panels/490 triangles; shared ground+deck physics jump and landing at exactly y=98.520160098; no external network or game save access. Strict scene disposal failed because **1 renderer-tracked texture remained** (geometries=0, disposed=true). This commit changes only the opt-in deck's two PBR material constructions to lightweight Lambert surfaces to remove the internal fallback texture, **without** changing the material's geometry, deck collision, save guards, screenshots requirements, timeouts or strict 0-texture assertion. New exact-HEAD CI and opt-in live visual proof **REQUIRED**, do not merge yet.
-- PR #54: nationwide opt-in region tile refill, HEAD `6cc5dff48930e5c04c7ed9ff82498503f27b55e5`, preview run `40036933204` 5/5 GREEN. Latest-main integration/merge/post-merge CI pending.
-- Cliff cabin: local original Three.js structure + shared rigid-floor/wall/stair physical contract and 6 synthetic-terrain tests passing, **not merged, not actual Shiretoko-mesh/WebGL validated**. Do not claim the cabin visible.
-- Vercel: original `reclaim-safari-preview`, team `team_ovY3gbfsldk7aCRexivv2MkF`, project `prj_c5CQvrRjQRcesZC6GMoMv89evR69`. Official scoped project/deployment read **403**; `BLOCKED_AUTH`, public deployment/URL/SHA not verifiable. No alternate scope or bypass.
+Updated: **2026-10-24 18:09 JST**. Scope: **Iam-2squared/RECLAIM** only. Verified through GitHub API; always refresh HEAD/run/attempt before any merge or status claims.
 
-## Next three tasks
-1. Recover PR #52 new HEAD: require terrain 3/3, preview 5/5, nature real-WebGL opt-in SUCCESS with **textures=0 after dispose** and screenshots/physics tests. If failure, inspect actual job log, fix product cause, do not relax thresholds/retry blindly.
-2. Recover merged main `15b9fdf` preview CI; verify PR #54 exact head vs latest main, merge only after conflict-free evidence and required checks, recover resulting main CI.
-3. Merge Shiretoko nature review into current main only after all gates; update downloadable playable HTML; adapt separate cabin candidate to real 5m terrain/collidable walker with images before further merge.
+## Product and main
+- Verified main before this integration: `744299cb2ec43bbd1040aa2a2f252bb86bf8d8e8` — PR #78 squash-merging corrected highland review framing and its real terrain CI expectation. PR #78 original source `5e653020e5dc6541660a2de0624c816d426316e3`; all required 3 terrain, 5 preview, 1 nature-WebGL jobs SUCCESS at attempt 1: runs `40079940364`, `40079940361`, `40079940378`. Previous failure run `40077248385` asserted outdated +100 m although the source camera was deliberately changed to +35 m; repaired strict expected position, not assertion tolerance or timeout. Real highland screenshots compare artifact `12554931244` with PR #76 artifact `12552768538`; still visibly sparse and not photorealistic.
+- Main push terrain run `40080584423` and preview run `40080584410` were **in progress** when recorded. Do not call main fully green before exact-run completion.
+- Existing opt-in native 2400 m review: `/shiretoko-nature.html` with cabin, boardwalk, low/balanced vegetation, highland and lake routes. Campaign 480 m saved positions and approved TITLE/HOME/mobile gate unchanged.
 
-## Non-negotiable boundaries
-Do not redesign approved PC/mobile Tokyo TITLE or Shiretoko HOME, modify game saves/world versions, unlock 18 story locations, remove mobile FPS guard, import old HOME PR #4, touch other repos, force-push, bypass GitHub/Vercel permission, pay for new services, or misreport CI/GPU evidence. Existing 480m campaign and new 2400m terrain must stay independent until designed world-version checkpoint migration. No green from older SHA.
+## Current independent candidate
+- PR **#79**, branch `feature/shiretoko-cabin-glazing-joinery-20261024-1753`, initial feature commit `f2e2f50ea0b283be926790f1f651ee8936b38885` based on former main `a9fbd32074b72ca85107837d8b9181f1ec90d75f`. Eight real door jamb / window muntin members in **one Three.js InstancedMesh**, using the existing trim material and geometry, without changing physics, terrain, doors, windows or saves.
+- Initial feature HEAD CI: terrain `40080241998` **3/3 SUCCESS**, preview `40080242056` **5/5 SUCCESS**, nature real WebGL `40080241997` **1/1 SUCCESS**, attempt 1; true cabin entry, native walker, screenshot, network/save isolation and disposal proved. Baseline PR #77 nature draw calls/geometries `93/134` vs candidate `94/135`; both 2 textures, same 5m walking floor. PR #79 screenshot artifact `12554348396`, baseline PR #77 artifact `12553741527`. NOT yet merged at this checkpoint.
+- This integration is an ordinary two-parent, fast-forward PR branch merge of current main and PR #79 source, with disjoint changed files, plus this canonical checkpoint. Its resulting HEAD and all 9 required exact-HEAD jobs MUST be fetched before merge. Do not reuse the initial HEAD green as evidence for the integrated HEAD.
+
+## Blockers and safety
+- Existing Vercel team `team_ovY3gbfsldk7aCRexivv2MkF`, project `prj_c5CQvrRjQRcesZC6GMoMv89evR69` / `reclaim-safari-preview`: official GET project again returned **403 FORBIDDEN**, requiring team consent/re-auth; `BLOCKED_AUTH`, no new deployment or verified public SHA.
+- Do not change 480m saves, Tokyo TITLE, Shiretoko HOME, mobile FPS guard, old HOME PR #4, other repos, budget, scopes, or protections. No force push, CI skip, threshold relaxation, or unapproved retry. Old historical red remains visible.
+
+## Next three concrete actions
+1. Collect new exact integration HEAD of PR #79: terrain 3/3, preview 5/5, real nature WebGL 1/1; inspect actual screenshot and strict pixel/physics/resource results. Fix product regressions at root cause.
+2. Finish existing main `744299cb2ec4` push CI, then if #79 integration head is clean against latest main and all 9 jobs successful, merge via expected SHA. Collect post-merge main 8/8 separately.
+3. Package the resulting validated main standalone `shiretoko-terrain.html` + `shiretoko-nature.html` offline for Windows review; next visible improvement: reduce sparse highland vista using terrain-aware rock/shrub grouping without covering paths, measured on real SwiftShader geometry and performance.
+
+Recorded only this one canonical checkpoint; never treat this text as a substitute for live GitHub checks.
