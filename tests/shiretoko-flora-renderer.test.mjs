@@ -12,7 +12,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
   assert.equal(layer.quality,'low');
   assert.equal(layer.instanceBytes,layer.instances*76);
   const seen=new Set(),trees=new Set(),matrix=new THREE.Matrix4(),translation=new THREE.Vector3();
-  let total=0,foundTalus=false,foundHighlandShrub=false,foundDeadwood=false;
+  let total=0,foundTalus=false,foundHighlandShrub=false,foundDeadwood=false,foundMeadowGrass=false;
   layer.group.traverse(node=>{
     if(!(node instanceof THREE.InstancedMesh))return;
     assert(node.count>0 && node.count<=layer.instances);
@@ -101,6 +101,18 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
       assert(swatches.size>=5,'leaf variation is vertex colour, not new textures or draw groups');
     }
+    if(node.name.endsWith('/meadow-grass')){
+      foundMeadowGrass=true;
+      const g=node.geometry,p=g.getAttribute('position'),colours=g.getAttribute('color');
+      assert(g.boundingBox && g.boundingBox.min.y>=-.02 && g.boundingBox.max.y>.65
+        && g.boundingBox.max.y<.90,'short grasses stay rooted below shrubs and mature sedges');
+      assert(p.count>90&&p.count<160,'eight bent blades and one rooted crown fit a small shared mesh');
+      assert.equal(g.getAttribute('uv')?.count,p.count,'ribbons retain merge-safe UV attributes');
+      const unique=new Set();
+      for(let i=0;i<colours.count;i++)
+        unique.add([0,1,2].map(k=>Math.round(colours.getComponent(i,k)*255)).join(','));
+      assert(unique.size>=8,'eight natural grass shades are vertex colours, not new textures');
+    }
     if(node.name.endsWith('/sedge')){
       const geometry=node.geometry,bounds=geometry.boundingBox;
       assert(bounds,'each sedge shared geometry needs a culling bound');
@@ -163,7 +175,8 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
     }
   });
   assert.equal(total,layer.instances);
-  assert(seen.size<=7,'all 600m culling groups must share species geometries');
+  assert(seen.size<=8,'all 600m culling groups must share species geometries');
+  assert(foundMeadowGrass,'real Shiretoko lowland must contain native-looking grass tufts');
   assert.deepEqual([...trees].sort(),['birch','spruce'],'both mature species rendered in low-quality mode');
   assert(foundTalus,'real terrain should render talus in the low setting');
   assert(foundDeadwood,'real dry Shiretoko forest must contain some low-cost fallen logs');

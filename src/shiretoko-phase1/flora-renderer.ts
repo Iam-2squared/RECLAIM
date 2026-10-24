@@ -19,7 +19,7 @@ export type FloraReviewLayer = Readonly<{
   quality: FloraReviewQuality;
 }>;
 
-const kinds: readonly FloraKind[] = ['spruce','birch','alpine-shrub','sedge','sasa','stone','deadwood'];
+const kinds: readonly FloraKind[] = ['spruce','birch','alpine-shrub','sedge','sasa','meadow-grass','stone','deadwood'];
 const MAX_INSTANCES = 58_000;
 const MAX_DRAW_GROUPS = 96;
 
@@ -165,6 +165,38 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
             g.rotateZ(i?-.33:.33);
             g.translate(i?-.075:.085,1.095+i*.07,i?-.035:.04);
           });
+      break;
+    }
+    case 'meadow-grass': {
+      // Short, arching lowland grass fans live in an existing planned cell,
+      // never on a second dense scatter lattice. Eight tapered leaf ribbons
+      // share one sampler-free species geometry, one material and the existing
+      // 600m instanced culling grid, without modifying walker collision.
+      const colours=[0x76864d,0x88945d,0x6f8051,0x9b995f,0x63784b,0x84975b,0x9a8d50,0x71844e];
+      for(let i=0;i<8;i++){
+        const h=.49+(i%4)*.065,w=.16+(i%3)*.035;
+        const leaf=new T.BufferGeometry();
+        leaf.setAttribute('position',new T.Float32BufferAttribute([
+          0,.015,0,
+          -w*.5,h*.42,.015, w*.5,h*.42,.015,
+          -w*.26,h*.74,.12, w*.26,h*.74,.12,
+          0,h,.25,
+        ],3));
+        leaf.setAttribute('uv',new T.Float32BufferAttribute([
+          .5,0, 0,.42, 1,.42, .24,.74, .76,.74, .5,1,
+        ],2));
+        leaf.setIndex([0,1,2,1,3,4,1,4,2,3,5,4]);
+        leaf.computeVertexNormals();
+        const angle=i*Math.PI/4+(i%2)*.11;
+        part(parts,leaf,colours[i],g=>{
+          g.rotateZ((i%2?1:-1)*(.08+.015*(i%3)));
+          g.rotateY(angle);
+          g.translate(Math.cos(angle)*.10,0,Math.sin(angle)*.10);
+        });
+      }
+      // One shared root closes the fan visually against the exact ground.
+      part(parts,new T.CylinderGeometry(.055,.085,.15,5,1),
+        0x667348,g=>g.translate(0,.075,0));
       break;
     }
     case 'sasa': {

@@ -57,3 +57,23 @@ test('highland density makes natural 50m shrub-rock patches without changing the
    'very steep highland keeps only existing sparse stone positions');
  const repeat=planFlora(3,4,high,'low'); assert.deepEqual(repeat,hillLow);
 });
+
+test('short meadow grass replaces a bounded portion of existing lowland flora without multiplying instances',()=>{
+ const dry=planFlora(3,4,base,'low');
+ const dryBalanced=planFlora(3,4,base,'balanced');
+ const meadow=dry.filter(p=>p.kind==='meadow-grass');
+ assert(meadow.length>0&&meadow.length<dry.length*.25,'open woodland carries sparse low ground grasses');
+ const moderate={...base,wetness:()=>.55};
+ const bank=planFlora(3,4,moderate,'low');
+ assert(bank.some(p=>p.kind==='meadow-grass'),'damp margins also have shorter grass');
+ assert(bank.every(p=>p.kind==='sasa'||p.kind==='birch'||p.kind==='meadow-grass'));
+ assert.deepEqual(dry.map(({x,z})=>[x,z]),bank.map(({x,z})=>[x,z]),
+   'grass and sedge transitions must not create an extra scatter lattice');
+ const balancedKeys=new Set(dryBalanced.map(p=>`${p.x},${p.z}`));
+ assert(meadow.every(p=>balancedKeys.has(`${p.x},${p.z}`)),'low remains a subset of balanced');
+ for(const surface of [{...moderate,water:()=>true},{...moderate,routeDistance:()=>7.9},
+     {...moderate,structureDistance:()=>6.9}])
+   assert.equal(planFlora(3,4,surface,'balanced').length,0,'existing route/water/site exclusions win');
+ assert(planFlora(3,4,{...moderate,wetness:()=>.9},'low').every(p=>p.kind==='sedge'));
+ assert(planFlora(3,4,{...moderate,height:()=>420},'low').every(p=>p.kind!=='meadow-grass'));
+});
