@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="color-scheme" content="dark">
+<title>RECLAIM | 日本全国エリアレビュー</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#e4f2f3;background:#08131a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top right,#194148,#08131a 65%);min-height:100vh}
+header,main,footer{margin:auto;max-width:1240px;padding:30px 26px}header{padding-top:46px}
+small.kicker{color:#77dccc;letter-spacing:.24em;font-weight:700}h1{font-size:clamp(2.1rem,6vw,4rem);margin:10px 0}p{line-height:1.75}
+.subtitle{max-width:850px;color:#accdd0}.warning{padding:15px;border-left:4px solid #dfc385;background:#443b28bb;color:#fff1c6}
+.counters{display:flex;gap:13px;flex-wrap:wrap;margin:25px 0}.counter{padding:14px 19px;border-radius:12px;border:1px solid #42626a;background:#14272dc9;min-width:145px}
+.counter strong{display:block;font-size:2rem}.counter span{color:#a8c9cc;font-size:.82rem}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:18px 0 25px}
+input,select{font:inherit;min-height:46px;padding:11px 14px;border:1px solid #60808b;border-radius:8px;color:#e4f2f3;background:#19333b}
+input{flex:1;min-width:200px}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #99e5d4;outline-offset:3px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(275px,350px);gap:18px}
+.panel{background:#102329ca;border:1px solid #385761;border-radius:14px;padding:17px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+button.pref{font:inherit;background:#173038;color:#edf9f8;border:1px solid #426369;border-radius:10px;padding:14px;text-align:left;min-height:94px;cursor:pointer}
+button.pref:hover,button.pref[aria-pressed="true"]{border-color:#8ce7d4;background:#28535a}
+.code{font-size:.7rem;color:#aad0d1;display:block}.name{font-size:1.13rem;font-weight:700;display:block;margin:5px 0}
+.status{font-size:.77rem;color:#9dcfc1}.details{position:sticky;top:20px}
+ol{columns:2;padding-left:26px}li{break-inside:avoid;padding:3px 0;font-size:.83rem;color:#c2dbdd}
+footer{color:#9cc2c6;font-size:.79rem}@media(max-width:780px){.layout{grid-template-columns:1fr}.details{position:static}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+</style></head><body>
+<header><small class="kicker">RECLAIM / DEVELOPMENT REVIEW</small><h1>JAPAN AREA CATALOG</h1>
+<p class="subtitle">日本全域の制作状況を、ゲーム本編とは独立して確認する開発用ページです。TITLE/HOME・ストーリー進行・セーブデータには一切接続しません。</p>
+<p class="warning"><b>47都道府県が登録済みでも、47都道府県の地形や3D探索空間が完成したわけではありません。</b> 現時点の県単位の地形完成数と探索可能数は0です。</p>
+<div class="counters"><div class="counter"><strong id="registered">47</strong><span>県カタログ登録</span></div><div class="counter"><strong id="regions">9</strong><span>地方区分</span></div><div class="counter"><strong>0</strong><span>県単位の地形完成</span></div><div class="counter"><strong>0</strong><span>県単位で探索可能</span></div></div>
+</header><main><div class="controls"><label for="search">検索</label><input type="search" id="search" autocomplete="off" placeholder="北海道 / 沖縄 / 01">
+<label for="region">地方</label><select id="region"><option value="">すべての地方</option></select></div>
+<div class="layout"><section class="panel" aria-labelledby="listing"><h2 id="listing">都道府県 <small id="found"></small></h2><div class="grid" id="grid"></div></section>
+<aside class="panel details" aria-live="polite"><small class="kicker">PREFECTURE STATUS</small><h2 id="selected">北海道</h2><p id="details">地域登録のみ</p>
+<h3>既存ストーリー本線（18地点）</h3><ol id="story"></ol><p class="subtitle">東京・初回撤退と東京・再突入は別の進行地点。新地域登録によって???やセーブ状態は変化しません。</p></aside></div>
+</main><footer>Read-only preview. No external requests, no cookies, no storage APIs, no route into gameplay.<br>
+Catalog snapshot: Iam-2squared/RECLAIM main 37e6637233a2 (2026-10-23). Stage 0 = 登録のみ。地理的実測の再現ではありません。</footer>
+<script type="application/json" id="data">{"revision":"37e6637233a26f7e8244a6253c5e9805abc0c744","regions":{"hokkaido":"北海道","tohoku":"東北","kanto":"関東","chubu":"中部","kinki":"近畿","chugoku":"中国","shikoku":"四国","kyushu":"九州","okinawa":"沖縄"},"prefectures":[{"code":"01","name":"北海道","region":"hokkaido","stage":"catalog-only","demos":["shiretoko","ishikari-mountains","hidaka-mountains","sapporo"]},{"code":"02","name":"青森県","region":"tohoku","stage":"catalog-only","demos":[]},{"code":"03","name":"岩手県","region":"tohoku","stage":"catalog-only","demos":[]},{"code":"04","name":"宮城県","region":"tohoku","stage":"catalog-only","demos":[]},{"code":"05","name":"秋田県","region":"tohoku","stage":"catalog-only","demos":[]},{"code":"06","name":"山形県","region":"tohoku","stage":"catalog-only","demos":[]},{"code":"07","name":"福島県","region":"tohoku","stage":"catalog-only","demos":[]},{"code":"08","name":"茨城県","region":"kanto","stage":"catalog-only","demos":[]},{"code":"09","name":"栃木県","region":"kanto","stage":"catalog-only","demos":[]},{"code":"10","name":"群馬県","region":"kanto","stage":"catalog-only","demos":[]},{"code":"11","name":"埼玉県","region":"kanto","stage":"catalog-only","demos":[]},{"code":"12","name":"千葉県","region":"kanto","stage":"catalog-only","demos":[]},{"code":"13","name":"東京都","region":"kanto","stage":"catalog-only","demos":[]},{"code":"14","name":"神奈川県","region":"kanto","stage":"catalog-only","demos":[]},{"code":"15","name":"新潟県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"16","name":"富山県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"17","name":"石川県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"18","name":"福井県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"19","name":"山梨県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"20","name":"長野県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"21","name":"岐阜県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"22","name":"静岡県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"23","name":"愛知県","region":"chubu","stage":"catalog-only","demos":[]},{"code":"24","name":"三重県","region":"kinki","stage":"catalog-only","demos":[]},{"code":"25","name":"滋賀県","region":"kinki","stage":"catalog-only","demos":[]},{"code":"26","name":"京都府","region":"kinki","stage":"catalog-only","demos":[]},{"code":"27","name":"大阪府","region":"kinki","stage":"catalog-only","demos":[]},{"code":"28","name":"兵庫県","region":"kinki","stage":"catalog-only","demos":[]},{"code":"29","name":"奈良県","region":"kinki","stage":"catalog-only","demos":[]},{"code":"30","name":"和歌山県","region":"kinki","stage":"catalog-only","demos":[]},{"code":"31","name":"鳥取県","region":"chugoku","stage":"catalog-only","demos":[]},{"code":"32","name":"島根県","region":"chugoku","stage":"catalog-only","demos":[]},{"code":"33","name":"岡山県","region":"chugoku","stage":"catalog-only","demos":[]},{"code":"34","name":"広島県","region":"chugoku","stage":"catalog-only","demos":[]},{"code":"35","name":"山口県","region":"chugoku","stage":"catalog-only","demos":[]},{"code":"36","name":"徳島県","region":"shikoku","stage":"catalog-only","demos":[]},{"code":"37","name":"香川県","region":"shikoku","stage":"catalog-only","demos":[]},{"code":"38","name":"愛媛県","region":"shikoku","stage":"catalog-only","demos":[]},{"code":"39","name":"高知県","region":"shikoku","stage":"catalog-only","demos":[]},{"code":"40","name":"福岡県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"41","name":"佐賀県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"42","name":"長崎県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"43","name":"熊本県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"44","name":"大分県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"45","name":"宮崎県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"46","name":"鹿児島県","region":"kyushu","stage":"catalog-only","demos":[]},{"code":"47","name":"沖縄県","region":"okinawa","stage":"catalog-only","demos":[]}],"story":["知床","札幌","函館","青森","山形","宮城","新潟","群馬","埼玉","東京・初回撤退","神奈川","山梨／富士","静岡","愛知／豊田・名古屋","滋賀／琵琶湖","京都","大阪","東京・再突入"]}</script><script>
+(()=>{'use strict';
+const d=JSON.parse(document.getElementById('data').textContent),byId=id=>document.getElementById(id);
+const state={q:'',region:'',code:'01'};
+byId('registered').textContent=d.prefectures.length;
+byId('regions').textContent=Object.keys(d.regions).length;
+for(const [key,label] of Object.entries(d.regions)){const option=document.createElement('option');option.value=key;option.textContent=label;byId('region').append(option);}
+for(const name of d.story){const li=document.createElement('li');li.textContent=name;byId('story').append(li);}
+function render(){
+ const visible=d.prefectures.filter(p=>(!state.region||p.region===state.region)&&(!state.q||(p.name.includes(state.q)||p.code.includes(state.q)||d.regions[p.region].includes(state.q))));
+ byId('found').textContent='('+visible.length+' / 47)';
+ const grid=byId('grid');grid.replaceChildren();
+ for(const p of visible){const b=document.createElement('button');b.type='button';b.className='pref';b.setAttribute('aria-pressed',String(p.code===state.code));
+ const c=document.createElement('span');c.className='code';c.textContent=d.regions[p.region]+' / '+p.code;
+ const n=document.createElement('span');n.className='name';n.textContent=p.name;
+ const s=document.createElement('span');s.className='status';s.textContent='地域登録のみ';
+ b.append(c,n,s);b.addEventListener('click',()=>{state.code=p.code;show();render();});grid.append(b);}
+ if(!visible.length)grid.textContent='一致する都道府県はありません。';
+}
+function show(){const p=d.prefectures.find(v=>v.code===state.code);byId('selected').textContent=p.name;
+byId('details').textContent='JIS '+p.code+' · '+d.regions[p.region]+'：地域登録のみ。'+(p.demos.length?'既存の北海道ローカルAREA例：'+p.demos.join('、')+'（北海道全域の完成ではありません）。':'県単位の探索可能地形は未制作です。');}
+byId('search').addEventListener('input',e=>{state.q=e.target.value.trim();render();});
+byId('region').addEventListener('change',e=>{state.region=e.target.value;render();});
+show();render();
+})();
+</script></body></html>
