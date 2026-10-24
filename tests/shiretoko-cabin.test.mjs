@@ -337,3 +337,53 @@ test('two physically wall-mounted warm lanterns illuminate the REAL doorway with
   assert(walker.x<right-3 && walker.grounded,
     'native walker still passes through the original stair and cabin entrance');
 });
+
+
+test('roof-contact gutter downspouts join real terrain without blocking the house or stair',()=>{
+  const gutters=cabin.group.getObjectByName(
+    'cabin / roof-contact gutters and grounded downspouts / instanced');
+  assert(gutters instanceof T.InstancedMesh,'rainwater channels and pipes use real shared geometry');
+  assert.equal(gutters.count,14,'two sides each have channel, two rims, two saddles, elbow, ground pipe');
+  assert(gutters.instanceColor&&gutters.instanceColor.count===14);
+  assert(gutters.boundingSphere&&Number.isFinite(gutters.boundingSphere.radius));
+  const matrix=new T.Matrix4(),position=new T.Vector3(),rotation=new T.Quaternion(),
+    scale=new T.Vector3(),colour=new T.Color(),swatches=new Set();
+  const roofEave=cabin.floorY+3.25+.16;
+  for(let i=0;i<gutters.count;i++){
+    gutters.getMatrixAt(i,matrix);matrix.decompose(position,rotation,scale);
+    assert([...position.toArray(),...scale.toArray()].every(Number.isFinite));
+    gutters.getColorAt(i,colour);swatches.add(colour.getHex());
+    assert(scale.x>.12&&scale.y>.09&&scale.z>.06);
+    if(i%7<=2){
+      assert(Math.abs(position.x-(X+(i<7?-10:10)))<.12,
+        'U-shaped channel follows existing roof drip-edge in X');
+      assert(Math.abs(position.y-roofEave)<.2,'gutter hugs the true pitched eave');
+      assert.equal(position.z,Z,'gutter spans the physical 16m roof');
+    }
+    if(i%7===4){
+      assert(Math.abs(position.y-roofEave)<.2,'both visible saddles meet real roof');
+    }
+    if(i%7===6){
+      const bottom=position.y-scale.y/2;
+      assert(Math.abs(bottom-(terrain.heightAt(position.x,position.z)+.025))<.0001,
+        'real downpipe foot rests on the identical 5m terrain height');
+      assert(Math.abs(position.z-Z)>7.2,
+        'drainage lands outside original wall and doorway footprints');
+      assert(Math.abs(position.x-X)>9,
+        'drainage cannot obstruct the cabin interior');
+      assert(Math.abs(position.y+scale.y/2-(roofEave-.16))<.0001,
+        'top physically touches the adjoining elbow and roof channel');
+    }
+  }
+  assert(swatches.size>=3,'weathering has several physical material colours');
+  assert.equal(cabin.blockedAt(right,Z),false,'open doorway remains intact');
+  assert.equal(cabin.blockedAt(cabin.entrance.x,cabin.entrance.z),false,
+    'native stair entry stays clear');
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,'no new fake walking floor');
+  const walker=new TerrainWalker(terrain,cabin.heightAt,cabin.blockedAt);
+  assert(walker.place(cabin.entrance.x,Z));
+  walker.yaw=Math.PI/2;
+  for(let i=0;i<245;i++)walker.step({forward:1,right:0,sprint:false,jump:false},1/60);
+  assert(walker.x<right-3&&walker.grounded,
+    'actual 60Hz walker still reaches the interior after adding gutter geometry');
+});

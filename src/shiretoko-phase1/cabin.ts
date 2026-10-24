@@ -381,6 +381,57 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   siding.computeBoundingSphere();
   group.add(siding);parts++;
 
+
+  // Rain-runoff carpentry completes BOTH pitched eaves without changing the
+  // roof planes, cabin floor or existing doorway. Two open metal channels,
+  // their real roof-contact brackets and two downpipes terminate on the
+  // canonical 5m ground. Each piece shares one weathered instanced draw call.
+  const gutterParts:{matrix:T.Matrix4;color:number}[]=[];
+  const gutterRotation=new T.Quaternion().setFromAxisAngle(
+    new T.Vector3(0,1,0),Math.PI/2);
+  const unrotated=new T.Quaternion();
+  const gutterPart=(x:number,y:number,z:number,w:number,h:number,d:number,
+    color:number,rotation=unrotated)=>{
+    gutterParts.push({matrix:new T.Matrix4().compose(
+      new T.Vector3(x,y,z),rotation,new T.Vector3(w,h,d)),color});
+  };
+  for(const side of [-1,1] as const){
+    const channelX=X+side*roofHalf;
+    // Three pieces form a recognizable U-shaped channel, not a flat line
+    // pasted onto the wall. Both roof eave seams remain visible above it.
+    gutterPart(channelX,eave-.12,Z,roofSpan-.30,.10,.22,0x526463,gutterRotation);
+    for(const lip of [-1,1] as const)
+      gutterPart(channelX+lip*.095,eave-.052,Z,
+        roofSpan-.30,.105,.065,0x80908a,gutterRotation);
+    // Roof-contact saddles carry the gutters at two points per side.
+    for(const z of [Z-6.8,Z+6.8])
+      gutterPart(channelX-side*.11,eave-.11,z,.34,.15,.22,0x435754);
+    // One downpipe per side is intentionally at an opposite, outside-wall
+    // corner. Neither intersects the 2.3m stair, doorway or glazed windows.
+    const pipeX=X+side*(WIDTH/2+.28);
+    const pipeZ=Z+(side<0?7.35:-7.35);
+    const ground=terrain.heightAt(pipeX,pipeZ);
+    const pipeTop=eave-.16,pipeBottom=ground+.025;
+    const height=pipeTop-pipeBottom;
+    if(!(Number.isFinite(height)&&height>1.0&&height<9))
+      throw new RangeError('Cabin downpipe cannot join actual dry ground');
+    gutterPart((pipeX+channelX)/2,eave-.22,pipeZ,
+      Math.abs(pipeX-channelX)+.16,.13,.16,0x71817c);
+    gutterPart(pipeX,pipeBottom+height/2,pipeZ,
+      .16,height,.16,0x586e69);
+  }
+  const gutters=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),gutterParts.length);
+  gutters.name='cabin / roof-contact gutters and grounded downspouts / instanced';
+  for(let i=0;i<gutterParts.length;i++){
+    gutters.setMatrixAt(i,gutterParts[i].matrix);
+    gutters.setColorAt(i,new T.Color(gutterParts[i].color));
+  }
+  gutters.instanceMatrix.needsUpdate=true;
+  if(gutters.instanceColor)gutters.instanceColor.needsUpdate=true;
+  gutters.computeBoundingSphere();
+  group.add(gutters);parts++;
+
   const heightAt=(x:number,z:number):number|null=>{
     if(!Number.isFinite(x)||!Number.isFinite(z))return null;
     if(x>=left&&x<=right+.04&&z>=back&&z<=front)return floorY;
