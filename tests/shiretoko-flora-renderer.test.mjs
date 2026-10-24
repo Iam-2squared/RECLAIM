@@ -69,6 +69,20 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
       assert(swatches.size>=7,'shoot bark, crowns and seed tips use actual distinct vertex colours');
     }
+    if(node.name.endsWith('/sasa')){
+      const geometry=node.geometry,bounds=geometry.boundingBox;
+      assert(bounds,'sasa requires bounded shared low-poly leaf geometry');
+      assert(bounds.min.y>=-.02 && bounds.max.y>1.0 && bounds.max.y<1.45,
+        'all bent leaves remain visibly rooted and inside the existing understorey envelope');
+      assert(bounds.max.x-bounds.min.x>.48 && bounds.max.z-bounds.min.z>.48,
+        'sasa fans out in real 3D, not four identical coplanar billboards');
+      assert(geometry.getAttribute('position').count<100,
+        'six tapered leaves and one stalk stay in the existing single instanced mesh');
+      const swatches=new Set(),colours=geometry.getAttribute('color');
+      for(let v=0;v<colours.count;v++)
+        swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+      assert(swatches.size>=5,'leaf variation is vertex colour, not new textures or draw groups');
+    }
     if(node.name.endsWith('/sedge')){
       const geometry=node.geometry,bounds=geometry.boundingBox;
       assert(bounds,'each sedge shared geometry needs a culling bound');
