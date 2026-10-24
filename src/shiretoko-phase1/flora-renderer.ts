@@ -237,6 +237,19 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       part(parts,new T.IcosahedronGeometry(1,0),0x879082,g=>{
         g.scale(.33,.23,.40);g.rotateY(-.37);g.translate(-.62,.19,.34);
       });
+      // Two frost-fractured, mineral-stained faces sit partly embedded in
+      // the main talus boulder, breaking its uniform convex silhouette.
+      // Their tetrahedral caps keep the original one-material, one-instance
+      // species mesh and 600m culling architecture; they cannot affect
+      // terrain, route clearance, water or physical player collision.
+      part(parts,new T.TetrahedronGeometry(1,0),0x879184,g=>{
+        g.scale(.23,.12,.26);g.rotateY(.56);g.rotateZ(-.15);
+        g.translate(-.48,.70,.35);
+      });
+      part(parts,new T.TetrahedronGeometry(1,0),0x687a65,g=>{
+        g.scale(.22,.11,.19);g.rotateY(-.27);
+        g.translate(.25,.71,-.38);
+      });
       break;
   }
   const merged=mergeGeometries(parts,false);
