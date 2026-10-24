@@ -131,15 +131,15 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       // Density, habitat, physical ground, clearances and collision do not move.
       const leafColours=[0x6f8650,0x85985b,0x728c52,0x8b9a60,0x647c4a,0x7e9657];
       for(let i=0;i<6;i++){
-        const h=.76+(i%3)*.085,w=.19+(i%2)*.035;
+        const h=.76+(i%3)*.085,w=.22+(i%2)*.043;
         const leaf=new T.BufferGeometry();
         leaf.setAttribute('position',new T.Float32BufferAttribute([
           0,.025,0,
           -w*.5,h*.45,.012,
           w*.5,h*.45,.012,
-          -w*.26,h*.75,.095,
-          w*.26,h*.75,.095,
-          0,h,.18,
+          -w*.26,h*.75,.19,
+          w*.26,h*.75,.19,
+          0,h,.38,
         ],3));
         leaf.setAttribute('uv',new T.Float32BufferAttribute([
           .5,0, 0,.45, 1,.45, .24,.75, .76,.75, .5,1,
@@ -174,13 +174,13 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       // 600m instanced culling grid, without modifying walker collision.
       const colours=[0x76864d,0x88945d,0x6f8051,0x9b995f,0x63784b,0x84975b,0x9a8d50,0x71844e];
       for(let i=0;i<8;i++){
-        const h=.49+(i%4)*.065,w=.16+(i%3)*.035;
+        const h=.49+(i%4)*.065,w=.20+(i%3)*.038;
         const leaf=new T.BufferGeometry();
         leaf.setAttribute('position',new T.Float32BufferAttribute([
           0,.015,0,
           -w*.5,h*.42,.015, w*.5,h*.42,.015,
-          -w*.26,h*.74,.12, w*.26,h*.74,.12,
-          0,h,.25,
+          -w*.26,h*.74,.24+(i%3)*.032, w*.26,h*.74,.24+(i%3)*.032,
+          0,h,.48+(i%3)*.045,
         ],3));
         leaf.setAttribute('uv',new T.Float32BufferAttribute([
           .5,0, 0,.42, 1,.42, .24,.74, .76,.74, .5,1,
@@ -191,7 +191,7 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
         part(parts,leaf,colours[i],g=>{
           g.rotateZ((i%2?1:-1)*(.08+.015*(i%3)));
           g.rotateY(angle);
-          g.translate(Math.cos(angle)*.10,0,Math.sin(angle)*.10);
+          g.translate(Math.cos(angle)*.065,0,Math.sin(angle)*.065);
         });
       }
       // Keep one deeply rooted centre, but trade the cylinder's hidden
@@ -410,6 +410,15 @@ export function createFloraReviewLayer(
         const width=.96+.27*Math.abs(Math.sin(p.rotation*1.7));
         const depth=.90+.20*Math.abs(Math.cos(p.rotation*1.32));
         const height=.79+.12*Math.abs(Math.sin(p.rotation*.83));
+        scale.set(s*width,s*height,s*depth);
+      } else if(kind==='sedge'||kind==='meadow-grass'){
+        // The same original planted position now carries a wider, wind-worn
+        // leaf fan. A restrained species-specific anisotropic matrix makes
+        // nearby clumps visually irregular, without adding one instance,
+        // texture, material, 600m group or new ground/collision sample.
+        const width=.91+.16*Math.abs(Math.sin(p.rotation*1.53));
+        const depth=.90+.17*Math.abs(Math.cos(p.rotation*1.27));
+        const height=.93+.07*Math.abs(Math.sin(p.rotation*.91));
         scale.set(s*width,s*height,s*depth);
       } else scale.set(s,s,s);
       matrix.compose(origin,rotation,scale);
