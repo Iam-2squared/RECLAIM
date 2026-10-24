@@ -53,6 +53,22 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       rock(0x37513c,-.30,6.05,.22,1.02,1.30,.96);
       rock(0x35543e,.25,7.11,-.12,.79,1.00,.81);
       rock(0x416149,-.07,7.95,.04,.49,.80,.52);
+      // Six outward-drooping low boughs make the mature spruce legible at
+      // walking distance. Their open-backed, triangular needle silhouettes
+      // emerge from the trunk beneath the uneven crown; all are merged into
+      // the SAME shared instanced geometry and Lambert draw group. Density,
+      // water/route clearance, exact ground origin, saves and collisions
+      // remain untouched. No new assets, textures or material allocations.
+      const lowerBoughColours=[0x2a4336,0x3b5840,0x304b38,0x486047,0x344b39,0x405a42];
+      for(let i=0;i<lowerBoughColours.length;i++){
+        const angle=i*Math.PI/3+(i%2)*.12;
+        part(parts,new T.ConeGeometry(.26+(i%3)*.035,1.95+(i%2)*.28,3,1,true),
+          lowerBoughColours[i],g=>{
+            g.rotateZ(-1.87);
+            g.rotateY(angle);
+            g.translate(Math.cos(angle)*.94,3.35+(i%3)*.35,Math.sin(angle)*.94);
+          });
+      }
       break;
     case 'birch':
       // A split, offset deciduous crown makes birch read differently from
