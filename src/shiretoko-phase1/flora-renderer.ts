@@ -84,9 +84,28 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       }
       break;
     case 'alpine-shrub':
-      rock(0x546647,-.42,.47,.04,.64,.52,.62);
-      rock(0x68804e,.40,.55,-.17,.67,.58,.58);
-      rock(0x475943,.03,.72,.31,.64,.55,.52);
+      // Original understory detail: three irregular rooted woody shoots carry
+      // offset crowns and small seed heads, rather than three ground-level
+      // identical boulders. Every triangle joins the existing ONE instanced
+      // species mesh: no extra draw call, texture, plant or collision volume.
+      for(const shoot of [
+        {x:-.31,z:.04,tilt:-.36,h:.76,color:0x554431},
+        {x:.29,z:-.15,tilt:.43,h:.87,color:0x665139},
+        {x:.05,z:.25,tilt:-.15,h:.81,color:0x584934},
+      ]){
+        part(parts,new T.CylinderGeometry(.025,.053,shoot.h,4,1),
+          shoot.color,g=>{
+            g.rotateZ(shoot.tilt);
+            g.translate(shoot.x,shoot.h*.5,shoot.z);
+          });
+      }
+      rock(0x546647,-.42,.67,.04,.64,.52,.62);
+      rock(0x68804e,.40,.74,-.17,.67,.58,.58);
+      rock(0x475943,.03,.87,.31,.64,.55,.52);
+      part(parts,new T.IcosahedronGeometry(.105,0),0x9c6347,
+        g=>g.translate(-.76,1.15,.19));
+      part(parts,new T.IcosahedronGeometry(.09,0),0xb08058,
+        g=>g.translate(.73,1.18,-.18));
       break;
     case 'sedge':
     case 'sasa': {
