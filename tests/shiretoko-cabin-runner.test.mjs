@@ -26,9 +26,10 @@ test('cabin runner has fourteen distinct physical low-profile woven pieces in on
     assert(Math.abs(position.x-(X+2))<=1.27);
     assert(Math.abs(position.z-(Z+2.7))<=1.22);
     assert(Math.abs(scale.y-.020)<.00001);
-    assert(Math.abs(position.y+scale.y/2-(cabin.floorY-.017))<.00001,
+    assert(Math.abs(position.y-scale.y/2-(cabin.floorY-.017))<.00001,
       'weave lower half inlaid in existing timber planks, not a floating mat');
-    assert(Math.abs(position.y+scale.y/2-(cabin.floorY+.003))<.021);
+    assert(Math.abs(position.y+scale.y/2-(cabin.floorY+.003))<.00001,
+      'upper weave is just 3mm above the true collision surface');
     assert.equal(cabin.heightAt(position.x,position.z),cabin.floorY,
       'every textile strip rests on the authoritative existing cabin floor');
     if(i<12){
