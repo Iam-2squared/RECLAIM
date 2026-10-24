@@ -136,6 +136,12 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
           w/2,h*.54,.025,
           0,h,.12,
         ],3));
+        // Three's geometry merger requires the same vertex attributes on
+        // the hand-authored leaf and the built-in UV-bearing wooden stem.
+        // UVs are metadata only here: the foliage material stays sampler-free.
+        leaf.setAttribute('uv',new T.Float32BufferAttribute([
+          .5,0, 0,.54, 1,.54, .5,1,
+        ],2));
         leaf.setIndex([0,1,2,1,3,2]);
         leaf.computeVertexNormals();
         const angle=2*Math.PI*i/6+(i%2)*.17;
