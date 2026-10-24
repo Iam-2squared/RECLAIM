@@ -8,6 +8,7 @@ test('wind-bent sedge and meadow grass form wider actual 3D fans without new pop
  const terrain=new ShiretokoTerrain();
  const layer=createFloraReviewLayer(terrain,'low');
  const species=new Set(),globalCount=layer.instances;
+ const ratiosBySpecies=new Map([['sedge',new Set()],['meadow-grass',new Set()]]);
  const matrix=new T.Matrix4(),position=new T.Vector3(),scale=new T.Vector3();
  let collected=0;
  layer.group.traverse(mesh=>{
@@ -27,19 +28,21 @@ test('wind-bent sedge and meadow grass form wider actual 3D fans without new pop
   const verts=mesh.geometry.getAttribute('position').count;
   assert(verts<(kind==='sedge'?240:160),'existing low-poly per-instance vertex budget');
   assert.equal(mesh.geometry.getAttribute('uv').count,verts);
-  const ratios=new Set();
   for(const i of [0,Math.floor(mesh.count/2),mesh.count-1]){
    mesh.getMatrixAt(i,matrix);
    position.setFromMatrixPosition(matrix);scale.setFromMatrixScale(matrix);
    assert(Math.abs(position.y-terrain.heightAt(position.x,position.z))<.0002,
      'all physical plant origins still use authoritative 5m height');
    assert(scale.x>0&&scale.z>0&&scale.y>0);
-   ratios.add((scale.x/scale.y).toFixed(5)+':'+(scale.z/scale.y).toFixed(5));
+   ratiosBySpecies.get(kind).add((scale.x/scale.y).toFixed(5)+':'+(scale.z/scale.y).toFixed(5));
   }
-  assert(ratios.size>=2,'nonuniform species matrices vary deterministic natural silhouettes');
  });
  assert.equal(collected,globalCount,'real render does not allocate hidden foliage copies');
  assert.deepEqual([...species].sort(),['meadow-grass','sedge']);
+ // An individual 600m culling bucket may legitimately contain only ONE
+ // visible plant; variation is therefore verified across the WHOLE species.
+ for(const kind of species)assert(ratiosBySpecies.get(kind).size>=3,
+   `sampled ${kind} must retain multiple native X/Y and Z/Y proportions`);
  assert(globalCount>1200&&globalCount<16000,'unchanged low-density planner/culling limits');
  assert.equal(layer.instanceBytes,globalCount*76);
  assert(layer.drawGroups<=96);
