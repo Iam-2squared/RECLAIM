@@ -163,7 +163,8 @@ async function boot() {
     cabinReview?.heightAt(x,z) ?? boardwalkReview?.heightAt(x,z) ??
     lakeLookoutReview?.heightAt(x,z) ?? null;
   const reviewBlocked = (x:number,z:number) =>
-    Boolean(cabinReview?.blockedAt(x,z) || lakeLookoutReview?.blockedAt(x,z));
+    Boolean(cabinReview?.blockedAt(x,z) || boardwalkReview?.blockedAt(x,z) ||
+      lakeLookoutReview?.blockedAt(x,z));
   const walker = new TerrainWalker(terrain,
     cabinReview || boardwalkReview || lakeLookoutReview ? reviewHeight : undefined,
     cabinReview || lakeLookoutReview ? reviewBlocked : undefined),

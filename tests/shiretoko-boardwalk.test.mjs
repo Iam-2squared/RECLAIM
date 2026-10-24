@@ -14,8 +14,8 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert(boardwalk.panels>30&&boardwalk.panels<=260);
   assert.equal(boardwalk.indexedTriangles,boardwalk.panels*2);
   assert(boardwalk.supports>8&&boardwalk.supports<boardwalk.panels);
-  assert.equal(boardwalk.group.children.length,4);
-  const [deck,posts,seams,edging]=boardwalk.group.children;
+  assert.equal(boardwalk.group.children.length,6);
+  const [deck,posts,seams,edging,rails,guardPosts]=boardwalk.group.children;
   assert.equal(seams.name,'boardwalk / plank seams / instanced');
   assert.equal(edging.name,'boardwalk / side edging / instanced');
   assert(seams.isInstancedMesh && edging.isInstancedMesh);
@@ -23,6 +23,13 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert.equal(edging.count,boardwalk.panels*2);
   assert.equal(seams.geometry.parameters.height,.025);
   assert.equal(edging.geometry.parameters.height,.09);
+  assert.equal(rails.name,'boardwalk / pitch-matched guard rails / instanced');
+  assert.equal(guardPosts.name,'boardwalk / deck-grounded guard posts / instanced');
+  assert(rails.isInstancedMesh && guardPosts.isInstancedMesh);
+  assert.equal(rails.count,boardwalk.panels*2);
+  assert(guardPosts.count>100 && guardPosts.count<boardwalk.panels);
+  assert.equal(rails.geometry.parameters.height,.12);
+  assert.equal(guardPosts.geometry.parameters.height,.94);
   assert.equal(deck.type,'Mesh');
   assert.equal(posts.type,'Mesh'); // This Three.js build retains the Mesh type tag; isInstancedMesh is authoritative.
   assert(posts.isInstancedMesh);
@@ -100,4 +107,32 @@ test('visible plank seams share the real indexed deck height, not a phantom walk
   // A seam marker does not obstruct the centre, nor alter exact deck contact.
   assert.equal(boardwalk.heightAt(midpoint.x,midpoint.z)!==null,true);
   assert(boardwalk.group.children.every(mesh=>mesh.geometry && mesh.material));
+});
+
+test('visible side guards follow real sloping deck corners and block only edges',()=>{
+  const [deck,,,,rails,guardPosts]=boardwalk.group.children;
+  const vertices=deck.geometry.getAttribute('position');
+  const matrix=new T.Matrix4(),at=new T.Vector3();
+  const stride=Math.max(1,Math.floor(rails.count/35));
+  for(let i=0;i<rails.count;i+=stride){
+    rails.getMatrixAt(i,matrix);at.setFromMatrixPosition(matrix);
+    const panel=Math.floor(i/2),side=i%2,first=panel*4+side,last=panel*4+2+side;
+    const expected=(vertices.getY(first)+vertices.getY(last))*.5+.88;
+    assert(Math.abs(at.y-expected)<.001,'handrail must track its actual two deck endpoints');
+    assert(boardwalk.blockedAt(at.x,at.z),'visible raised guard must block walker at its exact rail');
+  }
+  assert.equal(boardwalk.blockedAt(midpoint.x,midpoint.z),false,
+    'the original 3.2m central path remains traversable');
+  assert.equal(boardwalk.blockedAt(NaN,midpoint.z),true,'reject invalid collision coordinates');
+  const walker=new TerrainWalker(terrain,boardwalk.heightAt,boardwalk.blockedAt);
+  assert(walker.place(midpoint.x,midpoint.z));
+  for(let i=0;i<90;i++)walker.step({forward:0,right:0,sprint:false,jump:false},1/60);
+  assert(walker.grounded);
+  assert(Math.abs(walker.y-boardwalk.heightAt(midpoint.x,midpoint.z))<1e-7);
+  for(let i=0;i<guardPosts.count;i+=Math.max(1,Math.floor(guardPosts.count/30))){
+    guardPosts.getMatrixAt(i,matrix);at.setFromMatrixPosition(matrix);
+    const deckY=boardwalk.heightAt(at.x,at.z);
+    assert(deckY!==null,'post must be on real terrain-derived deck edge');
+    assert(Math.abs(at.y-.47-deckY)<.005,'posts must rest on exactly the indexed deck');
+  }
 });
