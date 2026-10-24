@@ -72,7 +72,14 @@ export class DroneCrashRig {
   // *drawn* position; returning scene y would resurrect a falling wreck.
   if(!finite(currentY)||!finite(groundY))
    return{y:this.started?this.lastSafeY:(finite(currentY)?currentY:0),bank:this.bank,stopped:true,settled:false};
-  if(!this.started){this.started=true;this.groundAtStart=groundY;this.contactGround=groundY;this.startY=currentY;this.lastSafeY=currentY;}
+  if(!this.started){
+   // A first terrain sample is credible only if the wreck has clearance.
+   // A transient LOD/coordinate mismatch must not snap it upwards or
+   // permanently freeze at a floor above its visible pre-crash position.
+   if(groundY+.25>currentY+1e-7)
+    return{y:currentY,bank:this.bank,stopped:true,settled:false};
+   this.started=true;this.groundAtStart=groundY;this.contactGround=groundY;this.startY=currentY;this.lastSafeY=currentY;
+  }
   // The drone stops moving in X/Z once disabled. Never accept a later
   // ground sample that sits ABOVE the already-rendered wreck: that sample
   // is inconsistent with a stationary world and would pop the wreck upward.
