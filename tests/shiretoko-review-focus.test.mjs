@@ -50,6 +50,20 @@ test('review camera tracks the real terrain elevation at BOTH camera and target'
 });
 
 
+test('real highland starts on an oblique slope view, not the prior nearly top-down empty plain',()=>{
+  const terrain=new ShiretokoTerrain();
+  const view=natureReviewFocus(new URLSearchParams('flora=low&highland=1'),
+    (x,z)=>terrain.heightAt(x,z));
+  assert(view && view.kind==='highland');
+  const [x,y,z]=view.position,[tx,ty,tz]=view.target;
+  const horizontal=Math.hypot(x-tx,z-tz),vertical=y-ty;
+  assert(horizontal>40,'show depth, not an aerial map');
+  assert(vertical>5&&vertical<horizontal*.45,
+    'mountain vegetation should fill a low-oblique view rather than almost straight-down ground');
+  assert(y>terrain.heightAt(x,z)+30,'camera remains above local ground');
+  assert(ty>terrain.heightAt(tx,tz),'target still follows the actual 5m mountain mesh');
+});
+
 test('real 5m terrain initial nature cameras remain above their subjects without OrbitControls clamp',()=>{
   const terrain=new ShiretokoTerrain();
   for(const [query,kind] of [['cabin=1','cabin'],['flora=low','flora'],['boardwalk=1','boardwalk'],['flora=low&highland=1','highland']]) {
