@@ -1,8 +1,8 @@
 {
-  "version": 2,
-  "as_of_jst": "2026-10-24T20:42:00+09:00",
+  "version": 3,
+  "as_of_jst": "2026-10-24 22:11:38 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "7a54ba64bd7a23b6a83002e1b36ceaf0e96d0492",
+  "latest_known_main": "2c37329730af45c0b90fc771b63e818ca875257f",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -12,38 +12,42 @@
   },
   "work": [
     {
-      "id": "lake-flora",
-      "pr": 84,
-      "source_head": "5033d73637083f481f14374dbde4ed3c689a8135",
-      "merged_sha": "7a54ba64bd7a23b6a83002e1b36ceaf0e96d0492",
-      "state": "MERGED_MAIN_CI_PREVIEW_CHROMIUM_WORLD_PENDING",
-      "runs": {
-        "source_terrain": 40089493164,
-        "source_preview": 40089493135,
-        "source_nature": 40089493184,
-        "main_terrain": 40090334672,
-        "main_preview": 40090334691
-      }
+      "id": "walk-ci-fix",
+      "pr": 86,
+      "source_head": "99881ddc793c8b77db808c25b4468cc4cf41f951",
+      "merged_sha": "2c37329730af45c0b90fc771b63e818ca875257f",
+      "source_preview_run": 40093675697,
+      "main_preview_run": 40096250021,
+      "needed_preview_jobs": 5,
+      "verified_preview_jobs": 5,
+      "status": "MERGED_MAIN_5_OF_5_PREVIEW_SUCCESS_TERRAIN_PATH_FILTER_NOT_TRIGGERED"
     },
     {
-      "id": "lake-bench-backrests",
-      "pr": 85,
-      "branch": "feature/shiretoko-lake-bench-backrests-20261024-2025",
-      "source_head": "d8560c5c1ab93f9d1c60f9623ebeb4bae50465ac",
-      "integration_base": "7a54ba64bd7a23b6a83002e1b36ceaf0e96d0492",
-      "state": "SOURCE_9_OF_9_GREEN_NEW_INTEGRATION_HEAD_CI_REQUIRED",
-      "runs": {
-        "source_terrain": 40090215534,
-        "source_preview": 40090215398,
-        "source_nature": 40090215456
+      "id": "tapered-sasa",
+      "pr": 87,
+      "branch": "feature/shiretoko-tapered-sasa-understorey-20261024",
+      "source_head": "d03e69658a58a93cf5c97140f945f1651a87a4a8",
+      "integration_base": "2c37329730af45c0b90fc771b63e818ca875257f",
+      "integration_head": "RE_READ_GITHUB_AFTER_NONFORCED_MERGE",
+      "state": "NEW_INTEGRATION_HEAD_ALL_9_CI_PENDING",
+      "source_runs": {
+        "terrain": 40093911244,
+        "preview": 40093911252,
+        "nature": 40093911235
       },
-      "next": "New GitHub PR head must be re-read; require current HEAD 3+5+1 green before merge."
+      "evidence_artifact_id": 12559803875
+    },
+    {
+      "id": "prior-lake-and-bench",
+      "pr": 85,
+      "merged_main_sha": "f08db6ce603d11170ddd679fa4a4f1bf342fb21c",
+      "state": "HISTORICAL_SUCCESS_AND_REGRESSION_SOURCE"
     }
   ],
-  "offline_release": "RECLAIM_SHIRETOKO_MAIN_7a54_LAKE_FLORA_OFFLINE_20261024.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_PR87_SASA_LAKE_VISUAL_REVIEW_20261024.zip",
   "next": [
-    "Collect main 40090334691 chromium-world",
-    "Collect PR85 new exact integration head all 9 jobs and visual artifact, then conditional merge",
-    "Collect post-merge main 8/8 and refresh package; deploy only after legitimate Vercel team grant"
+    "Collect new exact merged-head PR87 9 jobs and nature imagery",
+    "Conditionally merge PR87, then collect post-merge main 8 jobs",
+    "Update offline main scene package; retry existing Vercel only after authorized access"
   ]
 }

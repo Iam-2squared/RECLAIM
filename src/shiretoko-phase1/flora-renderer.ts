@@ -107,24 +107,53 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       part(parts,new T.IcosahedronGeometry(.09,0),0xb08058,
         g=>g.translate(.73,1.18,-.18));
       break;
-    case 'sedge':
-    case 'sasa': {
-      const sedge=kind==='sedge',leaves=sedge?5:4;
-      for(let i=0;i<leaves;i++){
-        const angle=Math.PI*2*i/leaves;
-        part(parts,new T.PlaneGeometry(sedge?.09:.27,sedge?.78:1.14),sedge?0x7b9155:0x446949,g=>{
-          g.translate(0,sedge?.39:.53,0);g.rotateZ(sedge?.22:.42);g.rotateY(angle);
+    case 'sedge': {
+      // Wetland spikes retain their original rooted, bounded shape.
+      for(let i=0;i<5;i++){
+        const angle=Math.PI*2*i/5;
+        part(parts,new T.PlaneGeometry(.09,.78),0x7b9155,g=>{
+          g.translate(0,.39,0);g.rotateZ(.22);g.rotateY(angle);
         });
       }
-      // Marsh sedges now carry a real low-poly seed spike above their
-      // blades. Stem and seed share the existing species geometry/material:
-      // no new draw calls, textures, instances, route or water occupancy.
-      if(sedge){
-        part(parts,new T.CylinderGeometry(.024,.035,1.12,4,1),
-          0x728356,g=>g.translate(.05,.56,.01));
-        part(parts,new T.CylinderGeometry(.048,.06,.25,5,1),
-          0x826947,g=>g.translate(.05,1.21,.01));
+      part(parts,new T.CylinderGeometry(.024,.035,1.12,4,1),
+        0x728356,g=>g.translate(.05,.56,.01));
+      part(parts,new T.CylinderGeometry(.048,.06,.25,5,1),
+        0x826947,g=>g.translate(.05,1.21,.01));
+      break;
+    }
+    case 'sasa': {
+      // A native understorey tuft reads as six tapered, asymmetrically bent
+      // leaves rather than four upright rectangular billboards. Every leaf
+      // merges into the existing ONE species geometry/material/instanced draw
+      // group. Habitat, route clearance, density and ground origin stay fixed.
+      const colours=[0x416d4b,0x507c52,0x608958,0x375f46,0x638755,0x46754b];
+      for(let i=0;i<6;i++){
+        const h=1.02+(i%3)*.105,w=.29+(i%2)*.055;
+        const leaf=new T.BufferGeometry();
+        leaf.setAttribute('position',new T.Float32BufferAttribute([
+          0,.08,0,
+          -w/2,h*.54,.025,
+          w/2,h*.54,.025,
+          0,h,.12,
+        ],3));
+        // Three's geometry merger requires the same vertex attributes on
+        // the hand-authored leaf and the built-in UV-bearing wooden stem.
+        // UVs are metadata only here: the foliage material stays sampler-free.
+        leaf.setAttribute('uv',new T.Float32BufferAttribute([
+          .5,0, 0,.54, 1,.54, .5,1,
+        ],2));
+        leaf.setIndex([0,1,2,1,3,2]);
+        leaf.computeVertexNormals();
+        const angle=2*Math.PI*i/6+(i%2)*.17;
+        part(parts,leaf,colours[i],g=>{
+          g.rotateZ((i%2?1:-1)*(.20+.025*(i%3)));
+          g.rotateY(angle);
+          g.translate(Math.cos(angle)*.055,0,Math.sin(angle)*.055);
+        });
       }
+      // Short real stem closes the visual gap from the 5m terrain origin.
+      part(parts,new T.CylinderGeometry(.024,.045,.24,5,1),
+        0x495e3b,g=>g.translate(0,.12,0));
       break;
     }
     case 'deadwood': {
