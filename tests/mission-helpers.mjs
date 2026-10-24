@@ -72,8 +72,12 @@ export async function walkTo(page,target,{radius=1.3,sprint=true,maxMs=50000,sto
    // Schedule read-only observations from the driver, not a timer inside
    // the busy WebGL page. Native input, genuine Mission snapshots, original
    // geometric predicates and the five-second segment deadline stay intact.
+   // Anchor elapsed simulation to the actual pre-keydown Mission snapshot.
+   // A software-GPU stall may delay the first read until after real movement;
+   // restarting elapsed time at that read loses genuine simulation progress.
+   // Native input, arrival radius, and the 5s/50s budgets are unchanged.
    const reason=await waitForDriverWalkObservation(page,{
-    target,radius,stopRange,firstElapsed:null,simSeconds,initialTargetDistance,
+    target,radius,stopRange,firstElapsed:before.elapsed,simSeconds,initialTargetDistance,
     // Observation checkpoints are not arrival tolerances; all exact
     // geometric criteria and 5s/50s deadlines remain unchanged.
     progressMetres:mode==='far'?.6:mode==='walk'?.25:null,
