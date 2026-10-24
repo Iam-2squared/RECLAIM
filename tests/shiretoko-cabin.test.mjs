@@ -231,3 +231,40 @@ test('standing-seam roof adds one instance batch with ribs resting on the real p
   assert.equal(cabin.heightAt(X,Z),cabin.floorY,'roof does not move the walking floor');
   assert.equal(cabin.blockedAt(right,Z),false,'real east entrance remains open');
 });
+
+test('visible door and window joinery shares one real draw batch without narrowing the entrance or glazing',()=>{
+  const joinery=cabin.group.getObjectByName('cabin / visible door and window joinery / instanced');
+  assert(joinery instanceof T.InstancedMesh,'doorposts and six window muntins are real instanced wood');
+  assert.equal(joinery.count,8,'two east door jambs and three members per window');
+  assert.equal(joinery.geometry.getAttribute('position').count,24);
+  assert(joinery.boundingSphere&&Number.isFinite(joinery.boundingSphere.radius));
+  const matrix=new T.Matrix4(),mid=new T.Vector3(),scale=new T.Vector3();
+  const rot=new T.Quaternion();
+  for(let i=0;i<joinery.count;i++){
+    joinery.getMatrixAt(i,matrix);
+    matrix.decompose(mid,rot,scale);
+    assert([mid.x,mid.y,mid.z,scale.x,scale.y,scale.z].every(Number.isFinite));
+    assert(scale.x>.05&&scale.y>.09&&scale.z>.05);
+    if(i<2){
+      assert(Math.abs(mid.x-(right+.035))<.0001);
+      assert(Math.abs(Math.abs(mid.z-Z)-1.15)<.0001);
+      assert(Math.abs(mid.y+scale.y/2-(cabin.floorY+2.54))<.0001,
+        'real doorposts join the existing lintel without a fake threshold');
+    }
+  }
+  cabin.group.updateMatrixWorld(true);
+  for(const [z,dz] of [[back-2,1],[Z+9,-1]]){
+    const ray=new T.Raycaster(new T.Vector3(X-4,cabin.floorY+1.86,z),
+      new T.Vector3(0,0,dz),0,4);
+    assert.equal(ray.intersectObject(joinery,false).length,0,
+      'normal-height sightline stays clear through the actual glass');
+  }
+  assert.equal(cabin.blockedAt(right,Z),false,'the real front entrance remains open');
+  assert.equal(cabin.heightAt(right,Z),cabin.floorY,'entry has no new invisible step');
+  const walker=new TerrainWalker(terrain,cabin.heightAt,cabin.blockedAt);
+  assert(walker.place(cabin.entrance.x,Z));
+  walker.yaw=Math.PI/2;
+  for(let i=0;i<245;i++)walker.step({forward:1,right:0,sprint:false,jump:false},1/60);
+  assert(walker.x<right-3&&Math.abs(walker.y-cabin.floorY)<1e-5,
+    'an actual walker still enters and crosses the existing interior');
+});

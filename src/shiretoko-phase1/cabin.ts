@@ -215,6 +215,30 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     for(const side of [-1,1])box('cabin / window jamb',WINDOW_X+side*WINDOW_W/2,
       floorY+1.86,z,.13,1.45,.17,mats.trim);
   }
+  // One low-cost carpentry batch frames the *existing* east doorway and
+  // the two genuine glazed openings. All members touch real existing frames:
+  // no closed door leaf, invisible wall, new texture or changed walker height.
+  const joineryParts:{center:T.Vector3;size:T.Vector3}[]=[];
+  for(const side of [-1,1] as const)
+    joineryParts.push({center:new T.Vector3(right+.035,floorY+1.27,Z+side*DOOR_HALF),
+      size:new T.Vector3(.14,2.54,.15)});
+  for(const z of [back-.027,front+.027]) {
+    for(const dx of [-WINDOW_W/3,WINDOW_W/3])
+      joineryParts.push({center:new T.Vector3(WINDOW_X+dx,floorY+1.86,z),
+        size:new T.Vector3(.115,1.27,.115)});
+    joineryParts.push({center:new T.Vector3(WINDOW_X,floorY+2.25,z),
+      size:new T.Vector3(WINDOW_W,.095,.115)});
+  }
+  const joinery=new T.InstancedMesh(new T.BoxGeometry(1,1,1),mats.trim,joineryParts.length);
+  joinery.name='cabin / visible door and window joinery / instanced';
+  for(let i=0;i<joineryParts.length;i++){
+    const {center,size}=joineryParts[i];
+    joinery.setMatrixAt(i,new T.Matrix4().compose(center,new T.Quaternion(),size));
+  }
+  joinery.instanceMatrix.needsUpdate=true;
+  joinery.computeBoundingSphere();
+  group.add(joinery);parts++;
+
   // Furniture has explicit footprint collision below. The room is navigable:
   // the centerline from entrance to the opposite interior wall stays clear.
   box('cabin / table',X-2,floorY+.83,Z+3,2.1,.19,1.45,mats.wood);
