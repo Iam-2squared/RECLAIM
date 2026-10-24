@@ -148,7 +148,7 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       const swatches=new Set();
       for(let v=0;v<colours.count;v++)
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
-      assert.equal(swatches.size,3,'three different rock faces share vertex colour material');
+      assert.equal(swatches.size,5,'three talus fragments and two embedded mineral fracture caps share one vertex-coloured species mesh');
     }
     seen.add(node.geometry);total+=node.count;
     const sampled=[0,Math.floor(node.count/2),node.count-1];
