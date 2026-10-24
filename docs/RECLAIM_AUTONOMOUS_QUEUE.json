@@ -1,8 +1,8 @@
 {
-  "version": 4,
-  "as_of_jst": "2026/10/25 6:40:25 JST",
+  "version": 5,
+  "as_of_jst": "2026-10-25 08:26:31 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "672501713183e769a7d00d4c9162b9da1345c638",
+  "latest_known_main": "70fc44b5f26b73897c43c0024283c20ec48ba050",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -111,41 +111,90 @@
         "nature": 40134741029
       },
       "source_artifact": 12576661963
+    },
+    {
+      "id": "sedge-grass-leaves-106",
+      "pr": 106,
+      "source_head": "0e586ac49d35e298fead8f4380b5005885b2dbb6",
+      "merged_sha": "78e8cbddac3fb872bdbf262d214efff0ccc27b1b",
+      "source_runs": {
+        "terrain": 40137833902,
+        "preview": 40137833832,
+        "nature": 40137833820
+      },
+      "main_runs": {
+        "terrain": 40140998678,
+        "preview": 40140998693
+      },
+      "state": "MERGED_MAIN_PUSH_8_OF_8"
+    },
+    {
+      "id": "marsh-trailhead-arrows-107",
+      "pr": 107,
+      "source_head": "c856edbec4b58250913a31a505d03effa03f731e",
+      "merged_sha": "70fc44b5f26b73897c43c0024283c20ec48ba050",
+      "source_runs": {
+        "terrain": 40141264367,
+        "preview": 40141264337,
+        "nature": 40141264336
+      },
+      "main_runs": {
+        "terrain": 40141921028,
+        "preview": 40141921023
+      },
+      "state": "MERGED_MAIN_PUSH_8_OF_8"
+    },
+    {
+      "id": "roof-flashed-chimney-108",
+      "pr": 108,
+      "source_head": "f07ff609d98ed2bd1f75815327497b5366be439f",
+      "source_runs": {
+        "terrain": 40141937895,
+        "preview": 40141937851,
+        "nature": 40141937849
+      },
+      "original_failed_head": "00b22f0b2d5a8b1ff79c9bf4f1f3bda1ca2255fb",
+      "original_failed_runs": {
+        "terrain": 40141493109,
+        "preview": 40141493112,
+        "nature": 40141493148
+      },
+      "integration_base": "70fc44b5f26b73897c43c0024283c20ec48ba050",
+      "state": "SOURCE_9_OF_9_GREEN_NEW_INTEGRATION_SHA_PENDING"
     }
   ],
-  "offline_review_candidate": "RECLAIM_SHIRETOKO_PR103_d26_SEED_GRASS_INTERACTIVE_20261025.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_70fc44b_TRAILHEADS_OFFLINE_20261025.zip",
   "next": [
-    "Complete PR103 main preview SHA 672501713183e769a7d00d4c9162b9da1345c638 all 5/5",
-    "Validate exact new PR104 integration head 3 terrain + 5 preview + 1 real WebGL and merge only if complete green",
-    "Collect PR105 source CI and integrate with verified new main; package offline main and Vercel only after scope authorization"
+    "Verify exact PR108 combined HEAD 3 terrain +5 preview +1 nature and actual WebGL",
+    "Merge expected HEAD only after all new checks green; collect new main push 3+5",
+    "Refresh verified interactive PC ZIP, Vercel only after native team 403 authorization changes"
   ],
   "current_integration": {
-    "pr": 104,
-    "source_head": "2873aa2131703bca4aa013a4c07be298e8396daa",
-    "integration_base": "672501713183e769a7d00d4c9162b9da1345c638",
-    "integration_head": "READ_EXACT_SHA_AFTER_NONFORCED_COMMIT",
-    "state": "UNVERIFIED_NEW_INTEGRATION_HEAD",
+    "pr": 108,
+    "source_head": "f07ff609d98ed2bd1f75815327497b5366be439f",
+    "integration_base": "70fc44b5f26b73897c43c0024283c20ec48ba050",
+    "integration_head": "RE_READ_TWO_PARENT_REF",
+    "state": "PENDING_NEW_SHA_3_PLUS_5_PLUS_1",
     "source_runs": {
-      "terrain": 40134493037,
-      "preview": 40134493014,
-      "nature": 40134493035
+      "terrain": 40141937895,
+      "preview": 40141937851,
+      "nature": 40141937849
     },
-    "source_artifact": 12576546664
+    "nature_artifact_id": 12579366878
   },
   "main_ci": {
-    "head": "672501713183e769a7d00d4c9162b9da1345c638",
+    "head": "70fc44b5f26b73897c43c0024283c20ec48ba050",
     "terrain": {
-      "run_id": 40134767290,
+      "run_id": 40141921028,
       "attempt": 1,
       "passed": 3,
       "total": 3
     },
     "preview": {
-      "run_id": 40134767363,
+      "run_id": 40141921023,
       "attempt": 1,
-      "passed": 3,
-      "total": 5,
-      "state": "TWO_JOBS_IN_PROGRESS_AT_PREP"
+      "passed": 5,
+      "total": 5
     }
   }
 }
