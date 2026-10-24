@@ -8,6 +8,7 @@ import { TerrainWalker } from './walker.ts';
 import { createFloraReviewLayer } from './flora-renderer.ts';
 import { createBoardwalkReview } from './boardwalk.ts';
 import { createCliffCabinReview } from './cabin.ts';
+import { createLakeLookoutReview } from './lake-lookout.ts';
 import { natureReviewFocus } from './review-focus.ts';
 import { TerrainFrameDemand } from './frame-demand.ts';
 import { TerrainGpuFrameGate } from './gpu-frame-gate.ts';
@@ -112,9 +113,17 @@ async function boot() {
     ? createBoardwalkReview(terrain) : null;
   const cabinReview = ['1', 'true', 'on'].includes(query.get('cabin') ?? '')
     ? createCliffCabinReview(terrain) : null;
+  const lakeLookoutReview = ['1', 'true', 'on'].includes(query.get('lookout') ?? '')
+    ? createLakeLookoutReview(terrain) : null;
   const natureBadges: HTMLElement[] = [];
   if (floraReview) root.add(floraReview.group);
   if (cabinReview) root.add(cabinReview.group);
+  if (lakeLookoutReview) root.add(lakeLookoutReview.group);
+  if (lakeLookoutReview && !cabinReview && !boardwalkReview && !floraReview) {
+    root.add(new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 1.8));
+    const lookoutSun=new T.DirectionalLight(0xffdab0, 2.0);
+    lookoutSun.position.set(-260,640,340);root.add(lookoutSun);
+  }
   if (cabinReview && !boardwalkReview && !floraReview) {
     root.add(new T.HemisphereLight(0xe0eaf4, 0x4c4b42, 1.8));
     const cabinSun=new T.DirectionalLight(0xffdab0, 2.0);
@@ -128,11 +137,12 @@ async function boot() {
     const sun = new T.DirectionalLight(0xffdab0, 2.1);
     sun.position.set(-260, 640, 340); sun.name = 'review timber sunlight'; root.add(sun);
   }
-  if (floraReview || boardwalkReview || cabinReview) {
+  if (floraReview || boardwalkReview || cabinReview || lakeLookoutReview) {
     const badge = document.createElement('div');
     badge.textContent = [floraReview ? `植生 ${floraReview.quality}` : '',
       boardwalkReview ? '木道・三角形接地' : '',
-      cabinReview ? '崖上住宅・階段・室内衝突' : ''].filter(Boolean).join(' ＋ ')
+      cabinReview ? '崖上住宅・階段・室内衝突' : '',
+      lakeLookoutReview ? '湖畔展望デッキ・実三角形接地' : ''].filter(Boolean).join(' ＋ ')
       + ' ｜開発レビュー・本編セーブ未接続';
     badge.setAttribute('data-nature-review', 'true');
     Object.assign(badge.style, { position: 'fixed', bottom: '14px', left: '14px', zIndex: '25',
@@ -150,9 +160,14 @@ async function boot() {
   routeLine.computeLineDistances(); routeLine.visible = false; routeLine.name = 'optional route inspection overlay'; root.add(routeLine);
   const intro=new TerrainIntro();
   const reviewHeight = (x:number,z:number) =>
-    cabinReview?.heightAt(x,z) ?? boardwalkReview?.heightAt(x,z) ?? null;
-  const walker = new TerrainWalker(terrain, cabinReview || boardwalkReview ? reviewHeight : undefined,
-    cabinReview?.blockedAt), keys = new Set<string>(), frameTimes: number[] = [];
+    cabinReview?.heightAt(x,z) ?? boardwalkReview?.heightAt(x,z) ??
+    lakeLookoutReview?.heightAt(x,z) ?? null;
+  const reviewBlocked = (x:number,z:number) =>
+    Boolean(cabinReview?.blockedAt(x,z) || lakeLookoutReview?.blockedAt(x,z));
+  const walker = new TerrainWalker(terrain,
+    cabinReview || boardwalkReview || lakeLookoutReview ? reviewHeight : undefined,
+    cabinReview || lakeLookoutReview ? reviewBlocked : undefined),
+    keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
   const frameDemand = new TerrainFrameDemand();
@@ -217,10 +232,13 @@ async function boot() {
     // normal 480m game are deliberately unaffected.
     const cabinEntry = natureFocusActive && firstLook?.kind === 'cabin'
       ? cabinReview?.entrance : null;
-    const p = cabinEntry ?? LOCATIONS[Math.max(0, activeLocation)];
+    const lakeEntry = natureFocusActive && firstLook?.kind === 'lookout'
+      ? lakeLookoutReview?.entrance : null;
+    const p = cabinEntry ?? lakeEntry ?? LOCATIONS[Math.max(0, activeLocation)];
     if (!walker.place(p.x, p.z)) return;
     transition = null; controls.enabled = false; walking = true; keys.clear(); accumulator = 0;
-    walker.yaw = cabinEntry ? Math.PI / 2 : 0; walker.pitch = 0;
+    walker.yaw = cabinEntry ? Math.PI / 2 : lakeEntry ? -Math.PI / 2 : 0;
+    walker.pitch = 0;
     camera.fov = 66; camera.updateProjectionMatrix(); updateWalkCamera();
     document.body.classList.add('walking'); $('walk-overlay').hidden = false; $('walk-message').hidden = false;
     $('walk').innerHTML = '俯瞰に戻る <span>ESC</span>';
@@ -244,7 +262,7 @@ async function boot() {
   // Escape/back preserves the opted-in cabin camera. Without this, the
   // viewer returned to the remote all-map view after walking into the house.
   function returnFromWalk() {
-    if (natureFocusActive && firstLook?.kind === 'cabin') {
+    if (natureFocusActive && (firstLook?.kind === 'cabin' || firstLook?.kind === 'lookout')) {
       exitWalk();
       camera.position.fromArray(firstLook.position);
       controls.target.fromArray(firstLook.target);
@@ -309,7 +327,19 @@ async function boot() {
   selectView(0, true);
   // The default V4 baseline keeps its untouched all-map opening. Nature-only
   // links land directly on their visible 3D subject, not an empty distant sky.
-  const firstLook = natureReviewFocus(query, (x,z) => terrain.heightAt(x,z));
+  const lakePoint=lakeLookoutReview?.viewpoint;
+  // This dedicated lake-only URL starts with its actual dynamically surveyed
+  // dry shoreline deck, not an unrelated all-map/cape camera. Combined nature
+  // URLs retain the existing cabin-first camera and all review scripts.
+  const firstLook = lakePoint && !cabinReview && !boardwalkReview && !floraReview
+    ? {
+        kind:'lookout' as const,
+        position:[lakePoint.x-18,
+          terrain.heightAt(lakePoint.x-18,lakePoint.z+14)+9,lakePoint.z+14] as const,
+        target:[lakePoint.x,lakePoint.y+1,lakePoint.z] as const,
+        title:'湖畔の展望デッキへ。',description:'本物の湖岸に沿った木製展望台。床・支柱・手すりは実地形に接地します。',
+      }
+    : natureReviewFocus(query, (x,z) => terrain.heightAt(x,z));
   if (firstLook) {
     natureFocusActive = true;
     camera.position.set(...firstLook.position);
@@ -367,6 +397,9 @@ async function boot() {
       saveWrites: 0 } : { enabled: false },
     cabinReview: cabinReview ? {enabled:true,stairs:cabinReview.stairs,
       parts:cabinReview.parts,floorY:cabinReview.floorY,saveWrites:0} : {enabled:false},
+    lakeLookoutReview: lakeLookoutReview ? {enabled:true,
+      entrance:lakeLookoutReview.entrance,viewpoint:lakeLookoutReview.viewpoint,
+      panels:lakeLookoutReview.panels,supports:lakeLookoutReview.supports,saveWrites:0} : {enabled:false},
     mode: walking ? 'walk' : 'orbit', routeOverlayVisible:routeLine.visible, intro:intro.state, sound:'off / no audio resources',
     bounds: [-1200, 1200], cellMetres: 5, chunks: chunks.length, gridVertices: terrain.heights.length,
     generatedMs: +(generated - terrainStarted).toFixed(1), firstFrameMs: firstFrame ? +(firstFrame - started).toFixed(1) : null,
@@ -398,7 +431,11 @@ async function boot() {
   // Inspection hooks are isolated here and never imported by the actual game's index.html.
   if(document.body.dataset.initialIntro==='true')openIntro();
   Object.assign(window, { __SHIRETOKO_TERRAIN__: {
-    diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, cabinHeightAt: cabinReview?.heightAt ?? null, cabinBlockedAt: cabinReview?.blockedAt ?? null, cabinEntrance: cabinReview?.entrance ?? null, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
+    diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, cabinHeightAt: cabinReview?.heightAt ?? null, cabinBlockedAt: cabinReview?.blockedAt ?? null, cabinEntrance: cabinReview?.entrance ?? null,
+    lakeLookoutHeightAt:lakeLookoutReview?.heightAt ?? null,
+    lakeLookoutBlockedAt:lakeLookoutReview?.blockedAt ?? null,
+    lakeLookoutEntrance:lakeLookoutReview?.entrance ?? null,
+    setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
     setClean, freeze: (value: boolean) => { freeze = value; if(value)for(const water of waters)water.material.uniforms.uTime.value=0; needsRender=true; },
     viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); natureFocusActive = false; transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
     openIntro, dispose,
