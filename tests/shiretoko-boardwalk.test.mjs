@@ -26,7 +26,7 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert.equal(rails.name,'boardwalk / pitch-matched guard rails / instanced');
   assert.equal(guardPosts.name,'boardwalk / deck-grounded guard posts / instanced');
   assert(rails.isInstancedMesh && guardPosts.isInstancedMesh);
-  assert.equal(rails.count,boardwalk.panels*2);
+  assert.equal(rails.count,boardwalk.panels*4,'both full-height and knee-height rails share one draw group');
   assert(guardPosts.count>100 && guardPosts.count<boardwalk.panels);
   assert.equal(rails.geometry.parameters.height,.12);
   assert.equal(guardPosts.geometry.parameters.height,.94);
@@ -113,13 +113,20 @@ test('visible side guards follow real sloping deck corners and block only edges'
   const [deck,,,,rails,guardPosts]=boardwalk.group.children;
   const vertices=deck.geometry.getAttribute('position');
   const matrix=new T.Matrix4(),at=new T.Vector3();
-  const stride=Math.max(1,Math.floor(rails.count/35));
-  for(let i=0;i<rails.count;i+=stride){
-    rails.getMatrixAt(i,matrix);at.setFromMatrixPosition(matrix);
-    const panel=Math.floor(i/2),side=i%2,first=panel*4+side,last=panel*4+2+side;
-    const expected=(vertices.getY(first)+vertices.getY(last))*.5+.88;
-    assert(Math.abs(at.y-expected)<.001,'handrail must track its actual two deck endpoints');
-    assert(boardwalk.blockedAt(at.x,at.z),'visible raised guard must block walker at its exact rail');
+  const stride=Math.max(1,Math.floor(boardwalk.panels/30));
+  for(let panel=0;panel<boardwalk.panels;panel+=stride){
+    for(let side=0;side<2;side++){
+      const first=panel*4+side,last=first+2;
+      const actualDeckY=(vertices.getY(first)+vertices.getY(last))*.5;
+      for(const [band,lift] of [.88,.48].entries()){
+        const i=panel*4+side*2+band;
+        rails.getMatrixAt(i,matrix);at.setFromMatrixPosition(matrix);
+        assert(Math.abs(at.y-actualDeckY-lift)<.001,
+          'both handrail and knee rail must follow actual indexed deck pitch');
+        assert(boardwalk.blockedAt(at.x,at.z),
+          'both visible side bands must share original physical edge collision');
+      }
+    }
   }
   assert.equal(boardwalk.blockedAt(midpoint.x,midpoint.z),false,
     'the original 3.2m central path remains traversable');
