@@ -46,7 +46,7 @@ try{
   const firstLook=await page.evaluate(()=>{
     const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics(),t=a.terrain;
     return {camera:d.camera,renderCalls:d.renderCallsTotal,
-      expectedPosition:[-38,t.heightAt(-38,881)+12,881],
+      expectedPosition:[-60,t.heightAt(-60,820)+12,820],
       expectedTarget:[-100,t.heightAt(-100,835)+2,835],
       label:document.getElementById('scene-title')?.textContent,
       reviewMode:document.querySelector('[data-nature-review]')?.textContent};
