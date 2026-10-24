@@ -48,6 +48,20 @@ export function lakeLookoutSite(terrain: ShiretokoTerrain): Readonly<{ x: number
       terrain.slopeAt(cx,cz)>.52)) continue;
     const heights=corners.map(([cx,cz])=>terrain.heightAt(cx,cz));
     if (Math.max(...heights)-Math.min(...heights)>1.5) continue;
+    // The four corners define TWO planar render triangles, but the shared
+    // 5m ground has its own diagonal. At the middle of either side, their
+    // interpolated heights can differ. A dry/low-slope site can therefore
+    // still bury a real support in the ground. Require all six actual pier
+    // contact points to clear the terrain before accepting this candidate.
+    const sideMidpoints=[x-HALF_X,x+HALF_X] as const;
+    if (sideMidpoints.some((px,side)=>{
+      const backY=heights[side===0?0:2];
+      const frontY=heights[side===0?1:3];
+      const ground=terrain.heightAt(px,z);
+      return terrain.inWater(px,z) ||
+        terrain.slopeAt(px,z)>.52 ||
+        (backY+frontY)/2+LIFT-ground<.08;
+    })) continue;
     return Object.freeze({x,z});
   }
   throw new RangeError('No safe dry lake look-out site within the shore review budget');

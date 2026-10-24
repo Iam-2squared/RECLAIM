@@ -26,6 +26,20 @@ test('lake lookout is surveyed on real dry 5m terrain near the highland lake',()
   assert.equal(review.entrance.z,site.z);
 });
 
+test('shore survey keeps both middle supports above the actual ground',()=>{
+  // The 5m terrain need not be coplanar with the deck's two large triangles.
+  // Reject a site that is dry at its corners but buries a side-midpoint pier.
+  for(const x of [site.x-4,site.x+4]){
+    const ground=terrain.heightAt(x,site.z);
+    const deckY=(terrain.heightAt(x,site.z-5)+
+      terrain.heightAt(x,site.z+5))/2+.29;
+    assert(deckY-ground>=.08-1e-8,
+      'six real support feet must reach the displayed triangle top');
+    assert.equal(terrain.inWater(x,site.z),false);
+    assert(terrain.slopeAt(x,site.z)<=.52);
+  }
+});
+
 test('real indexed wooden triangles are authoritative for collision and render',()=>{
   const deck=review.group.children[0];
   assert(deck instanceof T.Mesh);
