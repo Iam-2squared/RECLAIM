@@ -239,6 +239,74 @@ try{
   assert.equal(await page.locator('[data-nature-review]').count(),0);
   result.tests.push({name:'native lake preview, same-mesh walk/rail, Escape, WebGL and release',
     pass:true,initial:lakeFirst,walk:lakeWalk,afterWalk:lakeReturned});
+  // Follow the sixth public review card to its actual 2400m highland flora.
+  // Unlike an artificial viewFrom, this checks the first camera and native
+  // walk destination after a fresh file:// navigation, without save changes.
+  await page.goto(pathToFileURL(artifact).href+'?flora=low&highland=1');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,
+    {},{timeout:60000});
+  renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+  await page.waitForFunction(()=>{
+    const d=window.__SHIRETOKO_TERRAIN__?.diagnostics();
+    return d?.renderCallsTotal>=2&&d.mode==='orbit'&&d.floraReview?.enabled;
+  },{},{timeout:30000});
+  const highland=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics(),terrain=a.terrain;
+    return {camera:d.camera,instances:d.floraReview.instances,
+      ground:terrain.heightAt(170,-850),
+      expectedPosition:[145,terrain.heightAt(145,-810)+100,-810],
+      expectedTarget:[170,terrain.heightAt(170,-850)+2,-850],
+      label:document.querySelector('#scene-title')?.textContent};
+  });
+  for(const field of ['position','target']){
+    const expected=field==='position'?highland.expectedPosition:highland.expectedTarget;
+    for(let i=0;i<3;i++)assert(Math.abs(highland.camera[field][i]-expected[i])<.02,
+      'native highland '+field+' must track actual 5m terrain');
+  }
+  assert.match(highland.label??'',/高原/);
+  assert(highland.instances>1200,'highland view must load actual vegetation instances');
+  const highlandFrame=await page.evaluate(captureTerrainFramebuffer);
+  assert.equal(highlandFrame.glError,0);
+  assert(highlandFrame.max-highlandFrame.min>20,'highland screenshot must contain real RGB scene variation');
+  assert.match(highlandFrame.image,/^data:image\/jpeg;base64,/);
+  const highlandBytes=Buffer.from(highlandFrame.image.split(',')[1],'base64');
+  assert(highlandBytes.length>2000,'highland WebGL image must contain visible geometry');
+  const highlandFile='highland-shrubs-first-open-actual-webgl.jpg';
+  await writeFile(resolve(out,highlandFile),highlandBytes);
+  result.images.push({name:'highland-shrubs',filename:highlandFile,
+    bytes:highlandBytes.length,width:highlandFrame.width,height:highlandFrame.height,
+    min:highlandFrame.min,max:highlandFrame.max,
+    frameCount:highlandFrame.renderCallsTotal,camera:highlandFrame.cameraPosition});
+  await page.locator('#walk').click();
+  const mountainWalk=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
+    return {mode:d.mode,x:d.player.x,z:d.player.z,y:d.player.y,
+      ground:a.terrain.heightAt(d.player.x,d.player.z)};
+  });
+  assert.equal(mountainWalk.mode,'walk');
+  assert(Math.hypot(mountainWalk.x-170,mountainWalk.z+850)<.001,
+    'native highland link must enter the authored mountain route, not the cape');
+  assert(Math.abs(mountainWalk.y-mountainWalk.ground)<1e-5,
+    'highland native walker must stand on the real 5m mesh');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().mode==='orbit',
+    {},{timeout:30000});
+  const highlandReturned=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().camera);
+  for(const field of ['position','target'])for(let i=0;i<3;i++)
+    assert(Math.abs(highlandReturned[field][i]-highland.camera[field][i])<.02,
+      'native Escape must restore opted-in highland camera');
+  assert.deepEqual(await page.evaluate(()=>window.__natureStorageAccess),[]);
+  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());
+  const highlandDisposed=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
+  assert.equal(highlandDisposed.disposed,true);
+  assert.equal(highlandDisposed.geometries,0);
+  assert.equal(highlandDisposed.textures,0);
+  assert.equal(await page.locator('canvas').count(),0);
+  result.tests.push({name:'native highland public URL, actual 5m first camera, mountain walk, Escape and disposal',
+    pass:true,initial:highland,walk:mountainWalk,returned:highlandReturned});
+
   console.log('NATURE WEBGL PASS',JSON.stringify({sourceSHA,images:result.images.length,
     instances:review.floral.instances,panels:review.boardwalk.panels,stairs:review.cabin.stairs}));
 }catch(error){

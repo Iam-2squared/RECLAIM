@@ -234,7 +234,9 @@ async function boot() {
       ? cabinReview?.entrance : null;
     const lakeEntry = natureFocusActive && firstLook?.kind === 'lookout'
       ? lakeLookoutReview?.entrance : null;
-    const p = cabinEntry ?? lakeEntry ?? LOCATIONS[Math.max(0, activeLocation)];
+    const highlandEntry = natureFocusActive && firstLook?.kind === 'highland'
+      ? LOCATIONS[3] : null;
+    const p = cabinEntry ?? lakeEntry ?? highlandEntry ?? LOCATIONS[Math.max(0, activeLocation)];
     if (!walker.place(p.x, p.z)) return;
     transition = null; controls.enabled = false; walking = true; keys.clear(); accumulator = 0;
     walker.yaw = cabinEntry ? Math.PI / 2 : lakeEntry ? -Math.PI / 2 : 0;
@@ -262,7 +264,7 @@ async function boot() {
   // Escape/back preserves the opted-in cabin camera. Without this, the
   // viewer returned to the remote all-map view after walking into the house.
   function returnFromWalk() {
-    if (natureFocusActive && (firstLook?.kind === 'cabin' || firstLook?.kind === 'lookout')) {
+    if (natureFocusActive && (firstLook?.kind === 'cabin' || firstLook?.kind === 'lookout' || firstLook?.kind === 'highland')) {
       exitWalk();
       camera.position.fromArray(firstLook.position);
       controls.target.fromArray(firstLook.target);
