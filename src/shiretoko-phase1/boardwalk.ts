@@ -10,6 +10,7 @@ export type DeckHeight = (x: number, z: number) => number | null;
 export type BoardwalkReview = Readonly<{
   group: T.Group;
   heightAt: DeckHeight;
+  blockedAt: (x: number, z: number) => boolean;
   panels: number;
   supports: number;
   indexedTriangles: number;
@@ -45,6 +46,9 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   const postMatrices: T.Matrix4[] = [];
   const seamMatrices: T.Matrix4[] = [];
   const edgeMatrices: T.Matrix4[] = [];
+  const railMatrices: T.Matrix4[] = [];
+  const railPostMatrices: T.Matrix4[] = [];
+  const railEdges: { a: Pt; b: Pt }[] = [];
   // Visual battens follow the SAME actual corner heights as the walkable
   // triangles. This is cosmetic geometry, never a second collision surface.
   const segmentMatrix = (a: Pt, b: Pt, lift: number): T.Matrix4 => {
@@ -105,6 +109,18 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
       // two indexed walk triangles (including at a change of route heading).
       seamMatrices.push(segmentMatrix(c, d, .012));
       edgeMatrices.push(segmentMatrix(a, c, .016), segmentMatrix(b, d, .016));
+      // Real timber guards follow each indexed deck edge, including its 5m
+      // sampled longitudinal pitch. Both sides stay outside the 3.2m clear
+      // walking centre; the west/east end approaches remain completely open.
+      // All rails and uprights use just TWO new instanced draw groups.
+      for (const [from, to] of [[a, c], [b, d]] as const) {
+        railMatrices.push(segmentMatrix(from, to, .88));
+        railEdges.push({ a: from, b: to });
+      }
+      const railPost = (v: Pt) =>
+        railPostMatrices.push(new T.Matrix4().makeTranslation(v.x, v.y + .47, v.z));
+      if (k % 3 === 0) { railPost(a); railPost(b); }
+      if (k === count - 1) { railPost(c); railPost(d); }
 
       if (panels % 5 === 0) for (const side of [-1, 1]) {
         const pos = at(centre((t0 + t1) / 2), (t0 + t1) / 2, side * .92);
@@ -154,6 +170,41 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   };
   addDetail('boardwalk / plank seams / instanced', seamMatrices, .025, .045, 0x514033);
   addDetail('boardwalk / side edging / instanced', edgeMatrices, .09, .085, 0x70573c);
+  addDetail('boardwalk / pitch-matched guard rails / instanced', railMatrices, .12, .12, 0x66503a);
+  const upright = new T.InstancedMesh(new T.BoxGeometry(.16, .94, .16),
+    new T.MeshLambertMaterial({ color: 0x534031 }), railPostMatrices.length);
+  upright.name = 'boardwalk / deck-grounded guard posts / instanced';
+  for (let i = 0; i < railPostMatrices.length; i++) upright.setMatrixAt(i, railPostMatrices[i]);
+  upright.instanceMatrix.needsUpdate = true;
+  upright.computeBoundingSphere();
+  group.add(upright);
+
+  // A compact 8m spatial hash prevents a 490-rail brute-force collision scan
+  // every time the native walking solver advances in 0.12m substeps.
+  const guardRadius = .28;
+  const railBins = new Map<string, number[]>();
+  for (let i = 0; i < railEdges.length; i++) {
+    const { a, b } = railEdges[i];
+    for (let bx = Math.floor((Math.min(a.x, b.x) - guardRadius) / CELL);
+      bx <= Math.floor((Math.max(a.x, b.x) + guardRadius) / CELL); bx++)
+      for (let bz = Math.floor((Math.min(a.z, b.z) - guardRadius) / CELL);
+        bz <= Math.floor((Math.max(a.z, b.z) + guardRadius) / CELL); bz++) {
+        const key = bx + ':' + bz, entries = railBins.get(key) ?? [];
+        entries.push(i); railBins.set(key, entries);
+      }
+  }
+  const blockedAt = (x: number, z: number): boolean => {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return true;
+    for (const i of railBins.get(BIN(x, z)) ?? []) {
+      const { a, b } = railEdges[i], dx = b.x - a.x, dz = b.z - a.z;
+      const length2 = dx * dx + dz * dz;
+      if (length2 < 1e-8) continue;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / length2));
+      const offX = x - a.x - t * dx, offZ = z - a.z - t * dz;
+      if (offX * offX + offZ * offZ <= guardRadius * guardRadius) return true;
+    }
+    return false;
+  };
 
   const heightAt: DeckHeight = (x, z) => {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
@@ -173,6 +224,6 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   };
   // CPU inspection returns the exact triangle surface. Three uploads vertices
   // as Float32, so sub-millimetre display quantization is allowed in tests.
-  return { group, heightAt, panels, supports: postMatrices.length,
+  return { group, heightAt, blockedAt, panels, supports: postMatrices.length,
     indexedTriangles: allTriangles.length };
 }
