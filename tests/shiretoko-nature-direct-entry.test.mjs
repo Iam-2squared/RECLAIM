@@ -12,6 +12,11 @@ test('baseline offers one direct 3D nature/cabin/boardwalk link, without a saved
   const address=new URL(links[0][1].replaceAll('&amp;','&'),'https://reclaim.example/shiretoko-terrain.html');
   assert.equal(address.origin,'https://reclaim.example');
   assert.equal(address.pathname,'/shiretoko-terrain.html');
+  const standalone=new URL(links[0][1].replaceAll('&amp;','&'),
+    'https://reclaim.example/RECLAIM_Shiretoko_Terrain_Phase1.html');
+  assert.equal(standalone.pathname,'/RECLAIM_Shiretoko_Terrain_Phase1.html',
+    'the packaged self-contained artifact must link to itself, not a missing Vite HTML');
+  assert.equal(standalone.search,address.search);
   assert.deepEqual([...address.searchParams.entries()],[
     ['flora','low'],['boardwalk','1'],['cabin','1'],
   ],'load genuine low-density flora, wooden path and enterable cabin together');
@@ -25,7 +30,7 @@ test('old physical terrain baseline, intro and standalone route chooser stay int
   assert.match(terrain,/<script type="module" src="\/src\/shiretoko-phase1\/preview\.ts"><\/script>/);
   assert.match(terrain,/<button id="intro-open">イントロ試作<\/button>/);
   assert.match(terrain,/<button id="walk">この場所を歩く/);
-  assert.match(terrain,/href="\.\/shiretoko-terrain\.html\?flora=low&amp;boardwalk=1&amp;cabin=1"/);
+  assert.match(terrain,/href="\?flora=low&amp;boardwalk=1&amp;cabin=1"/);
   assert.doesNotMatch(terrain,/localStorage|sessionStorage|fetch\s*\(/);
   assert.match(intro,/data-review-link="baseline" href="\.\/shiretoko-terrain\.html"/,
     'baseline review must still load the unflagged terrain URL');
