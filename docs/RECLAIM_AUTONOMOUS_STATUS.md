@@ -1,3 +1,16 @@
+# RECLAIM — autonomous integration checkpoint (2026-10-25 08:44:40 JST)
+Scope only: Iam-2squared/RECLAIM and existing Vercel reclaim-safari-preview.
+
+- PR #109 *original* SHA `d9ff13438fa231cc561b972fae29ab744ed515c4`, parent `70fc44b5f26b73897c43c0024283c20ec48ba050`: adds 28 genuine 3D lake lookout wooden balusters to the original six uprights (34 instances in the same pre-existing mesh/material/draw group). All feet follow the actual rendered indexed decking, all three rail gap spacings <=0.855m, no duplicates, no entrance or walker collision changes. Focused test included. Source exact SHA attempt 1 terrain #40143208124 **3/3 SUCCESS**, preview #40143208115 **5/5 SUCCESS**, native WebGL #40143208116 **1/1 SUCCESS**. Nature artifact #12579058828, genuine 1100x680 screenshots. PR107 vs PR109 fixed-view lake image comparison shows 3595 changed pixels >30/255 in one channel, visually concentrated around newly present uprights. No Windows GPU FPS measurement.
+- PR #108 valid integrated source head `b2f7cf92f6f719e28337b663977e015efee1ecbc`, original combined runs terrain #40142797816 3/3, preview #40142797819 5/5, native nature #40142797851 1/1 all success attempt 1, now merged by an independent worker as main `a364eee48793754028829a9d8872efa9389649ca`. Its post-merge main runs **terrain #40143453596 and preview #40143453594 were pending** at this checkpoint; no release-green claim.
+- PR109 integration commit uses this exact NEW main tree and the two unchanged, already source-tested blobs `83998299c3da1db861f3821cba709186ec995908` (lake-lookout.ts) and `40cf12bfb236420a215d9c25f5a3bef60c238781` (focused test). Ordinary NONFORCED two-parent merge; latest main's corresponding original blob SHAs match pre-feature main, and current PR108 touches cabin/docs, so no overlapping code paths. **New combined HEAD must run fresh terrain 3 + preview 5 + real WebGL 1 tests; do not merge early.**
+- Local PC preview from last completed-green main `70fc44b`: `RECLAIM_SHIRETOKO_MAIN_70fc44b_INTERACTIVE_20261025.zip`, source-labelled 17 checksum-tested files, six real navigable 3D links. Local Chromium via localhost here was blocked with `ERR_BLOCKED_BY_ADMINISTRATOR`; ZIP Windows GPU and file:// playback unverified. New PR109 balusters are NOT in the packaged main ZIP.
+- Existing Vercel projectId prj_c5CQvrRjQRcesZC6GMoMv89evR69, teamId team_ovY3gbfsldk7aCRexivv2MkF last GET 403 and no observed permission change: no deploy/alias/auth bypass. TITLE/HOME, original 480m saves, mobile guard and other repos/tasks untouched.
+
+Next 3: (1) collect exact main a364 post-merge 8/8; (2) exact integrated PR109 9/9 + visual evidence then guarded merge; (3) new main 8/8, current playable ZIP and Vercel only on legitimate access.
+
+---
+## Older preserved checkpoint
 # RECLAIM — autonomous integration checkpoint (2026-10-25 08:26:31 JST)
 Scope: ONLY Iam-2squared/RECLAIM and existing reclaim-safari-preview Vercel.
 

@@ -174,9 +174,28 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
     });
   }
   rails.instanceMatrix.needsUpdate=true;rails.computeBoundingSphere();group.add(rails);
-  const posts=new T.InstancedMesh(new T.BoxGeometry(.14,.95,.14),railColor,6);
+  // Close the visually empty 8–10m spans with upright balusters. They
+  // reuse the ORIGINAL six structural-post draw group/material/geometry;
+  // only the instance matrix buffer grows. Divide by whole spans so no
+  // final short gap appears, and omit the existing east-mid pier to avoid
+  // coplanar overlapping timber. Every baluster stands on the ACTUAL
+  // indexed deck triangle, not the underlying 5m terrain approximation.
+  const infill:[number,number][]=[];
+  for(const run of railRuns){
+    const dx=run.to[0]-run.from[0],dz=run.to[1]-run.from[1];
+    const intervals=Math.ceil(Math.hypot(dx,dz)/.85);
+    for(let step=1;step<intervals;step++){
+      const t=step/intervals;
+      const x=run.from[0]+dx*t,z=run.from[1]+dz*t;
+      if(supports.some(([sx,sz])=>Math.hypot(x-sx,z-sz)<.04))continue;
+      infill.push([x,z]);
+    }
+  }
+  const postPositions=[...supports,...infill];
+  const posts=new T.InstancedMesh(new T.BoxGeometry(.14,.95,.14),
+    railColor,postPositions.length);
   posts.name='lake-lookout / instanced rail posts';
-  supports.forEach(([x,z],i)=>{
+  postPositions.forEach(([x,z],i)=>{
     const y=surface(x,z);
     if(y===null)throw new Error('railing post needs deck top');
     matrix.makeTranslation(x,y+.475,z);
