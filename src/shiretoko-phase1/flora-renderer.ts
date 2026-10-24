@@ -194,9 +194,25 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
           g.translate(Math.cos(angle)*.10,0,Math.sin(angle)*.10);
         });
       }
-      // One shared root closes the fan visually against the exact ground.
-      part(parts,new T.CylinderGeometry(.055,.085,.15,5,1),
+      // Keep one deeply rooted centre, but trade the cylinder's hidden
+      // end caps for an open tapered crown. This frees enough triangles for
+      // TWO real seed-bearing grass culms while retaining the original
+      // strict <160 vertices PER instance and the SAME GPU draw group.
+      part(parts,new T.ConeGeometry(.085,.15,5,1,true),
         0x667348,g=>g.translate(0,.075,0));
+      for(const [side,x,z,grain] of [
+        [-1,-.19,.08,0xa69a66],[1,.16,-.13,0x988961],
+      ] as const){
+        part(parts,new T.ConeGeometry(.018,.33,3,1,true),
+          0x69794e,g=>{
+            g.rotateZ(side*.19);
+            g.translate(x,.545,z);
+          });
+        part(parts,new T.TetrahedronGeometry(.057,0),grain,g=>{
+          g.rotateY(side*.43);
+          g.translate(x+side*.034,.745,z);
+        });
+      }
       break;
     }
     case 'sasa': {
