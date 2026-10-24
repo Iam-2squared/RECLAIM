@@ -188,9 +188,7 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   const rotateAlongZ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI/2);
   const rotateAlongX=new T.Quaternion();
   for(const section of exteriorSections){
-    const {width,height,depth}=section.geometry.parameters as {
-      width:number;height:number;depth:number
-    };
+    const {width,height,depth}=(section.geometry as T.BoxGeometry).parameters;
     const horizontal=width>depth;
     const length=horizontal?width:depth;
     const rows=Math.max(1,Math.floor(height/.44));
