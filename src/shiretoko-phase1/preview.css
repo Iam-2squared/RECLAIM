@@ -17,3 +17,12 @@ body.clean #intro-panel{opacity:0;pointer-events:none}body.clean #intro-panel bu
 .intro-marker[hidden]{display:none}
 
 body.clean #walk-overlay{opacity:0}
+
+
+/* An explicit, keyboard-accessible route to the actual opt-in 3D world.
+ * The unflagged 2400m terrain baseline and TITLE/HOME remain unchanged. */
+.view-tools .nature-direct-link{display:inline-flex;align-items:center;white-space:nowrap;padding:9px 13px;border:1px solid #b6bc9d;background:rgba(24,68,55,.82);color:#eef8e9;text-decoration:none;font-size:11px;letter-spacing:.05em;backdrop-filter:blur(8px)}
+.view-tools .nature-direct-link:hover{background:#3b6552;border-color:#e1eecb}
+.view-tools .nature-direct-link:focus-visible{outline:2px solid #ebdcaa;outline-offset:4px}
+@media(max-width:1250px){.view-tools .nature-direct-link{padding:8px;font-size:10px}}
+@media(max-width:920px){.masthead{flex-wrap:wrap}.view-tools{flex-wrap:wrap;justify-content:flex-end}}
