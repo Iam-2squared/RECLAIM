@@ -1,3 +1,27 @@
+# RECLAIM — Autonomous integration checkpoint (2026/10/25 6:40:25 JST)
+Scope ONLY: Iam-2squared/RECLAIM and existing reclaim-safari-preview Vercel.
+
+## Confirmed current main and evidence
+- GitHub main HEAD before this integration: `672501713183e769a7d00d4c9162b9da1345c638` (squash merge PR #103 from exact source `d26a07e0dfc45ec9f36e7822080a92722e66c19c`). A genuine TWO-seed-head low-poly meadow grass mesh joined the existing grass instance group; focused test and actual Chromium/SwiftShader WebGL evidence. Source attempt 1 terrain #40134008188 **3/3 SUCCESS**, preview #40134008231 **5/5 SUCCESS**, nature #40134008214 **1/1 SUCCESS**, artifact #12576062286; PR #103 merge confirmed GitHub response. Source verification is NOT a substitute for new main push CI.
+- New PR #103 main push at checkpoint: terrain #40134767290 attempt 1 **3/3 SUCCESS**; preview #40134767363 attempt 1 **3/5 SUCCESS with chromium-world and chromium-ui IN_PROGRESS**. The main release is NOT fully green until all 5 pass, and no subsequent merge or Vercel publish may rely on pending jobs.
+
+## Three independent substantive changes this run
+- PR #104 original source `2873aa2131703bca4aa013a4c07be298e8396daa` adds moisture/slope/rock-gated fine peat patches directly to physically walkable marsh terrain fragment shader, reusing the original detail sampler and geometry; focused test tests/shiretoko-wetland-peat-material.test.mjs. Original source exact attempts 1: terrain #40134493037 **3/3 SUCCESS**, preview #40134493014 **5/5 SUCCESS**, native nature #40134493035 **1/1 SUCCESS**; nature artifact #12576546664. Real comparison shows subtle lake/wetland color changes and no new scene objects; no Windows FPS claim. This nonforced integration commit combines these two exact feature blobs with the NEW post-#103 main tree and this canonical checkpoint. **Combined feature HEAD is UNVERIFIED and all 3+5+1 CI gates are required fresh**; do not merge it early.
+- Independent PR #105 original source `bb8bf183431f9904926220cc5fe780b280344d18` adds a second physical-3D wooden knee rail at +0.48 m under both existing handrails at +0.88m, reusing one rail InstancedMesh across 245 wooden panels (no extra draw groups). Original nature run #40134741029 attempt 1 **1/1 SUCCESS** and artifact #12576661963, terrain #40134741009 attempt 1 **3/3 SUCCESS**; preview #40134740998 attempt 1 **2/5 SUCCESS, remaining IN_PROGRESS**. Feature not merged. The original boardwalk 5m-derived indexed deck, walker collision, full-width entrances, and save contract are unchanged.
+- A ZIP from exact PR #103 fully-green source artifact #12576321284, with self-contained terrain + intro HTML, seven opt-in walkable 3D/scene links, native actual WebGL screenshots and SHA256 manifest is available locally as `RECLAIM_SHIRETOKO_PR103_d26_SEED_GRASS_INTERACTIVE_20261025.zip`. Source CI all 9/9 passed; it is NOT a verified Windows GPU FPS or a Vercel deployment. Separate fully-green older main ZIP `RECLAIM_SHIRETOKO_MAIN_265be365_INTERACTIVE_OFFLINE_20261025.zip` is preserved.
+
+## Protected boundary and publication
+- Tokyo TITLE / Shiretoko HOME references, original 480m game saves, mobile FPS guard, 2400m terrain ground contact, other repos and tasks untouched. PR #4 intentionally remains unmerged.
+- Normal GET existing Vercel `reclaim-safari-preview` projectId `prj_c5CQvrRjQRcesZC6GMoMv89evR69` / teamId `team_ovY3gbfsldk7aCRexivv2MkF` returned **403 FORBIDDEN (needs authentic team access)**. NO deployment or auth/scope bypass; do not retry until real authorization changes.
+
+## Next three concrete actions
+1. Collect exact PR #103 main preview #40134767363 **remaining 2 jobs** for `672501713183e769a7d00d4c9162b9da1345c638`; if any real failure, preserve logs and fix before treating main as release-ready.
+2. Collect new integration SHA and attempt 1 terrain 3/3 + preview 5/5 + real nature 1/1 for PR #104 and render evidence; ONLY then verify latest main/base and safely merge expected HEAD.
+3. Collect PR #105 old preview and safely integrate on latest main once independent; reverify exact new head. After fully-green main push, package SHA-pinned PC interactive ZIP and publish to existing Vercel only with valid native team access.
+
+---
+## Earlier checkpoint history (preserved verbatim)
+
 # RECLAIM — development handoff (2026-10-25 04:22:21 JST)
 Scope: `Iam-2squared/RECLAIM` and existing `reclaim-safari-preview` only. CI below is evidence for exact original heads; reread merged integration HEAD and attempts before any additional merge.
 

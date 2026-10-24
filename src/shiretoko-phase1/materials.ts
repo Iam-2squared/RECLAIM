@@ -80,6 +80,17 @@ export function terrainMaterial(detail: T.Texture): T.ShaderMaterial {
       float tide=1.-smoothstep(1.,11.,vP.y);
       stone=mix(stone,stone*vec3(.5,.61,.64),tide*.7);
       vec3 albedo=mix(moss,stone,rock);
+      // Waterlogged peat islands are an actual moisture-dependent terrain
+      // colour transition, not repeated patches drawn over lake water.
+      // Reuse the existing periodic triplanar detail texture and 5m wetness
+      // attribute; do not move vertices or add calls/textures/collision.
+      float wetlandMask=clamp(vWet,0.,1.)*
+        (1.-smoothstep(.08,.24,slope))*(1.-rock);
+      float peatLitter=texture2D(uDetail,vP.xz*.021).r;
+      float peatVeins=smoothstep(.40,.75,peatLitter*.68+ground.b*.32);
+      float wetPeatPatch=wetlandMask*(.22+.60*peatVeins);
+      vec3 darkPeat=mix(vec3(.095,.12,.08),vec3(.19,.17,.115),peat);
+      albedo=mix(albedo,darkPeat,wetPeatPatch);
       float wet=(1.-smoothstep(87.,105.,vP.y))*(1.-rock)*.16;
       albedo=mix(albedo,vec3(.15,.19,.115),wet);
       float snow=smoothstep(520.+macro*95.,690.+macro*90.,vP.y)*(1.-smoothstep(.24,.66,slope));

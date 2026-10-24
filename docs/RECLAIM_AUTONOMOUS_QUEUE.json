@@ -1,8 +1,8 @@
 {
   "version": 4,
-  "as_of_jst": "2026-10-25 04:22:21 JST",
+  "as_of_jst": "2026/10/25 6:40:25 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "0b2a89625cfaa17a00310101d54ebdece51c4cad",
+  "latest_known_main": "672501713183e769a7d00d4c9162b9da1345c638",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -73,12 +73,79 @@
       },
       "source_artifact": 12572053380,
       "state": "COMBINED_HEAD_ALL_9_CI_PENDING"
+    },
+    {
+      "id": "meadow-seed-heads",
+      "pr": 103,
+      "source_head": "d26a07e0dfc45ec9f36e7822080a92722e66c19c",
+      "main_sha": "672501713183e769a7d00d4c9162b9da1345c638",
+      "source_runs": {
+        "terrain": 40134008188,
+        "preview": 40134008231,
+        "nature": 40134008214
+      },
+      "state": "MERGED_MAIN_PUSH_PREVIEW_PENDING"
+    },
+    {
+      "id": "wetland-peat-shader",
+      "pr": 104,
+      "source_head": "2873aa2131703bca4aa013a4c07be298e8396daa",
+      "original_base": "265be365de073844297f13b628c56a826d2852a2",
+      "integration_base": "672501713183e769a7d00d4c9162b9da1345c638",
+      "state": "INTEGRATION_NEW_CI_PENDING",
+      "source_runs": {
+        "terrain": 40134493037,
+        "preview": 40134493014,
+        "nature": 40134493035
+      },
+      "source_artifact": 12576546664
+    },
+    {
+      "id": "boardwalk-dual-guardrails",
+      "pr": 105,
+      "source_head": "bb8bf183431f9904926220cc5fe780b280344d18",
+      "state": "SOURCE_PREVIEW_IN_PROGRESS",
+      "source_runs": {
+        "terrain": 40134741009,
+        "preview": 40134740998,
+        "nature": 40134741029
+      },
+      "source_artifact": 12576661963
     }
   ],
-  "offline_review_candidate": "RECLAIM_SHIRETOKO_PR87_SASA_LAKE_VISUAL_REVIEW_20261024.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_PR103_d26_SEED_GRASS_INTERACTIVE_20261025.zip",
   "next": [
-    "Verify PR97 main push CI 5+3 on 0b2a89625cfaa17a00310101d54ebdece51c4cad",
-    "Verify integrated PR98 exact new head 5+3+1 and merge only if green",
-    "Verify new main and publish SHA-identified offline ZIP; Vercel only after authorized access"
-  ]
+    "Complete PR103 main preview SHA 672501713183e769a7d00d4c9162b9da1345c638 all 5/5",
+    "Validate exact new PR104 integration head 3 terrain + 5 preview + 1 real WebGL and merge only if complete green",
+    "Collect PR105 source CI and integrate with verified new main; package offline main and Vercel only after scope authorization"
+  ],
+  "current_integration": {
+    "pr": 104,
+    "source_head": "2873aa2131703bca4aa013a4c07be298e8396daa",
+    "integration_base": "672501713183e769a7d00d4c9162b9da1345c638",
+    "integration_head": "READ_EXACT_SHA_AFTER_NONFORCED_COMMIT",
+    "state": "UNVERIFIED_NEW_INTEGRATION_HEAD",
+    "source_runs": {
+      "terrain": 40134493037,
+      "preview": 40134493014,
+      "nature": 40134493035
+    },
+    "source_artifact": 12576546664
+  },
+  "main_ci": {
+    "head": "672501713183e769a7d00d4c9162b9da1345c638",
+    "terrain": {
+      "run_id": 40134767290,
+      "attempt": 1,
+      "passed": 3,
+      "total": 3
+    },
+    "preview": {
+      "run_id": 40134767363,
+      "attempt": 1,
+      "passed": 3,
+      "total": 5,
+      "state": "TWO_JOBS_IN_PROGRESS_AT_PREP"
+    }
+  }
 }
