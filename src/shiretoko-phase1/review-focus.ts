@@ -30,7 +30,7 @@ export function natureReviewFocus(
       title: '湿原の木道を辿る。', description: '地形から浮いた木道をたどり、湿原と森林を観察します。'},
     flora: {from: [-130, 410, 15], to: [-210, 370, 2],
       title: '森と低湿地を歩く。', description: '低負荷・標準密度の植生と、地形に沿う草木を比較します。'},
-    highland: {from: [145, -810, 100], to: [170, -850, 2],
+    highland: {from: [145, -810, 35], to: [170, -850, 2],
       title: '高原の低木を歩く。', description: '高原の不規則な低木・岩石帯を、実際の山岳地点から徒歩で観察します。'},
   } as const;
   const spec = positions[kind];
