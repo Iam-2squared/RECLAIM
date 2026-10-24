@@ -166,6 +166,79 @@ try{
   assert.equal(await page.locator('canvas').count(),0);
   assert.equal(await page.locator('[data-nature-review]').count(),0);
   result.tests.push({name:'no saves/network, resources released',pass:true});
+
+  // A second isolated URL is deliberately visited, not an internal viewFrom:
+  // this proves the new public ?lookout=1 review truly starts beside the lake.
+  await page.goto(pathToFileURL(artifact).href+'?lookout=1');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,
+    {},{timeout:60000});
+  renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+  await page.waitForFunction(()=>{
+    const d=window.__SHIRETOKO_TERRAIN__?.diagnostics();
+    return d?.renderCallsTotal>=2&&d.mode==='orbit'&&d.lakeLookoutReview?.enabled;
+  },{},{timeout:30000});
+  const lakeFirst=await page.evaluate(()=>{
+    const api=window.__SHIRETOKO_TERRAIN__,d=api.diagnostics(),entry=api.lakeLookoutEntrance;
+    const point=d.lakeLookoutReview.viewpoint;
+    return {entry,point,camera:d.camera,renderCalls:d.renderCallsTotal,
+      openTitle:document.querySelector('#scene-title')?.textContent,
+      surface:api.lakeLookoutHeightAt(entry.x,entry.z),
+      dry:!api.terrain.inWater(entry.x,entry.z),
+      normalSaveAccess:window.__natureStorageAccess};
+  });
+  assert(lakeFirst.dry,'new deck entrance must sit on non-submerged real terrain');
+  assert(Math.abs(lakeFirst.camera.target[0]-lakeFirst.point.x)<.01);
+  assert(Math.abs(lakeFirst.camera.target[1]-lakeFirst.point.y-1)<.01);
+  assert.match(lakeFirst.openTitle??'',/湖畔/);
+  assert.deepEqual(lakeFirst.normalSaveAccess,[]);
+  const lakeFrame=await page.evaluate(captureTerrainFramebuffer);
+  assert.equal(lakeFrame.glError,0);
+  assert.ok(lakeFrame.max-lakeFrame.min>20,'real first-open lake WebGL must show geometry');
+  assert.match(lakeFrame.image,/^data:image\/jpeg;base64,/);
+  const lakeBytes=Buffer.from(lakeFrame.image.split(',')[1],'base64');
+  assert.ok(lakeBytes.length>2000,'actual lake screenshot absent');
+  const lakeFile='highland-lake-lookout-actual-webgl.jpg';
+  await writeFile(resolve(out,lakeFile),lakeBytes);
+  result.images.push({name:'lake-lookout',filename:lakeFile,
+    width:lakeFrame.width,height:lakeFrame.height,bytes:lakeBytes.length,
+    min:lakeFrame.min,max:lakeFrame.max,frameCount:lakeFrame.renderCallsTotal,
+    camera:lakeFrame.cameraPosition});
+
+  // Native HTML click and real walker/rail height, then Escape must restore
+  // the same camera without ever entering or changing the campaign save.
+  await page.locator('#walk').click();
+  const lakeWalk=await page.evaluate(()=>{
+    const api=window.__SHIRETOKO_TERRAIN__,d=api.diagnostics(),e=api.lakeLookoutEntrance;
+    return {mode:d.mode,x:d.player.x,y:d.player.y,z:d.player.z,
+      entrance:e,heightAt:api.lakeLookoutHeightAt(e.x,e.z),
+      blocked:api.lakeLookoutBlockedAt(e.x,e.z)};
+  });
+  assert.equal(lakeWalk.mode,'walk');
+  assert.equal(lakeWalk.blocked,false,'rendered west entrance remains open');
+  assert(Math.hypot(lakeWalk.x-lakeWalk.entrance.x,
+    lakeWalk.z-lakeWalk.entrance.z)<.001);
+  assert(Math.abs(lakeWalk.y-lakeWalk.heightAt)<1e-5,
+    'native lake walking must start on the same visible deck triangle');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().mode==='orbit',
+    {},{timeout:30000});
+  const lakeReturned=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().camera);
+  for(let i=0;i<3;i++){
+    assert(Math.abs(lakeReturned.position[i]-lakeFirst.camera.position[i])<.02);
+    assert(Math.abs(lakeReturned.target[i]-lakeFirst.camera.target[i])<.02);
+  }
+  assert.deepEqual(await page.evaluate(()=>window.__natureStorageAccess),[]);
+  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());
+  const released=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
+  assert.equal(released.disposed,true);
+  assert.equal(released.geometries,0);
+  assert.equal(released.textures,0);
+  assert.equal(await page.locator('canvas').count(),0);
+  assert.equal(await page.locator('[data-nature-review]').count(),0);
+  result.tests.push({name:'native lake preview, same-mesh walk/rail, Escape, WebGL and release',
+    pass:true,initial:lakeFirst,walk:lakeWalk,afterWalk:lakeReturned});
   console.log('NATURE WEBGL PASS',JSON.stringify({sourceSHA,images:result.images.length,
     instances:review.floral.instances,panels:review.boardwalk.panels,stairs:review.cabin.stairs}));
 }catch(error){
