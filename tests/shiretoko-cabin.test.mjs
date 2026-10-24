@@ -387,3 +387,44 @@ test('roof-contact gutter downspouts join real terrain without blocking the hous
   assert(walker.x<right-3&&walker.grounded,
     'actual 60Hz walker still reaches the interior after adding gutter geometry');
 });
+
+test('chimney crosses the actual pitched roof without a flue gap and has real supported rain cap',()=>{
+  const chimney=cabin.group.getObjectByName('cabin / pitched roof grounded chimney stack and flashing / instanced');
+  const flue=cabin.group.getObjectByName('cabin / roof-contact stove flue');
+  assert(chimney instanceof T.InstancedMesh && flue instanceof T.Mesh);
+  assert.equal(chimney.count,4,'stack, sloped flashing, collar and cap share one GPU draw');
+  assert.equal(chimney.geometry.getAttribute('position').count,24);
+  assert(chimney.instanceColor && chimney.instanceColor.count===4);
+  assert(chimney.boundingSphere && Number.isFinite(chimney.boundingSphere.radius));
+  const roofHalf=10,peak=cabin.floorY+3.25+2.3,eave=cabin.floorY+3.25+.16;
+  const stoveX=X-2.5,stoveZ=Z-4.8;
+  const roofAt=x=>peak-(peak-eave)*Math.abs(x-X)/roofHalf;
+  const roofY=roofAt(stoveX);
+  const matrix=new T.Matrix4(),pos=new T.Vector3(),scale=new T.Vector3(),q=new T.Quaternion();
+  chimney.getMatrixAt(0,matrix);
+  matrix.decompose(pos,q,scale);
+  assert(Math.abs(pos.x-stoveX)<.0001 && Math.abs(pos.z-stoveZ)<.0001);
+  const bottom=pos.y-scale.y/2,top=pos.y+scale.y/2;
+  const flueEnd=flue.position.y+flue.geometry.parameters.height/2;
+  assert(Math.abs(bottom-(roofY-.08))<.0002);
+  assert(bottom<flueEnd && flueEnd<roofY,
+    'the exterior stack overlaps the real indoor flue through the roof');
+  assert(top>peak && top<peak+1.3,'noticeable but bounded roof skyline');
+  chimney.getMatrixAt(1,matrix);
+  matrix.decompose(pos,q,scale);
+  assert(Math.abs(pos.y-(roofY+.025))<.0002);
+  for(const side of [-.5,.5]){
+    const roofFace=new T.Vector3(side,0,0).applyMatrix4(matrix);
+    assert(Math.abs(roofFace.y-roofAt(roofFace.x)-.025)<.0002,
+      'weather flashing must actually follow the existing western roof pitch');
+    assert(roofFace.z>stoveZ-.01 && roofFace.z<stoveZ+.01);
+  }
+  chimney.getMatrixAt(3,matrix);
+  matrix.decompose(pos,q,scale);
+  assert(Math.abs(pos.y-scale.y/2-top)<.0003,
+    'the metal rain cap rests on its real iron stack, without floating');
+  assert.equal(cabin.blockedAt(stoveX,stoveZ),true,'existing stove collider remains');
+  assert.equal(cabin.heightAt(stoveX,stoveZ),cabin.floorY);
+  assert.equal(cabin.blockedAt(cabin.entrance.x,Z),false,
+    'the same exterior staircase and entry remain navigable');
+});
