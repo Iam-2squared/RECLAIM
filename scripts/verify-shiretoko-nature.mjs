@@ -61,7 +61,7 @@ try{
   const firstFrame=await page.evaluate(captureTerrainFramebuffer);
   assert.equal(firstFrame.glError,0);
   assert.ok(firstFrame.max-firstFrame.min>20,'first-open cabin WebGL view must contain actual scene pixels');
-  assert.match(firstFrame.image,/^data:image\\/jpeg;base64,/);
+  assert.ok(firstFrame.image.startsWith('data:image/jpeg;base64,'),'native opening JPEG MIME missing');
   const firstBytes=Buffer.from(firstFrame.image.split(',')[1],'base64');
   assert.ok(firstBytes.length>2000,'first-open real framebuffer image missing');
   await writeFile(resolve(out,'first-look-cabin-actual-webgl.jpg'),firstBytes);
