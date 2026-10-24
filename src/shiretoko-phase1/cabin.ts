@@ -76,8 +76,22 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   }
   const wallTop=floorY+3.25;
   box('cabin / west wall',left+WALL/2,floorY+1.625,Z,WALL,3.25,DEPTH,mats.wall);
-  box('cabin / north wall',X,floorY+1.625,back+WALL/2,WIDTH,3.25,WALL,mats.wall);
-  box('cabin / south wall',X,floorY+1.625,front-WALL/2,WIDTH,3.25,WALL,mats.wall);
+  // The two glazed windows are apertures in the actual opaque walls, not
+  // translucent decals in front of solid plaster. Keep a full 1.20m sill
+  // below each opening: the waist-high window never becomes a second door.
+  const WINDOW_X=X-4, WINDOW_W=3, WINDOW_BASE=1.2, WINDOW_TOP=2.52;
+  const westSpan=WINDOW_X-WINDOW_W/2-left;
+  const eastSpan=right-(WINDOW_X+WINDOW_W/2);
+  for(const [side,wallZ] of [['north',back+WALL/2],['south',front-WALL/2]] as const){
+    box('cabin / '+side+' wall west of window',left+westSpan/2,floorY+1.625,wallZ,
+      westSpan,3.25,WALL,mats.wall);
+    box('cabin / '+side+' wall east of window',right-eastSpan/2,floorY+1.625,wallZ,
+      eastSpan,3.25,WALL,mats.wall);
+    box('cabin / '+side+' wall below window',WINDOW_X,floorY+WINDOW_BASE/2,wallZ,
+      WINDOW_W,WINDOW_BASE,WALL,mats.wall);
+    box('cabin / '+side+' wall above window',WINDOW_X,floorY+(WINDOW_TOP+3.25)/2,wallZ,
+      WINDOW_W,3.25-WINDOW_TOP,WALL,mats.wall);
+  }
   const sideDepth=(DEPTH-2*DOOR_HALF)/2;
   box('cabin / door north pier',right-WALL/2,floorY+1.625,back+sideDepth/2,WALL,3.25,sideDepth,mats.wall);
   box('cabin / door south pier',right-WALL/2,floorY+1.625,front-sideDepth/2,WALL,3.25,sideDepth,mats.wall);
@@ -149,9 +163,11 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   }
   box('cabin / stone chimney',X-4,wallTop+1.4,Z-3.8,1.25,3.1,1.3,mats.stone);
   for(const z of [back-.027,front+.027]){
-    box('cabin / glazed window',X-4,floorY+1.86,z,3.0,1.32,.09,mats.glass);
-    box('cabin / window top',X-4,floorY+2.56,z,3.25,.13,.17,mats.trim);
-    box('cabin / window sill',X-4,floorY+1.15,z,3.25,.15,.25,mats.trim);
+    box('cabin / glazed window',WINDOW_X,floorY+1.86,z,WINDOW_W,1.32,.09,mats.glass);
+    box('cabin / window top',WINDOW_X,floorY+2.56,z,3.25,.13,.17,mats.trim);
+    box('cabin / window sill',WINDOW_X,floorY+1.15,z,3.25,.15,.25,mats.trim);
+    for(const side of [-1,1])box('cabin / window jamb',WINDOW_X+side*WINDOW_W/2,
+      floorY+1.86,z,.13,1.45,.17,mats.trim);
   }
   // Furniture has explicit footprint collision below. The room is navigable:
   // the centerline from entrance to the opposite interior wall stays clear.

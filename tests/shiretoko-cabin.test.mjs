@@ -115,3 +115,34 @@ test('stair handrails use one instanced post mesh and remain outside walkable co
   assert(rider.x<right-3);
   assert(Math.abs(rider.y-cabin.floorY)<1e-6);
 });
+
+
+test('both cabin windows have genuine see-through wall openings above collision-safe sills',()=>{
+  cabin.group.updateMatrixWorld(true);
+  const windowX=X-4, eyeY=cabin.floorY+1.86;
+  const panes=cabin.group.children.filter(m=>m.name==='cabin / glazed window');
+  assert.equal(panes.length,2);
+  assert(panes.every(m=>m.material.transparent && m.material.opacity<1),
+    'actual glazing must remain transparent rather than an opaque window decal');
+  const jambs=cabin.group.children.filter(m=>m.name==='cabin / window jamb');
+  assert.equal(jambs.length,4);
+  for(const [side,z,sign] of [['north',back-2,1],['south',Z+7+2,-1]]){
+    const walls=cabin.group.children.filter(m=>m.name.startsWith('cabin / '+side+' wall'));
+    assert.equal(walls.length,4,'window aperture is framed by four solid wall pieces');
+    const opaqueHit=(x,y)=>{
+      const ray=new T.Raycaster(new T.Vector3(x,y,z),new T.Vector3(0,0,sign),0,4);
+      return walls.some(mesh=>ray.intersectObject(mesh,false).length>0);
+    };
+    assert.equal(opaqueHit(windowX,eyeY),false,
+      'glass-level sightline must not intersect an invisible solid wall');
+    assert.equal(opaqueHit(windowX,cabin.floorY+.7),true,
+      'real solid wall below glazing prevents a crawl-through gap');
+    assert.equal(opaqueHit(X+1,eyeY),true,
+      'opaque exterior remains intact beside the window');
+  }
+  // A raised wall opening does not alter the existing 2D walker footprint.
+  assert.equal(cabin.blockedAt(windowX,back),true);
+  assert.equal(cabin.blockedAt(windowX,Z+7),true);
+  assert.equal(cabin.blockedAt(right,Z),false,'original east door stays open');
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,'floor remains exactly walkable');
+});
