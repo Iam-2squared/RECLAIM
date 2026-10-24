@@ -66,7 +66,7 @@ test('lake supports, three visible rails and two benches are shared lightweight 
     posts instanceof T.InstancedMesh && benches instanceof T.InstancedMesh);
   assert.equal(piers.count,6);
   assert.equal(rails.count,6,'two sloped guard heights share one instanced draw group');
-  assert.equal(posts.count,6);
+  assert.equal(posts.count,34,'six supports and 28 grounded rail infills in one batch');
   assert.equal(benches.count,4,'two walk-blocking seats and two connected backs share one instanced draw group');
   const m=new T.Matrix4(),pos=new T.Vector3(),scale=new T.Vector3(),rot=new T.Quaternion();
   for(let i=0;i<piers.count;i++){
@@ -78,6 +78,51 @@ test('lake supports, three visible rails and two benches are shared lightweight 
       'support touches the physical displayed deck triangle');
   }
   assert(rails.geometry && deck.material);
+});
+
+test('lake outlook infill balusters follow the exact pitched deck without adding draw groups or blocking the entrance',()=>{
+  const rails=review.group.getObjectByName('lake-lookout / instanced three-sided guard rails');
+  const posts=review.group.getObjectByName('lake-lookout / instanced rail posts');
+  assert(rails instanceof T.InstancedMesh && posts instanceof T.InstancedMesh);
+  assert.equal(review.group.children.length,8,'infill must reuse the existing draw group');
+  assert.equal(posts.material,rails.material,'all uprights reuse the same timber material');
+  assert.equal(posts.count,34,'six original structural posts plus 28 non-overlapping infill balusters');
+  const matrix=new T.Matrix4(),pos=new T.Vector3(),positions=[];
+  const left=site.x-4,right=site.x+4,back=site.z-5,front=site.z+5;
+  for(let i=0;i<posts.count;i++){
+    posts.getMatrixAt(i,matrix);pos.setFromMatrixPosition(matrix);
+    const px=Math.max(left,Math.min(right,pos.x));
+    const pz=Math.max(back,Math.min(front,pos.z));
+    const floor=review.heightAt(px,pz);
+    assert.notEqual(floor,null,'every upright rests on the actual rendered deck');
+    assert(Math.abs((pos.y-.475)-floor)<.002,'post feet touch indexed deck, never float or sink');
+    if(i>=6){
+      assert(Math.min(Math.abs(pos.x-right),Math.abs(pos.z-back),Math.abs(pos.z-front))<.002,
+        'every infill belongs to a visible guarded edge');
+      assert.equal(review.blockedAt(pos.x,pos.z),true,
+        'each new upright is covered by the EXISTING rail collision footprint');
+    }
+    positions.push({x:pos.x,z:pos.z});
+  }
+  assert.equal(new Set(positions.map(p=>`${Math.round(p.x*1000)}:${Math.round(p.z*1000)}`)).size,34,
+    'balusters may not overlap any existing structural support');
+  for(const [from,to] of [
+    [[right,back],[right,front]],
+    [[left,back],[right,back]],
+    [[left,front],[right,front]],
+  ]){
+    const distances=positions.filter(p=>
+      Math.abs(from[0]-to[0])<.001
+        ? Math.abs(p.x-from[0])<.002&&p.z>=back-.002&&p.z<=front+.002
+        : Math.abs(p.z-from[1])<.002&&p.x>=left-.002&&p.x<=right+.002
+    ).map(p=>Math.hypot(p.x-from[0],p.z-from[1])).sort((a,b)=>a-b);
+    assert(distances.length>=10,'each long side has continuous physically grounded uprights');
+    for(let i=1;i<distances.length;i++)
+      assert(distances[i]-distances[i-1]<=.855,'no unsafe-looking long visual railing gap');
+  }
+  assert.equal(review.blockedAt(review.entrance.x,review.entrance.z),false,
+    'original open west entrance remains clear for the real walker');
+  assert.equal(review.blockedAt(site.x,site.z),false,'central lookout route stays open');
 });
 
 test('all eight bench legs physically bridge the actual pitched deck and visible seats',()=>{
