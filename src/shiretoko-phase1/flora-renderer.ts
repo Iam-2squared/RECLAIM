@@ -19,7 +19,7 @@ export type FloraReviewLayer = Readonly<{
   quality: FloraReviewQuality;
 }>;
 
-const kinds: readonly FloraKind[] = ['spruce','birch','alpine-shrub','sedge','sasa','stone'];
+const kinds: readonly FloraKind[] = ['spruce','birch','alpine-shrub','sedge','sasa','stone','deadwood'];
 const MAX_INSTANCES = 58_000;
 const MAX_DRAW_GROUPS = 96;
 
@@ -127,6 +127,27 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       }
       break;
     }
+    case 'deadwood': {
+      // Mossy, snapped windfall on the forest floor, never an upright tree.
+      // All bark, broken branches and moss are merged into ONE cullable,
+      // sampler-free species mesh. Existing habitat/clearance gates apply.
+      part(parts,new T.CylinderGeometry(.18,.22,3.15,6,1),0x65513c,g=>{
+        g.rotateZ(Math.PI/2);g.translate(0,.205,0);
+      });
+      part(parts,new T.CylinderGeometry(.055,.10,.82,5,1),0x4b392d,g=>{
+        g.rotateZ(.88);g.translate(-.72,.45,.10);
+      });
+      part(parts,new T.CylinderGeometry(.045,.075,.63,4,1),0x72543a,g=>{
+        g.rotateZ(-.92);g.translate(.65,.39,-.09);
+      });
+      part(parts,new T.IcosahedronGeometry(1,0),0x526c47,g=>{
+        g.scale(.62,.10,.23);g.translate(-.26,.39,.03);
+      });
+      part(parts,new T.IcosahedronGeometry(1,0),0x617850,g=>{
+        g.scale(.35,.08,.19);g.translate(.52,.39,-.05);
+      });
+      break;
+    }
     case 'stone':
       // A grounded, irregular talus cluster replaces the solitary repeated
       // dodecahedron. Three faceted fragments share ONE merged geometry,
@@ -199,7 +220,7 @@ export function createFloraReviewLayer(
   // PBR vegetation is a separate gated upgrade, not a hidden resource leak.
   const material=new T.MeshLambertMaterial({vertexColors:true,flatShading:true,side:T.DoubleSide});
   const geometries=new Map(kinds.map(kind=>[kind,geometryFor(kind)]));
-  const axis=new T.Vector3(0,1,0),matrix=new T.Matrix4(),origin=new T.Vector3(),rotation=new T.Quaternion(),scale=new T.Vector3();
+  const axis=new T.Vector3(0,1,0),logAxis=new T.Vector3(0,0,1),logTilt=new T.Quaternion(),matrix=new T.Matrix4(),origin=new T.Vector3(),rotation=new T.Quaternion(),scale=new T.Vector3();
   let drawGroups=0,instanceBytes=0;
   for(let cell=0;cell<16;cell++)for(const kind of kinds){
     const plants=buckets[cell].get(kind);
@@ -213,6 +234,14 @@ export function createFloraReviewLayer(
       const x=Math.fround(p.x),z=Math.fround(p.z);
       origin.set(x,Math.fround(terrain.heightAt(x,z)),z);
       rotation.setFromAxisAngle(axis,p.rotation);
+      // The lying trunk follows the local 5m height mesh along its long axis.
+      // This is a visual tilt about the unchanged physics-grounded origin,
+      // with no terrain edit, new collider, materials or campaign save access.
+      if(kind==='deadwood'){
+        const span=1.35*s,dx=Math.cos(p.rotation)*span,dz=-Math.sin(p.rotation)*span;
+        const endDelta=terrain.heightAt(x+dx,z+dz)-terrain.heightAt(x-dx,z-dz);
+        rotation.multiply(logTilt.setFromAxisAngle(logAxis,Math.atan2(endDelta,span*2)));
+      }
       // Species-specific, deterministic nonuniform silhouettes prevent
       // identical trees without extra instances, materials or draw calls.
       if(kind==='spruce' || kind==='birch'){
