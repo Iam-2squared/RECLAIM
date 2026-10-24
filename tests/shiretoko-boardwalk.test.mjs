@@ -14,7 +14,7 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert(boardwalk.panels>30&&boardwalk.panels<=260);
   assert.equal(boardwalk.indexedTriangles,boardwalk.panels*2);
   assert(boardwalk.supports>8&&boardwalk.supports<boardwalk.panels);
-  assert.equal(boardwalk.group.children.length,6);
+  assert.equal(boardwalk.group.children.length,8,'two bounded extra sign draw groups');
   const [deck,posts,seams,edging,rails,guardPosts]=boardwalk.group.children;
   assert.equal(seams.name,'boardwalk / plank seams / instanced');
   assert.equal(edging.name,'boardwalk / side edging / instanced');
@@ -142,4 +142,50 @@ test('visible side guards follow real sloping deck corners and block only edges'
     assert(deckY!==null,'post must be on real terrain-derived deck edge');
     assert(Math.abs(at.y-.47-deckY)<.005,'posts must rest on exactly the indexed deck');
   }
+});
+
+test('two real wooden trail arrows are grounded on guarded terminal planks without narrowing the walk',()=>{
+  const signs=boardwalk.group.getObjectByName('boardwalk / double-ended solid wood trail arrows / instanced');
+  const posts=boardwalk.group.getObjectByName('boardwalk / deck-anchored trailhead signposts / instanced');
+  assert(signs instanceof T.InstancedMesh && posts instanceof T.InstancedMesh);
+  assert.equal(signs.count,2);
+  assert.equal(posts.count,2);
+  const vertex=signs.geometry.getAttribute('position');
+  assert(vertex.count>24 && vertex.count<180,'solid extruded low-poly arrows, no billboards');
+  signs.geometry.computeBoundingBox();
+  assert(signs.geometry.boundingBox.max.z-signs.geometry.boundingBox.min.z>.08,
+    'arrow symbols need actual 3D extrusion thickness');
+  assert(signs.geometry.boundingBox.max.x>.7,'arrowhead reaches forward beyond its stem');
+  const postMatrix=new T.Matrix4(),signMatrix=new T.Matrix4();
+  const post=new T.Vector3(),symbol=new T.Vector3();
+  const ends=[ROUTE[3],ROUTE[6]];
+  const tangents=[
+    [ROUTE[4].x-ROUTE[3].x,ROUTE[4].z-ROUTE[3].z],
+    [ROUTE[5].x-ROUTE[6].x,ROUTE[5].z-ROUTE[6].z],
+  ];
+  for(let i=0;i<2;i++){
+    posts.getMatrixAt(i,postMatrix);
+    signs.getMatrixAt(i,signMatrix);
+    post.setFromMatrixPosition(postMatrix);
+    symbol.setFromMatrixPosition(signMatrix);
+    const x=post.x,z=post.z,deckY=boardwalk.heightAt(x,z);
+    assert.notEqual(deckY,null,'sign stands on a real indexed boardwalk edge');
+    assert(boardwalk.blockedAt(x,z),'sign reuses an existing guard collision footprint');
+    assert(Math.abs(post.y-(deckY+1.22))<.0005);
+    assert(Math.abs(symbol.y-(deckY+1.36))<.0005);
+    assert(Math.hypot(x-ends[i].x,z-ends[i].z)<1.7,
+      'markers stay on the real terminal planks, not floating in the marsh');
+    assert(Math.hypot(symbol.x-x,symbol.z-z)<.0001);
+    const forward=new T.Vector3(.73,0,0).applyMatrix4(signMatrix).sub(symbol);
+    const tangent=tangents[i];
+    assert(forward.x*tangent[0]+forward.z*tangent[1]>0,
+      'first arrow points into the marsh, last arrow points back to the trail');
+  }
+  assert.equal(boardwalk.blockedAt(midpoint.x,midpoint.z),false,
+    'the existing full-width central walking corridor is unchanged');
+  const rider=new TerrainWalker(terrain,boardwalk.heightAt,boardwalk.blockedAt);
+  assert(rider.place(midpoint.x,midpoint.z));
+  for(let i=0;i<60;i++)rider.step({forward:0,right:0,sprint:false,jump:false},1/60);
+  assert(rider.grounded && Math.abs(rider.y-boardwalk.heightAt(midpoint.x,midpoint.z))<1e-7);
+  for(const m of [signs,posts])assert(m.boundingSphere&&Number.isFinite(m.boundingSphere.radius));
 });
