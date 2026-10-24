@@ -146,3 +146,31 @@ test('both cabin windows have genuine see-through wall openings above collision-
   assert.equal(cabin.blockedAt(right,Z),false,'original east door stays open');
   assert.equal(cabin.heightAt(X,Z),cabin.floorY,'floor remains exactly walkable');
 });
+
+test('bounded cedar wall cladding is real instanced geometry and leaves genuine windows unobstructed',()=>{
+  const siding=cabin.group.children.find(x=>x.name==='cabin / cedar cladding / instanced');
+  assert(siding instanceof T.InstancedMesh,'exterior siding is not 55 separate draw calls');
+  assert(siding.count>=40 && siding.count<100,'cedar strips must stay inside one bounded draw batch');
+  assert.equal(siding.geometry.parameters.height,.34);
+  assert(siding.instanceColor && siding.instanceColor.count===siding.count,
+    'individual boards have weathered colours without extra materials');
+  const positions=new T.Vector3(),matrix=new T.Matrix4(),swatches=new Set();
+  for(let i=0;i<siding.count;i++){
+    siding.getMatrixAt(i,matrix);
+    positions.setFromMatrixPosition(matrix);
+    for(const value of positions.toArray())assert(Number.isFinite(value));
+    assert(positions.y>cabin.floorY && positions.y<cabin.floorY+3.3);
+    const colour=new T.Color();siding.getColorAt(i,colour);
+    swatches.add(colour.getHex());
+  }
+  assert(swatches.size>=3,'siding should not look like repeated monochrome panels');
+  cabin.group.updateMatrixWorld(true);
+  for(const [z,dz] of [[back-2,1],[Z+9,-1]]){
+    const ray=new T.Raycaster(new T.Vector3(X-4,cabin.floorY+1.86,z),
+      new T.Vector3(0,0,dz),0,4);
+    assert.equal(ray.intersectObject(siding,false).length,0,
+      'cedar may not obstruct the true transparent cabin window aperture');
+  }
+  assert.equal(cabin.blockedAt(right,Z),false,'doorway remains walkable');
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,'cedar does not create fake physical floors');
+});
