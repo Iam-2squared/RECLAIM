@@ -1,8 +1,8 @@
 {
-  "version": 1,
-  "as_of_jst": "2026-10-24T08:18:00+09:00",
+  "version": 2,
+  "as_of_jst": "2026-10-24T20:42:00+09:00",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "15b9fdf3a59de7c518a388dcc706845eff04d74b",
+  "latest_known_main": "7a54ba64bd7a23b6a83002e1b36ceaf0e96d0492",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -12,41 +12,38 @@
   },
   "work": [
     {
-      "id": "A",
-      "pr": 52,
-      "branch": "feature/shiretoko-nature-integration-20261024",
-      "previous_head": "2b9d6fe71d3aa3f1a65d89622b282297211bbb61",
-      "current_head": "RE_READ_GITHUB",
-      "state": "PRODUCT_TEXTURE_LEAK_FIX_COMMITTED_CI_PENDING",
-      "run_old": {
-        "terrain": 40037987149,
-        "preview": 40037987139,
-        "nature": 40037987225
+      "id": "lake-flora",
+      "pr": 84,
+      "source_head": "5033d73637083f481f14374dbde4ed3c689a8135",
+      "merged_sha": "7a54ba64bd7a23b6a83002e1b36ceaf0e96d0492",
+      "state": "MERGED_MAIN_CI_PREVIEW_CHROMIUM_WORLD_PENDING",
+      "runs": {
+        "source_terrain": 40089493164,
+        "source_preview": 40089493135,
+        "source_nature": 40089493184,
+        "main_terrain": 40090334672,
+        "main_preview": 40090334691
+      }
+    },
+    {
+      "id": "lake-bench-backrests",
+      "pr": 85,
+      "branch": "feature/shiretoko-lake-bench-backrests-20261024-2025",
+      "source_head": "d8560c5c1ab93f9d1c60f9623ebeb4bae50465ac",
+      "integration_base": "7a54ba64bd7a23b6a83002e1b36ceaf0e96d0492",
+      "state": "SOURCE_9_OF_9_GREEN_NEW_INTEGRATION_HEAD_CI_REQUIRED",
+      "runs": {
+        "source_terrain": 40090215534,
+        "source_preview": 40090215398,
+        "source_nature": 40090215456
       },
-      "failure_old": "1 renderer.info.memory texture retained on strict dispose, old evidence 12537842696",
-      "next": "verify all exact current HEAD runs and real opt-in WebGL, then merge"
-    },
-    {
-      "id": "B",
-      "pr": 53,
-      "source_head": "97ac91061c885c5088a39d0dc68a280183d97b2c",
-      "merged_sha": "15b9fdf3a59de7c518a388dcc706845eff04d74b",
-      "state": "MERGED_MAIN_CI_PENDING",
-      "main_run": 40038025194
-    },
-    {
-      "id": "C",
-      "pr": 54,
-      "source_head": "6cc5dff48930e5c04c7ed9ff82498503f27b55e5",
-      "state": "PR_5_OF_5_GREEN_MAIN_INTEGRATION_PENDING",
-      "pr_run": 40036933204
-    },
-    {
-      "id": "CABIN",
-      "state": "LOCAL_6_OF_6_PURE_TESTS_ONLY",
-      "depends_on": "A",
-      "src": "RECLAIM_Shiretoko_Cabin_Candidate_NOT_INTEGRATED.zip",
-      "next": "typecheck on actual repo, collision/walking in physical rendered world"
+      "next": "New GitHub PR head must be re-read; require current HEAD 3+5+1 green before merge."
     }
+  ],
+  "offline_release": "RECLAIM_SHIRETOKO_MAIN_7a54_LAKE_FLORA_OFFLINE_20261024.zip",
+  "next": [
+    "Collect main 40090334691 chromium-world",
+    "Collect PR85 new exact integration head all 9 jobs and visual artifact, then conditional merge",
+    "Collect post-merge main 8/8 and refresh package; deploy only after legitimate Vercel team grant"
   ]
 }
