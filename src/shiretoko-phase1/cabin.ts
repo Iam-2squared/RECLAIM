@@ -324,6 +324,33 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   box('cabin / mattress',X-5.3,floorY+.78,Z-3.4,2.5,.25,3.8,mats.cloth);
   box('cabin / shelf',X+3,floorY+1.28,Z-5.15,3,.13,.7,mats.wood);
 
+  // Hand-placed colour variation on the original, physically supported shelf:
+  // sixteen real book volumes share ONE GPU draw call and no new textures.
+  // Their lower corners overlap the existing shelf top by millimetres instead
+  // of floating above it. The north-wall footprint is outside the central
+  // walking route and does not change furniture or save collision contracts.
+  const shelfTop=floorY+1.28+.13/2;
+  const bookColours=[0x64716b,0x8c634d,0x566c75,0x857b66,0x655e73];
+  const books=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),16);
+  books.name='cabin / grounded coloured shelf books / instanced';
+  for(let i=0;i<books.count;i++){
+    const width=.12+(i%3)*.025;
+    const height=.34+((i*7)%5)*.07;
+    const depth=.30+(i%2)*.07;
+    const angle=.03*Math.sin(i*2.1);
+    const rotation=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),angle);
+    const center=new T.Vector3(X+1.69+i*.176,shelfTop+height/2,
+      Z-5.15+((i%3)-1)*.07);
+    books.setMatrixAt(i,new T.Matrix4().compose(center,rotation,
+      new T.Vector3(width,height,depth)));
+    books.setColorAt(i,new T.Color(bookColours[(i*3+Math.floor(i/4))%bookColours.length]));
+  }
+  books.instanceMatrix.needsUpdate=true;
+  if(books.instanceColor)books.instanceColor.needsUpdate=true;
+  books.computeBoundingSphere();
+  group.add(books);parts++;
+
   // The headland shelter gains a small real iron stove beside the north wall.
   // Its hearth is a true grounded solid: the same footprint is returned by
   // blockedAt, while the westward interior path and east door remain open.
