@@ -249,6 +249,15 @@ export function createFloraReviewLayer(
         const depth=.90+.14*Math.abs(Math.cos(p.rotation*1.3));
         const height=.93+.12*Math.abs(Math.sin(p.rotation+.75));
         scale.set(s*width,s*height,s*depth);
+      } else if(kind==='alpine-shrub'){
+        // Wind-flattened, laterally uneven tundra scrub; the shared actual
+        // three-shoot mesh and 600m instanced draw group remain unchanged.
+        // The widest rooted crown stays inside the existing 8m trail and 7m
+        // structure clearances. No new polygons, textures or collisions.
+        const width=.96+.27*Math.abs(Math.sin(p.rotation*1.7));
+        const depth=.90+.20*Math.abs(Math.cos(p.rotation*1.32));
+        const height=.79+.12*Math.abs(Math.sin(p.rotation*.83));
+        scale.set(s*width,s*height,s*depth);
       } else scale.set(s,s,s);
       matrix.compose(origin,rotation,scale);
       mesh.setMatrixAt(i,matrix);

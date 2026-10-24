@@ -53,6 +53,17 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
         'rooted uneven highland shoots must have separate raised crowns');
       assert(geometry.getAttribute('position').count<450,
         'woody shoots and seed heads remain within one low-poly species geometry');
+      // Real sampled instanced matrices should differ in horizontal spread
+      // without taller, route-blocking shrub crowns or new GPU groups.
+      const shrubMatrix=new THREE.Matrix4(),shrubScale=new THREE.Vector3();
+      for(const i of [0,Math.floor(node.count/2),node.count-1]){
+        node.getMatrixAt(i,shrubMatrix);shrubScale.setFromMatrixScale(shrubMatrix);
+        assert(shrubScale.x>shrubScale.y*1.03,'wind-shaped scrub is wider than tall');
+        assert(shrubScale.x<1.65&&shrubScale.z<1.5,
+          'shrub footprint remains small relative to the original route and structure clearance');
+        assert(shrubScale.y>.6&&shrubScale.y<1.2,
+          'horizontal scrub does not become tall invented forest');
+      }
       const swatches=new Set(),colours=geometry.getAttribute('color');
       for(let v=0;v<colours.count;v++)
         swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
