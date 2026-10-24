@@ -33,6 +33,17 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       assert(bounds.max.x-bounds.min.x>2.5,'crown must have real lateral branches');
       assert(node.geometry.getAttribute('position').count<500,
         'visual improvement must not explode per-instance vertex cost');
+      if(species==='birch'){
+        // Fork limbs and dark lenticels remain vertex colours in the one
+        // cullable instanced mesh, not separate expensive transparent planes.
+        const colours=node.geometry.getAttribute('color'),swatches=new Set();
+        for(let v=0;v<colours.count;v++)
+          swatches.add([0,1,2].map(c=>Math.round(colours.getComponent(v,c)*255)).join(','));
+        assert(swatches.size>=8,
+          'pale fork wood and two-tone dark bark marks must be real geometry');
+        assert(bounds.min.x<-.9&&bounds.max.x>.9,
+          'uneven emerging forks extend outside the bare trunk silhouette');
+      }
     }
     if(node.name.endsWith('/sedge')){
       const geometry=node.geometry,bounds=geometry.boundingBox;
