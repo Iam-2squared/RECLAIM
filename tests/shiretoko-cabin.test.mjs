@@ -174,3 +174,33 @@ test('bounded cedar wall cladding is real instanced geometry and leaves genuine 
   assert.equal(cabin.blockedAt(right,Z),false,'doorway remains walkable');
   assert.equal(cabin.heightAt(X,Z),cabin.floorY,'cedar does not create fake physical floors');
 });
+
+test('standing-seam roof adds one instance batch with ribs resting on the real pitched roof',()=>{
+  const seams=cabin.group.children.find(x=>x.name==='cabin / standing seam metal roof / instanced');
+  assert(seams instanceof T.InstancedMesh,'roof ribs are not individual draw calls');
+  assert.equal(seams.count,33,'30 sloping seams, one ridge cap and two drip edges');
+  assert.equal(seams.geometry.getAttribute('position').count,24,'lightweight repeated box geometry');
+  assert(seams.boundingSphere && Number.isFinite(seams.boundingSphere.radius));
+  assert(seams.instanceColor && seams.instanceColor.count===seams.count);
+  const roofSides=cabin.group.children.filter(x=>x.name.endsWith('pitched roof'));
+  assert.equal(roofSides.length,2,'original real roof surfaces are preserved');
+  const matrix=new T.Matrix4(),colour=new T.Color(),swatches=new Set();
+  const peak=cabin.floorY+3.25+2.3,eave=cabin.floorY+3.25+.16;
+  for(let i=0;i<30;i++){
+    seams.getMatrixAt(i,matrix);
+    seams.getColorAt(i,colour);swatches.add(colour.getHex());
+    const side=i<15?-1:1;
+    for(const endpoint of [-.5,.5]){
+      const point=new T.Vector3(endpoint,0,0).applyMatrix4(matrix);
+      assert(Number.isFinite(point.x)&&Number.isFinite(point.y)&&Number.isFinite(point.z));
+      assert(point.z>=Z-8&&point.z<=Z+8,'seams stay within existing 16m roof span');
+      assert((point.x-X)*side>=-.02&&Math.abs(point.x-X)<10.1);
+      const roofY=peak-(peak-eave)*Math.abs(point.x-X)/10;
+      assert(point.y-roofY>.02&&point.y-roofY<.065,
+        'physical rib ends must rest on their corresponding sloped roof face');
+    }
+  }
+  assert(swatches.size>=3,'subtle weathered colour variation without new textures');
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,'roof does not move the walking floor');
+  assert.equal(cabin.blockedAt(right,Z),false,'real east entrance remains open');
+});

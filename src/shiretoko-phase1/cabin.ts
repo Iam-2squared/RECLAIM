@@ -152,6 +152,50 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     mesh.name=side<0?'cabin / west pitched roof':'cabin / east pitched roof';
     group.add(mesh);parts++;
   }
+  // Shallow metal standing seams rest on BOTH real roof triangles, with
+  // the ridge cap and drip edges in one instanced draw group. No new textures,
+  // extra physical floors or changes to the existing walkable cabin.
+  const roofHalf=WIDTH/2+1,roofSpan=DEPTH+2;
+  const roofPitch=Math.atan2(peak-eave,roofHalf);
+  const ribMatrices:T.Matrix4[]=[],ribColours:number[]=[];
+  const seamColours=[0x70898a,0x5b777a,0x80908a,0x617779];
+  const length=Math.hypot(roofHalf,peak-eave);
+  for(const side of [-1,1] as const){
+    const angle=-side*roofPitch;
+    const angleQ=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),angle);
+    // The lower half of the rib intersects the slope; none can float.
+    for(let i=0;i<15;i++){
+      const z=Z-roofSpan/2+.3+(roofSpan-.6)*i/14;
+      const centre=new T.Vector3(
+        X+side*roofHalf/2-Math.sin(angle)*.039,
+        (peak+eave)/2+Math.cos(angle)*.039,z);
+      ribMatrices.push(new T.Matrix4().compose(
+        centre,angleQ,new T.Vector3(length,.08,.12)));
+      ribColours.push(seamColours[(i+side+3)%seamColours.length]);
+    }
+  }
+  const alongRidge=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,1,0),Math.PI/2);
+  ribMatrices.push(new T.Matrix4().compose(
+    new T.Vector3(X,peak+.055,Z),alongRidge,new T.Vector3(roofSpan,.11,.28)));
+  ribColours.push(0x87908b);
+  for(const side of [-1,1] as const){
+    ribMatrices.push(new T.Matrix4().compose(
+      new T.Vector3(X+side*roofHalf,eave+.037,Z),
+      alongRidge,new T.Vector3(roofSpan,.08,.15)));
+    ribColours.push(0x647a7a);
+  }
+  const roofSeams=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),ribMatrices.length);
+  roofSeams.name='cabin / standing seam metal roof / instanced';
+  for(let i=0;i<ribMatrices.length;i++){
+    roofSeams.setMatrixAt(i,ribMatrices[i]);
+    roofSeams.setColorAt(i,new T.Color(ribColours[i]));
+  }
+  roofSeams.instanceMatrix.needsUpdate=true;
+  if(roofSeams.instanceColor)roofSeams.instanceColor.needsUpdate=true;
+  roofSeams.computeBoundingSphere();
+  group.add(roofSeams);parts++;
+
   // Weatherproof gables; a simple chimney, two framed windows and furnishing.
   for(const z of [back,front]){
     const geometry=new T.BufferGeometry();
