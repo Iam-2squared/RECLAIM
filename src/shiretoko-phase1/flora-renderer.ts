@@ -108,17 +108,47 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
         g=>g.translate(.73,1.18,-.18));
       break;
     case 'sedge': {
-      // Wetland spikes retain their original rooted, bounded shape.
-      for(let i=0;i<5;i++){
-        const angle=Math.PI*2*i/5;
-        part(parts,new T.PlaneGeometry(.09,.78),0x7b9155,g=>{
-          g.translate(0,.39,0);g.rotateZ(.22);g.rotateY(angle);
+      // Actual wetland sedges: six asymmetrical, tapering leaves bend outward
+      // from the same rooted point, rather than five upright rectangular
+      // billboards. UVs match the built-in seed-stalk attributes, allowing
+      // every triangle to remain inside ONE existing instanced draw group.
+      // Density, habitat, physical ground, clearances and collision do not move.
+      const leafColours=[0x6f8650,0x85985b,0x728c52,0x8b9a60,0x647c4a,0x7e9657];
+      for(let i=0;i<6;i++){
+        const h=.76+(i%3)*.085,w=.19+(i%2)*.035;
+        const leaf=new T.BufferGeometry();
+        leaf.setAttribute('position',new T.Float32BufferAttribute([
+          0,.025,0,
+          -w*.5,h*.45,.012,
+          w*.5,h*.45,.012,
+          -w*.26,h*.75,.095,
+          w*.26,h*.75,.095,
+          0,h,.18,
+        ],3));
+        leaf.setAttribute('uv',new T.Float32BufferAttribute([
+          .5,0, 0,.45, 1,.45, .24,.75, .76,.75, .5,1,
+        ],2));
+        leaf.setIndex([0,1,2,1,3,4,1,4,2,3,5,4]);
+        leaf.computeVertexNormals();
+        const angle=2*Math.PI*i/6+(i%2)*.12;
+        part(parts,leaf,leafColours[i],g=>{
+          g.rotateZ((i%2?1:-1)*(.14+.03*(i%3)));
+          g.rotateY(angle);
+          g.translate(Math.cos(angle)*.04,0,Math.sin(angle)*.04);
         });
       }
+      // A slender seed-bearing stalk and two short offset seed spikes give
+      // a recognizable marsh sedge silhouette without extra meshes/textures.
       part(parts,new T.CylinderGeometry(.024,.035,1.12,4,1),
         0x728356,g=>g.translate(.05,.56,.01));
       part(parts,new T.CylinderGeometry(.048,.06,.25,5,1),
         0x826947,g=>g.translate(.05,1.21,.01));
+      for(let i=0;i<2;i++)
+        part(parts,new T.ConeGeometry(.035,.10,3,1),
+          i?0x9a8253:0x776843,g=>{
+            g.rotateZ(i?-.33:.33);
+            g.translate(i?-.075:.085,1.095+i*.07,i?-.035:.04);
+          });
       break;
     }
     case 'sasa': {
