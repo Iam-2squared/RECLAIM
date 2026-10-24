@@ -20,6 +20,16 @@ test('route, water, wetland, steep slope and alpine zone shape species distribut
  assert(planFlora(3,4,{...base,slope:()=>1.2},'balanced').every(x=>x.kind==='stone'));
  assert(planFlora(3,4,{...base,height:()=>420},'balanced').every(x=>x.kind==='alpine-shrub'||x.kind==='stone'));
 });
+test('dry woodland can grow rare deadfall, but steep, wet and highland ground cannot',()=>{
+ const forest=planFlora(3,4,base,'balanced');
+ const fallen=forest.filter(x=>x.kind==='deadwood');
+ assert(fallen.length>5&&fallen.length<forest.length*.2,'deadfall must be sparse and visible');
+ assert(planFlora(3,4,{...base,slope:()=>.4},'balanced').every(x=>x.kind!=='deadwood'));
+ assert(planFlora(3,4,{...base,wetness:()=>.5},'balanced').every(x=>x.kind!=='deadwood'));
+ assert(planFlora(3,4,{...base,height:()=>420},'balanced').every(x=>x.kind!=='deadwood'));
+ assert(planFlora(3,4,{...base,routeDistance:()=>0},'balanced').length===0);
+});
+
 test('invalid chunk index or detail does not generate uncontrolled geometry',()=>{
  assert.throws(()=>planFlora(8,0,base,'low'),RangeError);
  assert.throws(()=>planFlora(0,-1,base,'low'),RangeError);
