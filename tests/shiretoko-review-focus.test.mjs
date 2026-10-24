@@ -10,6 +10,8 @@ test('baseline and unknown flags never change the canonical aerial opening',()=>
   assert.equal(focus(''),null);
   assert.equal(focus('elevation=1&route=1'),null);
   assert.equal(focus('flora=none&boardwalk=0&cabin=false'),null);
+  assert.equal(focus('highland=1'),null,'highland cannot activate without real vegetation');
+  assert.equal(focus('flora=none&highland=1'),null);
 });
 
 test('each existing nature mode immediately frames its actual authored feature',()=>{
@@ -19,16 +21,20 @@ test('each existing nature mode immediately frames its actual authored feature',
   assert.equal(focus('boardwalk=1').kind,'boardwalk');
   assert.equal(focus('boardwalk=true').kind,'boardwalk');
   assert.equal(focus('cabin=on').kind,'cabin');
+  assert.equal(focus('flora=low&highland=1').kind,'highland');
+  assert.equal(focus('flora=balanced&highland=true').kind,'highland');
 });
 
 test('cabin outranks boardwalk, which outranks flora without affecting the requested meshes',()=>{
   assert.equal(focus('flora=low&boardwalk=1&cabin=1').kind,'cabin');
   assert.equal(focus('flora=balanced&boardwalk=1').kind,'boardwalk');
   assert.equal(focus('flora=balanced&cabin=0').kind,'flora');
+  assert.equal(focus('flora=balanced&highland=1&cabin=1').kind,'cabin');
+  assert.equal(focus('flora=low&highland=1&boardwalk=1').kind,'boardwalk');
 });
 
 test('review camera tracks the real terrain elevation at BOTH camera and target',()=>{
-  for (const query of ['flora=low','boardwalk=1','cabin=1']) {
+  for (const query of ['flora=low','boardwalk=1','cabin=1','flora=low&highland=1']) {
     const view=focus(query);
     assert(view);
     const [x,y,z]=view.position,[tx,ty,tz]=view.target;
@@ -46,7 +52,7 @@ test('review camera tracks the real terrain elevation at BOTH camera and target'
 
 test('real 5m terrain initial nature cameras remain above their subjects without OrbitControls clamp',()=>{
   const terrain=new ShiretokoTerrain();
-  for(const [query,kind] of [['cabin=1','cabin'],['flora=low','flora'],['boardwalk=1','boardwalk']]) {
+  for(const [query,kind] of [['cabin=1','cabin'],['flora=low','flora'],['boardwalk=1','boardwalk'],['flora=low&highland=1','highland']]) {
     const view=natureReviewFocus(new URLSearchParams(query),(x,z)=>terrain.heightAt(x,z));
     assert.equal(view.kind,kind);
     const [x,y,z]=view.position,[tx,ty,tz]=view.target;
