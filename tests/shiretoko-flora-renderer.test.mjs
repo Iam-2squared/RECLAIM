@@ -111,7 +111,22 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       const unique=new Set();
       for(let i=0;i<colours.count;i++)
         unique.add([0,1,2].map(k=>Math.round(colours.getComponent(i,k)*255)).join(','));
-      assert(unique.size>=8,'eight natural grass shades are vertex colours, not new textures');
+      assert(unique.size>=10,'bent blades and two mature seed grain colours stay in one geometry');
+      // Seed heads must be ACTUAL coloured 3D vertices, not screen overlays or
+      // detached scene objects. Their small panicles sit above the leaf fan
+      // and safely under the unchanged <0.90m lowland foliage bound.
+      for(const hex of [0xa69a66,0x988961]){
+        const c=new THREE.Color(hex);
+        const swatch=[c.r,c.g,c.b].map(n=>Math.round(n*255)).join(',');
+        const heights=[];
+        for(let i=0;i<p.count;i++){
+          const actual=[0,1,2].map(k=>Math.round(colours.getComponent(i,k)*255)).join(',');
+          if(actual===swatch)heights.push(p.getY(i));
+        }
+        assert(heights.length>=12,'each mature seed has a non-billboard tetrahedral head');
+        assert(heights.every(y=>y>.62&&y<.85),
+          'seed heads emerge above grass but never become oversized floating ornaments');
+      }
     }
     if(node.name.endsWith('/sedge')){
       const geometry=node.geometry,bounds=geometry.boundingBox;
