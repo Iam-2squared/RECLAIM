@@ -72,6 +72,33 @@ try{
   result.tests.push({name:'native first-open camera frames real cabin and preserves opt-in review',
     pass:true,camera:firstLook.camera,renderCalls:firstLook.renderCalls});
 
+  // Exercise the actual DOM walk control, not just the lower-level walker.
+  // Opt-in cabin mode must put the player on the rendered stair surface and
+  // restore the same first-look camera after a native Escape key.
+  await page.locator('#walk').click();
+  const cabinEntry=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
+    return {mode:d.mode,player:d.player,entrance:a.cabinEntrance,
+      expectedY:a.cabinHeightAt(a.cabinEntrance.x,a.cabinEntrance.z)};
+  });
+  assert.equal(cabinEntry.mode,'walk','visible walk button must enter true walking mode');
+  assert.ok(Math.hypot(cabinEntry.player.x-cabinEntry.entrance.x,
+    cabinEntry.player.z-cabinEntry.entrance.z)<.001,
+    'cabin first-look walking must start at its actual staircase, not the distant cape');
+  assert.ok(Math.abs(cabinEntry.player.y-cabinEntry.expectedY)<1e-5,
+    'native walk enters on the same visible staircase height');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().mode==='orbit',
+    {},{timeout:30000});
+  const afterWalk=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().camera);
+  for(const field of ['position','target']) {
+    const expected=field==='position'?firstLook.expectedPosition:firstLook.expectedTarget;
+    for(let i=0;i<3;i++)assert.ok(Math.abs(afterWalk[field][i]-expected[i])<.02,
+      'Escape should restore the opted-in cabin camera instead of empty overview sky');
+  }
+  result.tests.push({name:'actual walk click spawns on cabin stairs and Escape restores review view',
+    pass:true,entry:cabinEntry,restoredCamera:afterWalk});
+
   const review=await page.evaluate(()=>{
     const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
     if(!d.floraReview.enabled||d.floraReview.quality!=='low'||d.floraReview.instances<=1000||

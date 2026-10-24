@@ -196,7 +196,9 @@ async function boot() {
     ['静かな湖と、<br />山への入口。', '不規則な湖岸。その奥に続く、高原と谷。'],
     ['尾根の向こうへ。', '主稜線、枝尾根、侵食谷。内陸へ連なる山々。'],
   ];
+  let natureFocusActive = false;
   function selectView(index: number, instant = false) {
+    natureFocusActive = false;
     closeIntro(); exitWalk(); selectedView = index; activeLocation = index - 1;
     // Finish pending user orbit deltas before defining a fixed-camera move.
     // Otherwise a0–4 shortcut immediately after a drag drifts off its target.
@@ -210,10 +212,16 @@ async function boot() {
   }
   function updateWalkCamera() { camera.position.set(walker.x, walker.y + walker.eyeHeight, walker.z); camera.rotation.order = 'YXZ'; camera.rotation.set(walker.pitch, walker.yaw, 0); }
   function enterWalk() {
-    const p = LOCATIONS[Math.max(0, activeLocation)];
+    // When entering the FIRST cabin review view, start on its real stairs,
+    // not 70m away at the canonical cape location. Landmark buttons and the
+    // normal 480m game are deliberately unaffected.
+    const cabinEntry = natureFocusActive && firstLook?.kind === 'cabin'
+      ? cabinReview?.entrance : null;
+    const p = cabinEntry ?? LOCATIONS[Math.max(0, activeLocation)];
     if (!walker.place(p.x, p.z)) return;
     transition = null; controls.enabled = false; walking = true; keys.clear(); accumulator = 0;
-    walker.yaw = 0; walker.pitch = 0; camera.fov = 66; camera.updateProjectionMatrix(); updateWalkCamera();
+    walker.yaw = cabinEntry ? Math.PI / 2 : 0; walker.pitch = 0;
+    camera.fov = 66; camera.updateProjectionMatrix(); updateWalkCamera();
     document.body.classList.add('walking'); $('walk-overlay').hidden = false; $('walk-message').hidden = false;
     $('walk').innerHTML = '俯瞰に戻る <span>ESC</span>';
     $('controls-hint').textContent = 'WASD 移動 · Shift ダッシュ · Space ジャンプ · Esc 俯瞰';
@@ -232,6 +240,17 @@ async function boot() {
     $('walk').innerHTML = 'この場所を歩く <span>↗</span>';
     $('controls-hint').innerHTML = 'ドラッグ：回転 <span>·</span> 右ドラッグ：移動 <span>·</span> ホイール：拡大';
     $('altitude').textContent = '2,400 × 2,400 m';
+  }
+  // Escape/back preserves the opted-in cabin camera. Without this, the
+  // viewer returned to the remote all-map view after walking into the house.
+  function returnFromWalk() {
+    if (natureFocusActive && firstLook?.kind === 'cabin') {
+      exitWalk();
+      camera.position.fromArray(firstLook.position);
+      controls.target.fromArray(firstLook.target);
+      controls.update();
+      needsRender = true;
+    } else selectView(selectedView);
   }
   let flight: {from:T.Vector3;target:T.Vector3;start:number}|null=null;
   function closeIntro() {
@@ -260,14 +279,14 @@ async function boot() {
   });
   on($('route'), 'click', () => { routeLine.visible = !routeLine.visible; needsRender = true; $('route').classList.toggle('active', routeLine.visible); $('route').setAttribute('aria-pressed', String(routeLine.visible)); });
   on($('clean'), 'click', () => setClean(true));
-  on($('walk'), 'click', () => { if (walking) selectView(selectedView); else enterWalk(); });
+  on($('walk'), 'click', () => { if (walking) returnFromWalk(); else enterWalk(); });
   document.querySelectorAll<HTMLButtonElement>('[data-location]').forEach(button => on(button, 'click', () => selectView(Number(button.dataset.location) + 1)));
   on(renderer.domElement, 'click', () => requestLock());
   on(renderer.domElement, 'pointerdown', () => { if (!walking) transition = null; });
   on(document, 'pointerlockchange', () => {
     const locked = document.pointerLockElement === renderer.domElement;
     // Acquiring the lock must not erase a W/Space press made immediately after the click.
-    if (!locked) { keys.clear(); walker.clearInput(); accumulator = 0; if (walking) selectView(selectedView); }
+    if (!locked) { keys.clear(); walker.clearInput(); accumulator = 0; if (walking) returnFromWalk(); }
     $('walk-message').hidden = locked;
   });
   on(document, 'mousemove', event => {
@@ -278,7 +297,7 @@ async function boot() {
   on(document, 'keydown', event => {
     const e = event as KeyboardEvent;
     if (e.code === 'KeyH') setClean(!document.body.classList.contains('clean'));
-    if (e.code === 'Escape') { setClean(false); if(intro.state!=='closed')selectView(0,true); if (walking) selectView(selectedView); }
+    if (e.code === 'Escape') { setClean(false); if(intro.state!=='closed')selectView(0,true); if (walking) returnFromWalk(); }
     if (!walking && /^Digit[0-4]$/.test(e.code)) selectView(Number(e.code.slice(-1)));
     if (walking && ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space'].includes(e.code)) { e.preventDefault(); keys.add(e.code); }
   });
@@ -292,6 +311,7 @@ async function boot() {
   // links land directly on their visible 3D subject, not an empty distant sky.
   const firstLook = natureReviewFocus(query, (x,z) => terrain.heightAt(x,z));
   if (firstLook) {
+    natureFocusActive = true;
     camera.position.set(...firstLook.position);
     controls.target.set(...firstLook.target);
     controls.update();
@@ -380,7 +400,7 @@ async function boot() {
   Object.assign(window, { __SHIRETOKO_TERRAIN__: {
     diagnostics, terrain, walker, route: ROUTE, boardwalkHeightAt: boardwalkReview?.heightAt ?? null, cabinHeightAt: cabinReview?.heightAt ?? null, cabinBlockedAt: cabinReview?.blockedAt ?? null, cabinEntrance: cabinReview?.entrance ?? null, setView: (index: number) => selectView(clamp(Math.floor(index), 0, 4), true),
     setClean, freeze: (value: boolean) => { freeze = value; if(value)for(const water of waters)water.material.uniforms.uTime.value=0; needsRender=true; },
-    viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
+    viewFrom: (position: [number, number, number], target: [number, number, number]) => { exitWalk(); natureFocusActive = false; transition = null; camera.position.fromArray(position); controls.target.fromArray(target); controls.update(); needsRender=true; },
     openIntro, dispose,
   } });
 }
