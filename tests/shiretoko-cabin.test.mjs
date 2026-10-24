@@ -294,3 +294,46 @@ test('four visible open cedar shutters frame rather than obstruct both real cabi
   assert.equal(cabin.blockedAt(right,Z),false,'east doorway stays usable');
   assert.equal(cabin.heightAt(X,Z),cabin.floorY,'shutters create no new floor or collision');
 });
+
+test('two physically wall-mounted warm lanterns illuminate the REAL doorway without new collision',()=>{
+  const frames=cabin.group.getObjectByName('cabin / two connected exterior lantern housings / instanced');
+  const glass=cabin.group.getObjectByName('cabin / two warm entry lantern panes / instanced');
+  assert(frames instanceof T.InstancedMesh && glass instanceof T.InstancedMesh,
+    'each review-only component is actual WebGL geometry');
+  assert.equal(frames.count,14,'seven metal pieces per lantern in one iron draw batch');
+  assert.equal(glass.count,2,'two amber panes share a single draw batch');
+  assert(glass.material instanceof T.MeshBasicMaterial && glass.material.transparent &&
+    !glass.material.depthWrite,'the glass remains visible without new scene lights');
+  assert(frames.boundingSphere && glass.boundingSphere);
+  const m=new T.Matrix4(),p=new T.Vector3(),q=new T.Quaternion(),scale=new T.Vector3();
+  const zPairs=[];
+  for(let i=0;i<glass.count;i++){
+    glass.getMatrixAt(i,m);m.decompose(p,q,scale);
+    zPairs.push(p.z);
+    assert(Math.abs(p.x-(right+.48))<.0001);
+    assert(Math.abs(p.y-(cabin.floorY+2.14))<.0001);
+    assert(Math.abs(Math.abs(p.z-Z)-(1.15+.65))<.0001,
+      'both lamps hang on solid east wall, beyond the entrance aperture');
+    assert(p.y-scale.y/2>cabin.floorY+1.68,
+      'lamp cannot obstruct the original 1.68m walker eye');
+    assert(scale.x<.4&&scale.z<.4,'glass does not intrude into the 2.3m opening');
+  }
+  assert(zPairs[0]<Z-1.15&&zPairs[1]>Z+1.15);
+  for(const i of [0,7]){
+    frames.getMatrixAt(i,m);m.decompose(p,q,scale);
+    assert(p.x-scale.x/2<=right,
+      'mounting bracket must physically touch the existing east wall');
+    assert(p.x+scale.x/2>=right+.25,
+      'mounting bracket reaches the metal lantern cap');
+  }
+  assert.equal(cabin.blockedAt(right,Z),false);
+  assert.equal(cabin.blockedAt(cabin.entrance.x,cabin.entrance.z),false);
+  assert.equal(cabin.heightAt(X,Z),cabin.floorY,
+    'decorative lighting never changes the true floor, save or coordinate system');
+  const walker=new TerrainWalker(terrain,cabin.heightAt,cabin.blockedAt);
+  assert(walker.place(cabin.entrance.x,cabin.entrance.z));
+  walker.yaw=Math.PI/2;
+  for(let i=0;i<245;i++)walker.step({forward:1,right:0,sprint:false,jump:false},1/60);
+  assert(walker.x<right-3 && walker.grounded,
+    'native walker still passes through the original stair and cabin entrance');
+});

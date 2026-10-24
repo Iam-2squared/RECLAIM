@@ -239,6 +239,49 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   joinery.computeBoundingSphere();
   group.add(joinery);parts++;
 
+
+  // Twin entry lanterns make the real east doorway legible from the stair
+  // approach. Frames physically join the existing opaque door-pier walls;
+  // amber panes are true visible geometry, not an overlay or an actual game
+  // light source. Both hang above the walker eye, outside the doorway and
+  // stair guard corridor. Two instanced groups, no textures or save state.
+  const lanternIronTransforms:T.Matrix4[]=[];
+  const lanternGlassTransforms:T.Matrix4[]=[];
+  const lanternRotation=new T.Quaternion();
+  const lanternBox=(x:number,y:number,z:number,w:number,h:number,d:number)=>{
+    lanternIronTransforms.push(new T.Matrix4().compose(
+      new T.Vector3(x,y,z),lanternRotation,new T.Vector3(w,h,d)));
+  };
+  for(const side of [-1,1] as const){
+    const dz=Z+side*(DOOR_HALF+.65);
+    const lx=right+.48,ly=floorY+2.14;
+    // The bracket overlaps BOTH the existing east wall and the metal cap.
+    lanternBox(right+.20,ly+.28,dz,.44,.075,.12);
+    lanternBox(lx,ly+.31,dz,.46,.10,.46);
+    lanternBox(lx,ly-.31,dz,.46,.10,.46);
+    for(const dx of [-.19,.19])for(const offsetZ of [-.19,.19])
+      lanternBox(lx+dx,ly,dz+offsetZ,.065,.52,.065);
+    lanternGlassTransforms.push(new T.Matrix4().compose(
+      new T.Vector3(lx,ly,dz),lanternRotation,new T.Vector3(.33,.49,.33)));
+  }
+  const lanternFrames=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    mats.iron,lanternIronTransforms.length);
+  lanternFrames.name='cabin / two connected exterior lantern housings / instanced';
+  for(let i=0;i<lanternIronTransforms.length;i++)
+    lanternFrames.setMatrixAt(i,lanternIronTransforms[i]);
+  lanternFrames.instanceMatrix.needsUpdate=true;
+  lanternFrames.computeBoundingSphere();
+  group.add(lanternFrames);parts++;
+  const lanternGlass=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshBasicMaterial({color:0xffcb79,transparent:true,opacity:.87,depthWrite:false}),
+    lanternGlassTransforms.length);
+  lanternGlass.name='cabin / two warm entry lantern panes / instanced';
+  for(let i=0;i<lanternGlassTransforms.length;i++)
+    lanternGlass.setMatrixAt(i,lanternGlassTransforms[i]);
+  lanternGlass.instanceMatrix.needsUpdate=true;
+  lanternGlass.computeBoundingSphere();
+  group.add(lanternGlass);parts++;
+
   // The existing two transparent north/south windows gain outward-folded
   // cedar shutters. They stay on opaque wall either side of each genuine
   // aperture; the centre sightline, sill collider and campaign remain intact.
