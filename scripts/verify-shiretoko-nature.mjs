@@ -136,13 +136,19 @@ try{
   const views=[
     {name:'wooden-wetland',x:-50,z:610,tx:-118,tz:500,elevation:10},
     {name:'flora-wetland',x:-130,z:410,tx:-210,tz:370,elevation:6},
-    {name:'headland-cabin',x:-38,z:881,tx:-100,tz:835,elevation:12}
+    {name:'headland-cabin',x:-38,z:881,tx:-100,tz:835,elevation:12},
+    {name:'cabin-interior-chairs',x:-95.4,z:834.2,tx:-102,tz:838,interior:true}
   ];
   for(const view of views){
     const before=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal);
-    await page.evaluate(({x,z,tx,tz,elevation})=>{
+    await page.evaluate(({x,z,tx,tz,elevation,interior})=>{
       const api=window.__SHIRETOKO_TERRAIN__,t=api.terrain;
-      api.viewFrom([x,t.heightAt(x,z)+elevation,z],[tx,t.heightAt(tx,tz)+2,tz]);
+      if(interior){
+        const floor=api.cabinHeightAt(x,z),targetFloor=api.cabinHeightAt(tx,tz);
+        if(!Number.isFinite(floor)||!Number.isFinite(targetFloor))
+          throw new Error('interior camera must stand above the actual cabin floor');
+        api.viewFrom([x,floor+1.68,z],[tx,targetFloor+.85,tz]);
+      } else api.viewFrom([x,t.heightAt(x,z)+elevation,z],[tx,t.heightAt(tx,tz)+2,tz]);
     },view);
     await page.waitForFunction(n=>window.__SHIRETOKO_TERRAIN__.diagnostics().renderCallsTotal>n,
       before,{timeout:30000});

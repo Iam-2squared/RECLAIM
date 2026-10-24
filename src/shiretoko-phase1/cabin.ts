@@ -324,6 +324,40 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   box('cabin / mattress',X-5.3,floorY+.78,Z-3.4,2.5,.25,3.8,mats.cloth);
   box('cabin / shelf',X+3,floorY+1.28,Z-5.15,3,.13,.7,mats.wood);
 
+  // Two real timber chairs face the existing table, leaving the central
+  // entry-to-west-wall walking axis and both windows open. Seats, grounded
+  // legs, back uprights and back slats share ONE coloured GPU instance batch.
+  // The physical chair rectangles below cover every visual part, so walkers
+  // cannot pass through the new furniture. No extra textures or save state.
+  const chairParts:{matrix:T.Matrix4;color:number}[]=[];
+  const chairRotation=new T.Quaternion();
+  const chairPart=(x:number,y:number,z:number,w:number,h:number,d:number,color:number)=>{
+    chairParts.push({matrix:new T.Matrix4().compose(
+      new T.Vector3(x,y,z),chairRotation,new T.Vector3(w,h,d)),color});
+  };
+  for(const [index,cz] of [Z+1.78,Z+4.22].entries()){
+    const cx=X-2,outward=index===0?-1:1;
+    chairPart(cx,floorY+.52,cz,.80,.13,.72,0x947251);
+    for(const dx of [-.29,.29])for(const dz of [-.25,.25])
+      chairPart(cx+dx,floorY+.225,cz+dz,.11,.45,.11,0x654d38);
+    const backZ=cz+outward*.29;
+    for(const dx of [-.29,.29])
+      chairPart(cx+dx,floorY+.98,backZ,.105,1.05,.11,0x6f533a);
+    for(const dy of [1.12,1.37])
+      chairPart(cx,floorY+dy,backZ,.67,.12,.11,0x9e7955);
+  }
+  const chairs=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),chairParts.length);
+  chairs.name='cabin / two grounded table chairs / instanced';
+  for(let i=0;i<chairParts.length;i++){
+    chairs.setMatrixAt(i,chairParts[i].matrix);
+    chairs.setColorAt(i,new T.Color(chairParts[i].color));
+  }
+  chairs.instanceMatrix.needsUpdate=true;
+  if(chairs.instanceColor)chairs.instanceColor.needsUpdate=true;
+  chairs.computeBoundingSphere();
+  group.add(chairs);parts++;
+
   // Hand-placed colour variation on the original, physically supported shelf:
   // sixteen real book volumes share ONE GPU draw call and no new textures.
   // Their lower corners overlap the existing shelf top by millimetres instead
@@ -478,12 +512,13 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     const east=rect(x,z,right-WALL/2,back+sideDepth/2,WALL,sideDepth)||
       rect(x,z,right-WALL/2,front-sideDepth/2,WALL,sideDepth);
     const table=rect(x,z,X-2,Z+3,2.1,1.45);
+    const chairs=[Z+1.78,Z+4.22].some(cz=>rect(x,z,X-2,cz,.80,.72));
     const bunk=rect(x,z,X-5.3,Z-3.4,2.7,4.05);
     const stove=rect(x,z,stoveX,stoveZ,1.9,1.65);
     // Guardrails are solid at the stair edges; never obstruct the centerline.
     const rail=x>=right+.25&&x<=outsideX&&
       Math.abs(z-Z)>=DOOR_HALF-.09&&Math.abs(z-Z)<=DOOR_HALF+.45;
-    return west||north||south||east||table||bunk||stove||rail;
+    return west||north||south||east||table||chairs||bunk||stove||rail;
   };
   return {group,floorY,heightAt,blockedAt,stairs,parts,supports:pierSites.length,entrance:{x:right+1.7,z:Z}};
 }
