@@ -239,6 +239,85 @@ try{
   assert.equal(await page.locator('[data-nature-review]').count(),0);
   result.tests.push({name:'native lake preview, same-mesh walk/rail, Escape, WebGL and release',
     pass:true,initial:lakeFirst,walk:lakeWalk,afterWalk:lakeReturned});
+  // The public lake card now pairs its walkable deck with real low-density
+  // vegetation. A separate native navigation proves the lake first-look is
+  // not stolen by the default flora focus or a forced test-only viewFrom.
+  await page.goto(pathToFileURL(artifact).href+'?lookout=1&flora=low');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,
+    {},{timeout:60000});
+  renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+  await page.waitForFunction(()=>{
+    const d=window.__SHIRETOKO_TERRAIN__?.diagnostics();
+    return d?.renderCallsTotal>=2&&d.mode==='orbit'&&
+      d.floraReview?.enabled&&d.lakeLookoutReview?.enabled;
+  },{},{timeout:30000});
+  const lakeNature=await page.evaluate(()=>{
+    const api=window.__SHIRETOKO_TERRAIN__,d=api.diagnostics();
+    return {camera:d.camera,lookout:d.lakeLookoutReview,flora:d.floraReview,
+      terrainOnly:d.terrainOnly,renderCalls:d.renderCallsTotal,
+      heading:document.querySelector('#scene-title')?.textContent,
+      entry:api.lakeLookoutEntrance};
+  });
+  assert.equal(lakeNature.terrainOnly,false,'nature-and-deck review is not baseline terrain');
+  assert(lakeNature.flora.instances>1000&&lakeNature.flora.drawGroups<=96,
+    'lake review must actually render bounded low-density flora');
+  assert.equal(lakeNature.flora.quality,'low');
+  assert.equal(lakeNature.flora.saveWrites,0);
+  assert.equal(lakeNature.lookout.saveWrites,0);
+  assert.match(lakeNature.heading??'',/湖畔/,'lake camera outranks generic flora focus');
+  for(let i=0;i<3;i++){
+    assert(Math.abs(lakeNature.camera.target[i]-
+      [lakeNature.lookout.viewpoint.x,lakeNature.lookout.viewpoint.y+1,
+        lakeNature.lookout.viewpoint.z][i])<.02,
+    'the first actual lake+flora camera must still target the deck');
+  }
+  const lakeNatureFrame=await page.evaluate(captureTerrainFramebuffer);
+  assert.equal(lakeNatureFrame.glError,0);
+  assert(lakeNatureFrame.max-lakeNatureFrame.min>20,
+    'lake+flora first opening must show actual WebGL scene pixels');
+  assert.match(lakeNatureFrame.image,/^data:image\/jpeg;base64,/);
+  const lakeNatureBytes=Buffer.from(lakeNatureFrame.image.split(',')[1],'base64');
+  assert(lakeNatureBytes.length>2000);
+  const lakeNatureFile='highland-lake-with-flora-actual-webgl.jpg';
+  await writeFile(resolve(out,lakeNatureFile),lakeNatureBytes);
+  result.images.push({name:'lake-with-flora',filename:lakeNatureFile,
+    bytes:lakeNatureBytes.length,width:lakeNatureFrame.width,
+    height:lakeNatureFrame.height,min:lakeNatureFrame.min,
+    max:lakeNatureFrame.max,frameCount:lakeNatureFrame.renderCallsTotal,
+    camera:lakeNatureFrame.cameraPosition});
+  await page.locator('#walk').click();
+  const lakeNatureWalk=await page.evaluate(()=>{
+    const api=window.__SHIRETOKO_TERRAIN__,d=api.diagnostics();
+    const entry=api.lakeLookoutEntrance;
+    return {mode:d.mode,player:d.player,entry,
+      floor:api.lakeLookoutHeightAt(entry.x,entry.z),
+      blocked:api.lakeLookoutBlockedAt(entry.x,entry.z)};
+  });
+  assert.equal(lakeNatureWalk.mode,'walk');
+  assert.equal(lakeNatureWalk.blocked,false,'vegetation cannot obstruct lake entrance');
+  assert(Math.hypot(lakeNatureWalk.player.x-lakeNatureWalk.entry.x,
+    lakeNatureWalk.player.z-lakeNatureWalk.entry.z)<.001);
+  assert(Math.abs(lakeNatureWalk.player.y-lakeNatureWalk.floor)<1e-5,
+    'the real walker must remain on the original displayed lake deck');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().mode==='orbit',
+    {},{timeout:30000});
+  const lakeNatureReturned=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().camera);
+  for(const field of ['position','target'])for(let i=0;i<3;i++)
+    assert(Math.abs(lakeNatureReturned[field][i]-lakeNature.camera[field][i])<.02,
+      'lake flora Escape must restore the original deck-focused camera');
+  assert.deepEqual(await page.evaluate(()=>window.__natureStorageAccess),[]);
+  assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());
+  const lakeNatureDisposed=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
+  assert.equal(lakeNatureDisposed.disposed,true);
+  assert.equal(lakeNatureDisposed.geometries,0);
+  assert.equal(lakeNatureDisposed.textures,0);
+  assert.equal(await page.locator('canvas').count(),0);
+  result.tests.push({name:'native lake+low-flora first look, actual WebGL, walk, Escape, save isolation and disposal',
+    pass:true,initial:lakeNature,walk:lakeNatureWalk,returned:lakeNatureReturned});
+
   // Follow the sixth public review card to its actual 2400m highland flora.
   // Unlike an artificial viewFrom, this checks the first camera and native
   // walk destination after a fresh file:// navigation, without save changes.

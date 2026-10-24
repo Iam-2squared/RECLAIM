@@ -19,8 +19,8 @@ test('low, balanced, cabin and baseline cannot accidentally alter one another',(
   assert.deepEqual([...routes.cabin.searchParams.entries()],[['flora','low'],['boardwalk','1'],['cabin','1']]);
   assert.deepEqual([...routes.highland.searchParams.entries()],[['flora','low'],['highland','1']],
     'highland first-look requires actual low-density flora and never alters saves');
-  assert.deepEqual([...routes.lake.searchParams.entries()],[['lookout','1']],
-    'lake review must be directly reachable without mutating any existing mode');
+  assert.deepEqual([...routes.lake.searchParams.entries()],[['lookout','1'],['flora','low']],
+    'lake review includes real low-density flora without mutating other entries');
   assert.equal(routes.baseline.search,'');
 });
 test('standalone entry has no game save, network, script or TITLE/HOME mutations',()=>{
