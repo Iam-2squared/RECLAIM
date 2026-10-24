@@ -96,10 +96,24 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   deck.name='lake-lookout / real indexed wooden walk top';
   group.add(deck);
 
+  // The landward ramp is a separate rendered surface, but uses these same
+  // barycentric walking triangles. Direct cell indexing avoids evaluating
+  // all 96 ramp triangles on every walker physics tick.
+  const RAMP_LENGTH=3.2,RAMP_HALF_Z=1.2,RAMP_NX=8,RAMP_NZ=6;
+  const rampWest=left-RAMP_LENGTH,rampBack=site.z-RAMP_HALF_Z;
+  const rampTriangles:TopTriangle[]=[];
   const surface=(x:number,z:number):number|null=>{
-    if(!Number.isFinite(x)||!Number.isFinite(z)||
-      x<left||x>right||z<back||z>front)return null;
-    for(const t of triangles){
+    if(!Number.isFinite(x)||!Number.isFinite(z))return null;
+    let active:readonly TopTriangle[]=triangles;
+    if(x<left){
+      if(x<rampWest-1e-5||z<rampBack-1e-5||
+        z>site.z+RAMP_HALF_Z+1e-5)return null;
+      const ix=Math.max(0,Math.min(RAMP_NX-1,Math.floor((x-rampWest)/(.4))));
+      const iz=Math.max(0,Math.min(RAMP_NZ-1,Math.floor((z-rampBack)/(.4))));
+      const first=2*(iz*RAMP_NX+ix);
+      active=rampTriangles.slice(first,first+2);
+    } else if(x>right||z<back||z>front)return null;
+    for(const t of active){
       const denom=crossXZ(t.a,t.b,t.c);
       const u=crossXZ({x,y:0,z},t.b,t.c)/denom;
       const v=crossXZ(t.a,{x,y:0,z},t.c)/denom;
@@ -257,6 +271,46 @@ export function createLakeLookoutReview(terrain: ShiretokoTerrain): LakeLookoutR
   }));
   plankSeams.name='lake-lookout / terrain-conforming real plank grooves';
   group.add(plankSeams);
+
+  // A real 3.2m landward approach connects the 29cm raised deck to the
+  // canonical 5m ground. It never covers the side benches or three guards.
+  // Fine 0.4m indexed triangles track the physical 5m height sampler, with
+  // a small taper to the deck's own pitched western edge. This avoids a
+  // hanging flat box, a sudden 0.29m step and any fake walker-only floor.
+  const rampPositions:number[]=[],rampIndices:number[]=[];
+  for(let iz=0;iz<=RAMP_NZ;iz++){
+    const z=rampBack+iz*.4;
+    const deckEdge=surface(left,z);
+    if(deckEdge===null)throw new RangeError('Ramp must join the real western deck edge');
+    const deckLift=deckEdge-terrain.heightAt(left,z);
+    if(!(deckLift>.07&&deckLift<1.6))
+      throw new RangeError('Ramp must rise gently above surveyed terrain');
+    for(let ix=0;ix<=RAMP_NX;ix++){
+      const x=rampWest+ix*.4,t=ix/RAMP_NX;
+      if(terrain.inWater(x,z))throw new RangeError('Ramp cannot cover lake water');
+      const y=ix===RAMP_NX?deckEdge:
+        terrain.heightAt(x,z)+deckLift*t+.012*(1-t);
+      rampPositions.push(x,y,z);
+    }
+  }
+  const point=(i:number):Point=>Object.freeze({
+    x:rampPositions[3*i],y:rampPositions[3*i+1],z:rampPositions[3*i+2],
+  });
+  for(let iz=0;iz<RAMP_NZ;iz++)for(let ix=0;ix<RAMP_NX;ix++){
+    const a=iz*(RAMP_NX+1)+ix,b=a+1,c=a+RAMP_NX+1,d=c+1;
+    rampIndices.push(a,c,b,b,c,d);
+    rampTriangles.push({a:point(a),b:point(c),c:point(b)},
+      {a:point(b),b:point(c),c:point(d)});
+  }
+  if(rampTriangles.some(t=>crossXZ(t.a,t.b,t.c)<=0))
+    throw new RangeError('Ramp must have real upward-facing walk triangles');
+  const rampGeometry=new T.BufferGeometry();
+  rampGeometry.setAttribute('position',new T.Float32BufferAttribute(rampPositions,3));
+  rampGeometry.setIndex(rampIndices);
+  rampGeometry.computeVertexNormals();rampGeometry.computeBoundingSphere();
+  const ramp=new T.Mesh(rampGeometry,deck.material);
+  ramp.name='lake-lookout / real surveyed landward access ramp';
+  group.add(ramp);
 
   const blockedAt=(x:number,z:number):boolean=>{
     if(!Number.isFinite(x)||!Number.isFinite(z))return true;
