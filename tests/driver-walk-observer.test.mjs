@@ -61,3 +61,19 @@ test('invalid and inflated time budgets are rejected before reading the page',as
  for(const timeout of [0,-1,NaN,Infinity,5001])
   await assert.rejects(waitForDriverWalkObservation({},observation(),{timeout,polling:75}),RangeError);
 });
+
+test('real pre-keydown elapsed origin detects simulation advanced before a delayed first browser read',async()=>{
+ const o={...observation(),target:{x:0,z:30},radius:2,stopRange:8,
+  firstElapsed:4.15,simSeconds:.4,initialTargetDistance:11.5,progressMetres:.6};
+ const p=pageOf([sample(19,4.633,{keys:['KeyW']})]);
+ assert.equal(await waitForDriverWalkObservation(p,o,{timeout:150,polling:10}),'elapsed');
+ assert.equal(p.calls,1,'real delayed first sample is sufficient with pre-input origin');
+ assert.equal(o.firstElapsed,4.15,'caller and real Mission stay unchanged');
+});
+
+test('pre-keydown elapsed origin never shortens the same simulated-time predicate',async()=>{
+ const o={...observation(),target:{x:0,z:30},radius:2,stopRange:8,
+  firstElapsed:4.4,simSeconds:.4,initialTargetDistance:11.5,progressMetres:.6};
+ const p=pageOf([sample(19,4.633,{keys:['KeyW']})]);
+ await assert.rejects(waitForDriverWalkObservation(p,o,{timeout:25,polling:5}),/exceeded 25ms/);
+});
