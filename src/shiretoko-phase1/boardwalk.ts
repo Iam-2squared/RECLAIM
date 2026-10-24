@@ -114,7 +114,12 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
       // walking centre; the west/east end approaches remain completely open.
       // All rails and uprights use just TWO new instanced draw groups.
       for (const [from, to] of [[a, c], [b, d]] as const) {
-        railMatrices.push(segmentMatrix(from, to, .88));
+        // A knee-height rail physically joins the existing deck-grounded
+        // posts below the handrail. Both bands follow the SAME actual deck
+        // endpoint pitch; one existing GPU instanced group draws all four
+        // side/band members, while edge collision remains exactly unchanged.
+        railMatrices.push(segmentMatrix(from, to, .88),
+          segmentMatrix(from, to, .48));
         railEdges.push({ a: from, b: to });
       }
       const railPost = (v: Pt) =>
