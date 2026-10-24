@@ -81,3 +81,37 @@ test('real 60Hz walking follows the entry steps to the inside, then stops at the
   assert(rider.x>left+.2,'physical wall stops continued walking');
   assert(rider.x<left+1.2,'wall is an actual nearby obstacle, not a huge invisible boundary');
 });
+
+test('stair handrails use one instanced post mesh and remain outside walkable corridor',()=>{
+  const posts=cabin.group.children.find(x=>x.name==='cabin / stair rail posts / instanced');
+  assert(posts instanceof T.InstancedMesh);
+  assert.equal(posts.count,cabin.stairs*2);
+  assert.equal(posts.geometry.parameters.height,1.06);
+  const matrix=new T.Matrix4(),point=new T.Vector3();
+  for(let i=0;i<posts.count;i++){
+    posts.getMatrixAt(i,matrix);point.setFromMatrixPosition(matrix);
+    const top=cabin.heightAt(point.x,Z);
+    assert(Number.isFinite(top),'post must attach to actual supported step');
+    assert(Math.abs((point.y-1.06/2)-top)<.20,
+      'rail post must overlap step/stringer rather than float above it');
+    assert(Math.abs(point.z-Z)>1.15,'post cannot obstruct the 2.3m stair corridor');
+  }
+  for(const side of [-1,1]){
+    const beam=cabin.group.children.find(x=>x.name==='cabin / timber handrail '+side);
+    const stringer=cabin.group.children.find(x=>x.name==='cabin / stair stringer '+side);
+    assert(beam instanceof T.Mesh && stringer instanceof T.Mesh);
+    assert.equal(beam.geometry.parameters.depth,.16);
+    assert.equal(stringer.geometry.parameters.depth,.18);
+    assert.equal(cabin.blockedAt(right+4,Z+side*1.08),true,
+      'visible rail has a horizontal player collision margin');
+    assert.equal(cabin.blockedAt(right+4,Z),false,
+      'actual central entry path must remain passable');
+  }
+  // Native walker still steps through door and reaches the real floor.
+  const rider=new TerrainWalker(terrain,cabin.heightAt,cabin.blockedAt);
+  assert(rider.place(cabin.entrance.x,Z));
+  rider.yaw=Math.PI/2;
+  for(let i=0;i<245;i++)rider.step({forward:1,right:0,sprint:false,jump:false},1/60);
+  assert(rider.x<right-3);
+  assert(Math.abs(rider.y-cabin.floorY)<1e-6);
+});

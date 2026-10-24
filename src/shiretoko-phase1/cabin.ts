@@ -87,13 +87,42 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   // Porch has exactly the same foot height as the interior; the stair treads
   // meet it directly with a bounded <=0.26m final riser.
   box('cabin / door porch',right+.64,floorY-.13,Z,1.28,.26,2.7,mats.wood);
+  const stairCenters:{x:number;top:number}[]=[];
   for(let i=0;i<stairs;i++){
     const x=outsideX-(i+.5)*run;
     const top=stairTop(i);
+    stairCenters.push({x,top});
     box('cabin / tread '+i,x,top-.09,Z,run,.18,2.3,mats.stair);
     const supportHeight=Math.max(.1,top-terrain.heightAt(x,Z));
     box('cabin / stair support '+i,x,top-supportHeight/2,Z,Math.min(run,.18),supportHeight,.17,mats.trim);
   }
+  // Weathered timber handrails outside the 2.3m stair walking width.
+  // Eight equal-size posts use one real InstancedMesh (one draw call), rather
+  // than one independent mesh/draw call per post on software WebGL.
+  const first=stairCenters[0],last=stairCenters[stairs-1];
+  const centerX=(first.x+last.x)/2,centerTop=(first.top+last.top)/2;
+  const slope=Math.atan2(last.top-first.top,last.x-first.x);
+  const length=Math.hypot(last.x-first.x,last.top-first.top)+run;
+  const posts=new T.InstancedMesh(new T.BoxGeometry(.16,1.06,.16),mats.trim,stairs*2);
+  posts.name='cabin / stair rail posts / instanced';
+  posts.frustumCulled=false;
+  const transform=new T.Matrix4();
+  let post=0;
+  for(const side of [-1,1] as const) {
+    const railZ=Z+side*(DOOR_HALF+.22);
+    const stringer=box('cabin / stair stringer '+side,centerX,centerTop-.18,railZ,
+      length,.22,.18,mats.trim);
+    stringer.rotation.z=slope;
+    const handrail=box('cabin / timber handrail '+side,centerX,centerTop+.87,railZ,
+      length,.16,.16,mats.wood);
+    handrail.rotation.z=slope;
+    for(const step of stairCenters){
+      transform.makeTranslation(step.x,step.top+.35,railZ);
+      posts.setMatrixAt(post++,transform);
+    }
+  }
+  posts.instanceMatrix.needsUpdate=true;
+  group.add(posts);parts+=post;
   // Roof: true pitched triangles, not a box silhouette. Its interior leaves
   // sufficient headroom for the 1.68m walker eye height.
   const eave=wallTop+.16,peak=wallTop+2.3;
@@ -153,7 +182,10 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
       rect(x,z,right-WALL/2,front-sideDepth/2,WALL,sideDepth);
     const table=rect(x,z,X-2,Z+3,2.1,1.45);
     const bunk=rect(x,z,X-5.3,Z-3.4,2.7,4.05);
-    return west||north||south||east||table||bunk;
+    // Guardrails are solid at the stair edges; never obstruct the centerline.
+    const rail=x>=right+.25&&x<=outsideX&&
+      Math.abs(z-Z)>=DOOR_HALF-.09&&Math.abs(z-Z)<=DOOR_HALF+.45;
+    return west||north||south||east||table||bunk||rail;
   };
   return {group,floorY,heightAt,blockedAt,stairs,parts,supports:pierSites.length,entrance:{x:right+1.7,z:Z}};
 }
