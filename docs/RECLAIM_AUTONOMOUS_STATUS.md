@@ -1,24 +1,18 @@
-# RECLAIM Autonomous Development — Current Checkpoint
+# RECLAIM — Autonomous Checkpoint (2026-10-24 18:35 JST)
+Scope: Iam-2squared/RECLAIM and pre-existing Vercel project only. This is a snapshot, not a substitute for live checks.
 
-Updated: **2026-10-24 18:09 JST**. Scope: **Iam-2squared/RECLAIM** only. Verified through GitHub API; always refresh HEAD/run/attempt before any merge or status claims.
+## Current integrated release
+- PR #79 cabin doorposts/window muntins, source exact HEAD aef4e64fdc9156f9f5b9c6f94c1418c15140936b, merged via expected-head squash to main `95a36317855213702a7f8a965a50281dc3ef6de4`.
+- PR #79 exact source CI: terrain run 40080963671 3/3, preview run 40080963670 5/5, genuine nature WebGL run 40080963685 1/1 SUCCESS (attempt 1). Artifact 12555156451 contains six real JPGs and JSON; inspected cabin first-look and headland frames. Added one geometry/draw call; native cabin walking and zero save writes verified.
+- Main `95a36317855213702a7f8a965a50281dc3ef6de4` push CI separately: terrain 40081767779 3/3, preview 40081767776 5/5 SUCCESS, attempt 1, exact SHA. Main offline release generated from artifact 12555587323, includes independent menu and real screenshots; Vercel publication not claimed.
+- Vercel project reclaim-safari-preview, project prj_c5CQvrRjQRcesZC6GMoMv89evR69, team team_ovY3gbfsldk7aCRexivv2MkF: scoped project read returns 403 FORBIDDEN; BLOCKED_AUTH. No scope bypass, new deployment, public URL, or permission modification.
 
-## Product and main
-- Verified main before this integration: `744299cb2ec43bbd1040aa2a2f252bb86bf8d8e8` — PR #78 squash-merging corrected highland review framing and its real terrain CI expectation. PR #78 original source `5e653020e5dc6541660a2de0624c816d426316e3`; all required 3 terrain, 5 preview, 1 nature-WebGL jobs SUCCESS at attempt 1: runs `40079940364`, `40079940361`, `40079940378`. Previous failure run `40077248385` asserted outdated +100 m although the source camera was deliberately changed to +35 m; repaired strict expected position, not assertion tolerance or timeout. Real highland screenshots compare artifact `12554931244` with PR #76 artifact `12552768538`; still visibly sparse and not photorealistic.
-- Main push terrain run `40080584423` and preview run `40080584410` were **in progress** when recorded. Do not call main fully green before exact-run completion.
-- Existing opt-in native 2400 m review: `/shiretoko-nature.html` with cabin, boardwalk, low/balanced vegetation, highland and lake routes. Campaign 480 m saved positions and approved TITLE/HOME/mobile gate unchanged.
+## Independent work (not integrated, hard CI gates still required)
+- This branch proposes deterministic ~50m patches of extra alpine shrubs/stone in dry elevation >300m. Original valley forest/wetland placements, 8m route/7m structures, water and steep slopes retained; no new species, textures, collision, world versions, saves, TITLE/HOME or mobile guard changes.
+- Local Node 22 --experimental-strip-types focused tests 6/6 SUCCESS on standalone vegetation-plan.ts and tests/vegetation-plan.test.mjs. Main real 5m terrain mesh, browser artifacts, draw groups, low/balanced instance budgets and performance unverified for this branch until remote CI and real framebuffer evidence.
+- Do not merge this branch if any of its exact HEAD 3 terrain + 5 preview + 1 real nature WebGL jobs are pending, cancelled, failed, missing, or if latest-main integration is stale.
 
-## Current independent candidate
-- PR **#79**, branch `feature/shiretoko-cabin-glazing-joinery-20261024-1753`, initial feature commit `f2e2f50ea0b283be926790f1f651ee8936b38885` based on former main `a9fbd32074b72ca85107837d8b9181f1ec90d75f`. Eight real door jamb / window muntin members in **one Three.js InstancedMesh**, using the existing trim material and geometry, without changing physics, terrain, doors, windows or saves.
-- Initial feature HEAD CI: terrain `40080241998` **3/3 SUCCESS**, preview `40080242056` **5/5 SUCCESS**, nature real WebGL `40080241997` **1/1 SUCCESS**, attempt 1; true cabin entry, native walker, screenshot, network/save isolation and disposal proved. Baseline PR #77 nature draw calls/geometries `93/134` vs candidate `94/135`; both 2 textures, same 5m walking floor. PR #79 screenshot artifact `12554348396`, baseline PR #77 artifact `12553741527`. NOT yet merged at this checkpoint.
-- This integration is an ordinary two-parent, fast-forward PR branch merge of current main and PR #79 source, with disjoint changed files, plus this canonical checkpoint. Its resulting HEAD and all 9 required exact-HEAD jobs MUST be fetched before merge. Do not reuse the initial HEAD green as evidence for the integrated HEAD.
-
-## Blockers and safety
-- Existing Vercel team `team_ovY3gbfsldk7aCRexivv2MkF`, project `prj_c5CQvrRjQRcesZC6GMoMv89evR69` / `reclaim-safari-preview`: official GET project again returned **403 FORBIDDEN**, requiring team consent/re-auth; `BLOCKED_AUTH`, no new deployment or verified public SHA.
-- Do not change 480m saves, Tokyo TITLE, Shiretoko HOME, mobile FPS guard, old HOME PR #4, other repos, budget, scopes, or protections. No force push, CI skip, threshold relaxation, or unapproved retry. Old historical red remains visible.
-
-## Next three concrete actions
-1. Collect new exact integration HEAD of PR #79: terrain 3/3, preview 5/5, real nature WebGL 1/1; inspect actual screenshot and strict pixel/physics/resource results. Fix product regressions at root cause.
-2. Finish existing main `744299cb2ec4` push CI, then if #79 integration head is clean against latest main and all 9 jobs successful, merge via expected SHA. Collect post-merge main 8/8 separately.
-3. Package the resulting validated main standalone `shiretoko-terrain.html` + `shiretoko-nature.html` offline for Windows review; next visible improvement: reduce sparse highland vista using terrain-aware rock/shrub grouping without covering paths, measured on real SwiftShader geometry and performance.
-
-Recorded only this one canonical checkpoint; never treat this text as a substitute for live GitHub checks.
+## Next three tasks
+1. Collect candidate exact HEAD terrain 3/3, preview 5/5, nature 1/1 and screenshots; compare highland view to baseline at same camera, validate draw/instance budgets, route/water/saves.
+2. If all gates pass, verify latest main/base, merge with expected head SHA and collect postmerge main 8/8; refresh standalone ZIP from exact main CI.
+3. Independently continue higher-fidelity small vegetation/architecture improvements and keep real-world FPS claims disabled until user Windows GPU evidence. Preserve 480m campaign and approved Tokyo TITLE/Shiretoko HOME.

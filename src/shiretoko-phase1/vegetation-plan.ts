@@ -30,25 +30,36 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
  const x0=-FLORA_RULES.extent+chunkX*FLORA_RULES.chunkMetres,z0=-FLORA_RULES.extent+chunkZ*FLORA_RULES.chunkMetres;
  for(let iz=0;iz<perSide;iz++)for(let ix=0;ix<perSide;ix++){
   const gx=chunkX*perSide+ix,gz=chunkZ*perSide+iz;
-  // Balanced contains every low instance; lower LOD only drops details.
+  // Keep all original woodland/marsh instances. Highland cells above 300m
+  // gain deterministic ~50m patches of extra short shrubs and stones; patch
+  // strength is shared across the quality modes so low stays a strict subset
+  // of balanced. Ground/water/route/structure gates remain authoritative.
   const choose=random(gx,gz,1);
-  if(choose> (quality==='low'?.23:.54))continue;
+  const woodlandLimit=quality==='low'?.23:.54;
+  const patch=random(Math.floor(gx/5),Math.floor(gz/5),17);
+  const highlandLimit=quality==='low'?.28+.18*patch:.56+.24*patch;
+  if(choose>highlandLimit)continue;
   const x=x0+(ix+.22+.56*random(gx,gz,2))*FLORA_RULES.cellMetres;
   const z=z0+(iz+.22+.56*random(gx,gz,3))*FLORA_RULES.cellMetres;
   // Unloaded/ambiguous terrain classification must not grow vegetation into a
   // path, lake, house or missing tile. One bad candidate cannot block a chunk.
   let y:number,slope:number,wet:number;
   try {
+   y=surface.height(x,z);
+   if(!Number.isFinite(y)|| (y<=300 && choose>woodlandLimit))continue;
    const water=surface.water(x,z),route=surface.routeDistance(x,z);
    if(water!==false||!Number.isFinite(route)||route<0||route<FLORA_RULES.trailClearance)continue;
    if(surface.structureDistance){
     const distance=surface.structureDistance(x,z);
     if(!Number.isFinite(distance)||distance<FLORA_RULES.structureClearance)continue;
    }
-   y=surface.height(x,z);slope=surface.slope(x,z);
+   slope=surface.slope(x,z);
    const rawWet=surface.wetness(x,z,y);
    if(![y,slope,rawWet].every(Number.isFinite)||slope<0)continue;
    wet=clamp(rawWet);
+   // Extra patches only occupy dry, traversable highland; do not fill
+   // sensitive wetland, steep talus slopes or the open shoreline with props.
+   if(choose>woodlandLimit && (wet>.72 || slope>FLORA_RULES.maxSlope))continue;
   } catch { continue; }
   let kind:FloraKind;
   const species=random(gx,gz,4);
