@@ -10,10 +10,10 @@ const dryPlain=Object.freeze({
   water:()=>false,
 });
 
-function census(quality){
+function census(quality,surface=dryPlain){
   const instances=[],tiles=new Map();
   for(let z=0;z<8;z++)for(let x=0;x<8;x++){
-    const chunk=planFlora(x,z,dryPlain,quality);
+    const chunk=planFlora(x,z,surface,quality);
     assert(Object.isFrozen(chunk),'chunk plans are read-only');
     for(const p of chunk){
       assert.equal(p.y,100);
@@ -55,4 +55,29 @@ test('wetlands, paths, water, buildings and out-of-range chunks retain safety ga
     assert.equal(planFlora(4,3,surface,'balanced').length,0);
   assert.throws(()=>planFlora(8,0,dryPlain,'low'),RangeError);
   assert.throws(()=>planFlora(0,0,dryPlain,'invalid'),RangeError);
+});
+
+// Prove fuller dry groves use the existing seeded lattice without filling
+// damp meadow, open marsh, highland or protected walking surfaces.
+test('dry woodland gains coherent mature stands but marsh retains sparse exact occupancy',()=>{
+  const dry=census('low');
+  const meadow=census('low',{...dryPlain,wetness:()=>.55});
+  const marsh=census('low',{...dryPlain,wetness:()=>.9});
+  assert(dry.instances.length>meadow.instances.length*1.08,
+    'mature dry stands should gain enough physical trees for a visible forest');
+  assert(dry.instances.length<meadow.instances.length*1.25,
+    'low-end devices retain a strict bounded draw/instance envelope');
+  assert.equal(marsh.instances.length,meadow.instances.length,
+    'marsh and meadow retain the original sparse planted grid');
+  const key=p=>p.x+':'+p.z;
+  const dryPositions=new Set(dry.instances.map(key));
+  for(const p of meadow.instances)assert(dryPositions.has(key(p)),
+    'original tree positions stay fixed; no displacement into paths or homes');
+  assert.deepEqual(new Set(marsh.instances.map(key)),
+    new Set(meadow.instances.map(key)),
+    'wetland occupancy does not inherit the dry grove boost');
+  const highland={...dryPlain,height:()=>420};
+  assert.deepEqual(census('low',highland).instances.map(key),
+    census('low',{...highland,wetness:()=>.55}).instances.map(key),
+    'highland retains the same alpine cap independent of dry forest density');
 });
