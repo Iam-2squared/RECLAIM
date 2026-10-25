@@ -6,6 +6,7 @@ import { sceneryMesh } from './scenery.ts';
 import { basinWaterMesh } from './water.ts';
 import { TerrainWalker } from './walker.ts';
 import { createFloraReviewLayer } from './flora-renderer.ts';
+import { createNearMeadowReview } from './near-meadow.ts';
 import { createBoardwalkReview } from './boardwalk.ts';
 import { createCliffCabinReview } from './cabin.ts';
 import { createLakeLookoutReview } from './lake-lookout.ts';
@@ -109,6 +110,7 @@ async function boot() {
   const floraChoice = query.get('flora');
   const floraReview = ['1', 'low', 'balanced'].includes(floraChoice ?? '')
     ? createFloraReviewLayer(terrain, floraChoice === 'balanced' ? 'balanced' : 'low') : null;
+  const nearMeadowReview = floraReview ? createNearMeadowReview(terrain, floraReview.quality) : null;
   const boardwalkReview = ['1', 'true', 'on'].includes(query.get('boardwalk') ?? '')
     ? createBoardwalkReview(terrain) : null;
   const cabinReview = ['1', 'true', 'on'].includes(query.get('cabin') ?? '')
@@ -117,6 +119,7 @@ async function boot() {
     ? createLakeLookoutReview(terrain) : null;
   const natureBadges: HTMLElement[] = [];
   if (floraReview) root.add(floraReview.group);
+  if (nearMeadowReview) root.add(nearMeadowReview.group);
   if (cabinReview) root.add(cabinReview.group);
   if (lakeLookoutReview) root.add(lakeLookoutReview.group);
   if (lakeLookoutReview && !cabinReview && !boardwalkReview) {
@@ -360,6 +363,9 @@ async function boot() {
     }
     needsRender = true;
   }
+  // The near-field fan is a single bounded GPU batch, world-seeded and tied
+  // to the review camera/actual walker rather than 2400m of dense geometry.
+  if(nearMeadowReview?.sync(controls.target.x,controls.target.z))needsRender=true;
   function frame(time: number) {
     if (disposed) return;
     animation = requestAnimationFrame(frame);
@@ -383,6 +389,8 @@ async function boot() {
       camera.position.lerpVectors(transition.from, new T.Vector3(...transition.to.position), easing); controls.target.lerpVectors(transition.targetFrom, new T.Vector3(...transition.to.target), easing); controls.update();
       if (t === 1) transition = null;
     } else if(intro.state!=='landed')controls.update();
+    if(nearMeadowReview?.sync(walking?walker.x:controls.target.x,
+      walking?walker.z:controls.target.z))needsRender=true;
     // Frozen water plus an unchanged walking camera is an identical image.
     // Keep input/60Hz physics above active, and draw every changed pose; do not
     // flood the software GPU with duplicate frames while a capture is pending.
@@ -396,7 +404,9 @@ async function boot() {
     ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview && !cabinReview && !lakeLookoutReview,
     floraReview: floraReview ? { enabled: true, quality: floraReview.quality,
       instances: floraReview.instances, drawGroups: floraReview.drawGroups,
-      instanceBytes: floraReview.instanceBytes, treeColliders: floraReview.treeColliders, saveWrites: 0 } : { enabled: false },
+      instanceBytes: floraReview.instanceBytes, treeColliders: floraReview.treeColliders,
+      nearMeadowTufts: nearMeadowReview?.instances ?? 0,
+      nearMeadowDrawGroups: nearMeadowReview?.instances ? 1 : 0, saveWrites: 0 } : { enabled: false },
     boardwalkReview: boardwalkReview ? { enabled: true, panels: boardwalkReview.panels,
       supports: boardwalkReview.supports, indexedTriangles: boardwalkReview.indexedTriangles,
       saveWrites: 0 } : { enabled: false },
