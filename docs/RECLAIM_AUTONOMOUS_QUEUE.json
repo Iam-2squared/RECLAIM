@@ -1,8 +1,8 @@
 {
-  "version": 9,
-  "as_of_jst": "2026/10/25 14:16:11 JST",
+  "version": 10,
+  "as_of_jst": "2026/10/25 14:18:00 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "9a1e42cbb502614521d5ea8ea600e960e5eee499",
+  "latest_known_main": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -258,42 +258,42 @@
         "nature": 40164356914
       },
       "nature_artifact": 12587880509,
-      "state": "3_TERRAIN_GREEN_1_NATIVE_WEBGL_GREEN_4_OF_5_PREVIEW_GREEN_LAST_JOB_PENDING_SOURCE_HEAD_NOT_MERGED"
+      "state": "SOURCE_TERRAIN_3_PREVIEW_5_NATIVE_1_SUCCESS_ATTEMPT1_MERGED_MAIN_PUSH_8_PENDING",
+      "merged_sha": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1"
     },
     {
       "id": "deadwood-physical-bracket-fungi",
       "branch": "feature/shiretoko-deadwood-bracket-fungi-20261025",
       "original_feature_head": "f375775443d396f081fd58c8a4b813742347cce2",
       "base_sha": "9a1e42cbb502614521d5ea8ea600e960e5eee499",
-      "state": "SUBSTANTIVE_INDEPENDENT_CODE_AND_TEST_IMPLEMENTED_NOT_CI_VERIFIED_NOT_MERGED"
+      "state": "INDEPENDENT_IMPLEMENTED_SAFE_INTEGRATION_ON_MAIN_PREPARATION_CI_PENDING"
     }
   ],
   "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_9a1e42c_WALKABLE_REVIEW_OFFLINE_20261025.zip",
   "next": [
-    "PR121 f22adfa exact source preview #40164356904 last Chromium world pass and guarded merge only 9/9.",
-    "Post-merge exact main 3+5 CI and refresh PC ZIP from same SHA only.",
-    "Safely combine fungi f375775 into verified new main, new 9 source checks plus images before integrating; Vercel remains 403."
+    "Collect PR121 merged main 36bf exact terrain #40164948325 3/3 and preview #40164948290 5/5.",
+    "Collect integrated fungal feature new branch HEAD 3+5+1 and actual WebGL images; guarded merge only after main 8/8.",
+    "Verify resulting main 8/8; make SHA-pinned new PC ZIP; Vercel still 403 no deploy."
   ],
   "current_integration": {
-    "pr": 121,
-    "branch": "feature/shiretoko-meadow-seed-stalks-20261025",
-    "head": "f22adfa506c715f1ca6770b9df7c84efa92698e6",
-    "base_sha": "9a1e42cbb502614521d5ea8ea600e960e5eee499",
+    "branch": "feature/shiretoko-deadwood-bracket-fungi-20261025",
+    "original_feature_head": "27d4529353a286f54689cc0dadb4e21591903194",
+    "base_sha": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
+    "head": "PREPARE_SAFE_TWO_PARENT_NEW_HEAD",
     "source_all_9_success": false,
-    "source_completed_8_of_9": true,
     "merged": false
   },
   "main_ci": {
-    "head": "9a1e42cbb502614521d5ea8ea600e960e5eee499",
+    "head": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
     "terrain": {
-      "run_id": 40161034995,
+      "run_id": 40164948325,
       "attempt": 1,
-      "status": "3_OF_3_SUCCESS"
+      "status": "IN_PROGRESS_AT_CHECKPOINT"
     },
     "preview": {
-      "run_id": 40161034990,
+      "run_id": 40164948290,
       "attempt": 1,
-      "status": "5_OF_5_SUCCESS"
+      "status": "IN_PROGRESS_AT_CHECKPOINT"
     }
   }
 }
