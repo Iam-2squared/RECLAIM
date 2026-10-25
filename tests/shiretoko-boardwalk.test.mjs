@@ -14,7 +14,7 @@ test('marsh review boardwalk is physical indexed triangles with bounded instance
   assert(boardwalk.panels>30&&boardwalk.panels<=260);
   assert.equal(boardwalk.indexedTriangles,boardwalk.panels*2);
   assert(boardwalk.supports>8&&boardwalk.supports<boardwalk.panels);
-  assert.equal(boardwalk.group.children.length,8,'two bounded extra sign draw groups');
+  assert.equal(boardwalk.group.children.length,9,'one shared brace draw group and two bounded sign draw groups');
   const [deck,posts,seams,edging,rails,guardPosts]=boardwalk.group.children;
   assert.equal(seams.name,'boardwalk / plank seams / instanced');
   assert.equal(edging.name,'boardwalk / side edging / instanced');
@@ -188,4 +188,39 @@ test('two real wooden trail arrows are grounded on guarded terminal planks witho
   for(let i=0;i<60;i++)rider.step({forward:0,right:0,sprint:false,jump:false},1/60);
   assert(rider.grounded && Math.abs(rider.y-boardwalk.heightAt(midpoint.x,midpoint.z))<1e-7);
   for(const m of [signs,posts])assert(m.boundingSphere&&Number.isFinite(m.boundingSphere.radius));
+});
+
+test('real sloped wooden diagonal braces tie guard posts to pitched handrail without obstructing the walkway',()=>{
+  const braces=boardwalk.group.getObjectByName('boardwalk / sloped timber guard knee braces / instanced');
+  const guards=boardwalk.group.getObjectByName('boardwalk / deck-grounded guard posts / instanced');
+  assert(braces instanceof T.InstancedMesh && guards instanceof T.InstancedMesh);
+  assert(braces.count>90&&braces.count<boardwalk.panels,
+    'one brace on each guarded side every third plank, not one mesh per panel');
+  assert.equal(braces.geometry.parameters.height,.105);
+  assert.equal(braces.geometry.parameters.depth,.095);
+  assert(braces.boundingSphere&&Number.isFinite(braces.boundingSphere.radius));
+  assert.equal(boardwalk.group.children.length,9,'exactly one new instanced draw group');
+  const m=new T.Matrix4(),at=new T.Vector3(),sz=new T.Vector3();
+  const postMatrix=new T.Matrix4(),postPos=new T.Vector3();
+  for(let i=0;i<braces.count;i+=Math.max(1,Math.floor(braces.count/42))){
+    braces.getMatrixAt(i,m);at.setFromMatrixPosition(m);
+    sz.setFromMatrixScale(m);
+    assert(sz.x>.60&&sz.x<3,'diagonal brace is physical timber, not a stretched billboard');
+    assert(boardwalk.blockedAt(at.x,at.z),
+      'knee braces stay along existing collision-guarded timber edges');
+    let distance=Infinity,postY=NaN;
+    for(let j=0;j<guards.count;j++){
+      guards.getMatrixAt(j,postMatrix);postPos.setFromMatrixPosition(postMatrix);
+      const d=Math.hypot(postPos.x-at.x,postPos.z-at.z);
+      if(d<distance){distance=d;postY=postPos.y;}
+    }
+    assert(distance<.8,'diagonal foot must attach to an original grounded rail upright');
+    assert(Math.abs(at.y-postY)<.7,
+      'brace centre and supporting upright must follow the same genuine pitched deck');
+  }
+  const original=new TerrainWalker(terrain,boardwalk.heightAt,boardwalk.blockedAt);
+  assert.equal(boardwalk.blockedAt(midpoint.x,midpoint.z),false);
+  assert(original.place(midpoint.x,midpoint.z));
+  for(let i=0;i<90;i++)original.step({forward:0,right:0,sprint:false,jump:false},1/60);
+  assert(original.grounded&&Math.abs(original.y-boardwalk.heightAt(midpoint.x,midpoint.z))<1e-7);
 });
