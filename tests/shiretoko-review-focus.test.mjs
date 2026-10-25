@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {natureReviewFocus} from '../src/shiretoko-phase1/review-focus.ts';
-import {ShiretokoTerrain} from '../src/shiretoko-phase1/terrain.ts';
+import {ShiretokoTerrain, LOCATIONS, ROUTE} from '../src/shiretoko-phase1/terrain.ts';
+import {TerrainWalker} from '../src/shiretoko-phase1/walker.ts';
+import {createBoardwalkReview} from '../src/shiretoko-phase1/boardwalk.ts';
 
 const height = (x,z) => 100 + x / 100 + z / 200;
 const focus = (search) => natureReviewFocus(new URLSearchParams(search),height);
@@ -49,6 +52,40 @@ test('review camera tracks the real terrain elevation at BOTH camera and target'
   assert.deepEqual(cabin.target,[-100,height(-100,835)+2,835]);
 });
 
+
+test('opt-in native woodland and wooden-walk buttons spawn on their actual visible safe terrain',()=>{
+  const source=readFileSync(new URL('../src/shiretoko-phase1/preview.ts',import.meta.url),'utf8');
+  assert.match(source,/firstLook\\?\\.kind === 'boardwalk'[\\s\\S]*?ROUTE\\[3\\]/,
+    'boardwalk URL must place the native walker at the actual first timber panel');
+  assert.match(source,/firstLook\\?\\.kind === 'flora'[\\s\\S]*?LOCATIONS\\[1\\]/,
+    'flora-only URL must spawn in the forest/wetland, never teleport to cape');
+  assert.match(source,/boardwalkEntry \\?\\? floraEntry/,
+    'the actual walk button must use both opt-in scene launch points');
+  assert.match(source,/boardwalkEntry \\? Math\\.atan2/,
+    'first-person boardwalk direction must face the true route, not open water');
+  assert.match(source,/floraEntry && firstLook[\\s\\S]*?Math\\.atan2/,
+    'first-person woodland camera must face the originally inspected scene');
+  assert.match(source,/\\['cabin', 'lookout', 'highland', 'boardwalk', 'flora'\\]\\.includes/,
+    'escape returns to the same forest or timber preview, not a different overview');
+  const terrain=new ShiretokoTerrain();
+  const dry=LOCATIONS[1];
+  const pureWalk=new TerrainWalker(terrain);
+  assert.equal(terrain.inWater(dry.x,dry.z),false,'protected wetland start is not a basin');
+  assert(pureWalk.place(dry.x,dry.z),'dry natural forest route must admit the walker');
+  assert.equal(pureWalk.y,terrain.heightAt(dry.x,dry.z),'walker and actual 5m rendered surface agree');
+  const timber=createBoardwalkReview(terrain),start=ROUTE[3];
+  const deckY=timber.heightAt(start.x,start.z);
+  assert.notEqual(deckY,null,'authored wooden first panel has a genuine indexed deck contact');
+  const deckWalk=new TerrainWalker(terrain,timber.heightAt,timber.blockedAt);
+  assert(deckWalk.place(start.x,start.z),'wooden entrance remains unblocked and truly walkable');
+  assert(Math.abs(deckWalk.y-deckY)<1e-6,'native walk starts on the ACTUAL deck surface');
+  const geometries=new Set(),materials=new Set();
+  timber.group.traverse(node=>{
+    if(node.isInstancedMesh)node.dispose();
+    if(node.isMesh){geometries.add(node.geometry);materials.add(node.material);}
+  });
+  geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());
+});
 
 test('real highland starts on an oblique slope view, not the prior nearly top-down empty plain',()=>{
   const terrain=new ShiretokoTerrain();
