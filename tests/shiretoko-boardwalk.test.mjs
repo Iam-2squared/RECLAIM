@@ -231,7 +231,7 @@ test('actual terrain WebGL preview passes standalone boardwalk guard collision t
   // tests but the real /shiretoko-terrain.html?boardwalk=1 walker ignored it.
   const {readFileSync}=await import('node:fs');
   const preview=readFileSync(new URL('../src/shiretoko-phase1/preview.ts',import.meta.url),'utf8');
-  assert.match(preview,/cabinReview\\s*\\|\\|\\s*boardwalkReview\\s*\\|\\|\\s*lakeLookoutReview\\s*\\?\\s*reviewBlocked\\s*:\\s*undefined/,
+  assert(preview.includes('cabinReview || boardwalkReview || lakeLookoutReview ? reviewBlocked : undefined'),
     'the native 3D page must enable every optional structure blocker, even boardwalk alone');
   const rider=new TerrainWalker(terrain,boardwalk.heightAt,boardwalk.blockedAt);
   assert(rider.place(midpoint.x,midpoint.z),'central 3.2m walking lane remains accessible');
