@@ -207,6 +207,52 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     const mesh=new T.Mesh(geometry,new T.MeshLambertMaterial({color:0x827665,side:T.DoubleSide}));
     mesh.name='cabin / pitched gable';group.add(mesh);parts++;
   }
+  // Cedar gable structural trusses are actual timber volumes attached to
+  // BOTH original triangular north/south walls, not painted roof lines.
+  // Full sloping rafters, a tie beam, a king post and two short secondary
+  // uprights make the previously blank 18m gable legible from the trail.
+  // All 12 members sit ABOVE the 3.25m wall height, away from the glazed
+  // eye-level sightlines and open eastern stair entrance. One bounded,
+  // colour-instanced draw group; no new colliders, floor or game save writes.
+  const gableTimbers:{matrix:T.Matrix4;color:number}[]=[];
+  const gableColours=[0x876a4d,0x9a7955,0x78573f,0xa18460,0x6d523b,0x8c6b4f];
+  const upX=new T.Vector3(1,0,0);
+  const gableTimber=(ax:number,ay:number,bx:number,by:number,z:number,
+    width:number,color:number)=>{
+    const a=new T.Vector3(ax,ay,z),b=new T.Vector3(bx,by,z);
+    const vector=b.clone().sub(a),length=vector.length();
+    if(!(length>.1))throw new RangeError('Cabin gable timber must span real wall');
+    const rotation=new T.Quaternion().setFromUnitVectors(upX,vector.multiplyScalar(1/length));
+    gableTimbers.push({matrix:new T.Matrix4().compose(a.add(b).multiplyScalar(.5),
+      rotation,new T.Vector3(length,width,.17)),color});
+  };
+  for(const [side,z] of [[-1,back-.13],[1,front+.13]] as const){
+    const offset=side<0?0:1;
+    // Every endpoint follows the true triangular wall silhouette. The
+    // shallow overlaps deliberately join rafters, tie and uprights in 3D.
+    gableTimber(left,wallTop+.06,X,peak+.06,z,.19,gableColours[offset]);
+    gableTimber(X,peak+.06,right,wallTop+.06,z,.19,gableColours[2+offset]);
+    gableTimber(left,wallTop+.14,right,wallTop+.14,z,.19,gableColours[1+offset]);
+    gableTimber(X,wallTop+.14,X,peak-.03,z,.14,gableColours[3+offset]);
+    for(const direction of [-1,1] as const){
+      const x=X+direction*WIDTH*.24;
+      const roofY=wallTop+(peak-wallTop)*(1-Math.abs(x-X)/(WIDTH/2));
+      gableTimber(x,wallTop+.13,x,roofY+.035,z,.13,
+        gableColours[direction<0?4:5]);
+    }
+  }
+  const gableFrames=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),gableTimbers.length);
+  gableFrames.name='cabin / both roof-connected cedar gable structural trusses / instanced';
+  for(let i=0;i<gableTimbers.length;i++){
+    gableFrames.setMatrixAt(i,gableTimbers[i].matrix);
+    gableFrames.setColorAt(i,new T.Color(gableTimbers[i].color));
+  }
+  gableFrames.instanceMatrix.needsUpdate=true;
+  if(gableFrames.instanceColor)gableFrames.instanceColor.needsUpdate=true;
+  gableFrames.computeBoundingSphere();
+  group.add(gableFrames);parts++;
+
   box('cabin / stone chimney',X-4,wallTop+1.4,Z-3.8,1.25,3.1,1.3,mats.stone);
   for(const z of [back-.027,front+.027]){
     box('cabin / glazed window',WINDOW_X,floorY+1.86,z,WINDOW_W,1.32,.09,mats.glass);
