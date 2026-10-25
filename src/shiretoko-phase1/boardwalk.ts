@@ -47,6 +47,7 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   const seamMatrices: T.Matrix4[] = [];
   const edgeMatrices: T.Matrix4[] = [];
   const railMatrices: T.Matrix4[] = [];
+  const braceMatrices: T.Matrix4[] = [];
   const railPostMatrices: T.Matrix4[] = [];
   const railEdges: { a: Pt; b: Pt }[] = [];
   // Trailheads share existing guarded plank corners: no new collision area
@@ -124,6 +125,22 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
         railMatrices.push(segmentMatrix(from, to, .88),
           segmentMatrix(from, to, .48));
         railEdges.push({ a: from, b: to });
+        // Diagonal wooden knee braces turn the repeated plain rail into
+        // a credible timber structure on every third existing guard post.
+        // Both brace endpoints attach to the same ACTUAL indexed panel
+        // edge as its post and upper guard. All geometry stays inside the
+        // already blocked edge strip, with no new collisions, terrain/route
+        // edits, campaign save changes, textures or per-post draw calls.
+        if (k % 3 === 0) {
+          const t = .48;
+          const foot: Pt = { x: from.x, y: from.y + .24, z: from.z };
+          const shoulder: Pt = {
+            x: lerp(from.x, to.x, t),
+            y: lerp(from.y, to.y, t) + .82,
+            z: lerp(from.z, to.z, t),
+          };
+          braceMatrices.push(segmentMatrix(foot, shoulder, 0));
+        }
       }
       const railPost = (v: Pt) =>
         railPostMatrices.push(new T.Matrix4().makeTranslation(v.x, v.y + .47, v.z));
@@ -191,6 +208,11 @@ export function createBoardwalkReview(terrain: ShiretokoTerrain): BoardwalkRevie
   upright.instanceMatrix.needsUpdate = true;
   upright.computeBoundingSphere();
   group.add(upright);
+  // A single additional, low-poly GPU batch for all diagonal wooden
+  // guard braces. They meet existing deck-anchored uprights at +0.24m
+  // and the real pitched handrail undersides at +0.82m.
+  addDetail('boardwalk / sloped timber guard knee braces / instanced',
+    braceMatrices, .105, .095, 0x614832);
 
   // A compact 8m spatial hash prevents a 490-rail brute-force collision scan
   // every time the native walking solver advances in 0.12m substeps.
