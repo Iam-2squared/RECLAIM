@@ -182,9 +182,10 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
       // flanks, rather than extra loose scene objects or billboard decals.
       for(const hex of [0xbba37a,0xc6b48d]){
         const c=new THREE.Color(hex),actual=[];
+        const targetChannels=[c.r,c.g,c.b].map(channel=>Math.round(channel*255));
         for(let v=0;v<positions.count;v++){
           const rgb=[0,1,2].map(k=>Math.round(colours.getComponent(v,k)*255));
-          if(rgb.every((n,k)=>Math.abs(n-Math.round(c.getComponent(k)*255))<=1))
+          if(rgb.every((n,k)=>Math.abs(n-targetChannels[k])<=1))
             actual.push([positions.getX(v),positions.getY(v),positions.getZ(v)]);
         }
         assert(actual.length>=12,'each faceted native bark fungus has four genuine depth-bearing faces');
