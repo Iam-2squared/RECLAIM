@@ -173,6 +173,68 @@ try{
   assert.equal(await page.locator('[data-nature-review]').count(),0);
   result.tests.push({name:'no saves/network, resources released',pass:true});
 
+  // Deliberately navigate the PUBLIC indoor URL, not a test-only viewFrom.
+  // This must frame the actual new wall relief immediately, let the native
+  // walk control enter the walkable room, restore the same camera on Escape,
+  // and leave the original campaign storage and GL resources untouched.
+  await page.goto(pathToFileURL(artifact).href+'?cabin=1&interior=1');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,
+    {},{timeout:60000});
+  renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+  await page.waitForFunction(()=>{
+    const d=window.__SHIRETOKO_TERRAIN__?.diagnostics();
+    return d?.renderCallsTotal>=2 && d.mode==='orbit' && d.cabinReview?.enabled;
+  },{},{timeout:30000});
+  const mapFirst=await page.evaluate(()=>{
+    const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
+    return {camera:d.camera,room:d.cabinReview,title:document.getElementById('scene-title')?.textContent,
+      entryFree:!a.cabinBlockedAt(-100,835),contact:a.cabinHeightAt(-100,835),
+      storage:window.__natureStorageAccess,drawCalls:d.drawCalls,textures:d.textures};
+  });
+  assert.match(mapFirst.title??'',/家の中/);
+  assert(mapFirst.entryFree,'wall map must not block the actual interior walk entry');
+  assert(Math.abs(mapFirst.contact-mapFirst.room.floorY)<1e-5);
+  assert(Math.abs(mapFirst.camera.position[0]+95.4)<.02);
+  assert(Math.abs(mapFirst.camera.position[1]-mapFirst.room.floorY-2.35)<.02);
+  assert(Math.abs(mapFirst.camera.target[0]+108.45)<.02);
+  assert(Math.abs(mapFirst.camera.target[2]-836.6)<.02);
+  assert.deepEqual(mapFirst.storage,[]);
+  const mapFrame=await page.evaluate(captureTerrainFramebuffer);
+  assert.equal(mapFrame.glError,0);
+  assert(mapFrame.max-mapFrame.min>20,'indoor wall map must be actual varying WebGL pixels');
+  assert.match(mapFrame.image,/^data:image\/jpeg;base64,/);
+  const mapBytes=Buffer.from(mapFrame.image.split(',')[1],'base64');
+  assert(mapBytes.length>2000);
+  const mapFilename='cabin-wall-map-first-open-actual-webgl.jpg';
+  await writeFile(resolve(out,mapFilename),mapBytes);
+  result.images.push({name:'cabin-wall-map-first-open',filename:mapFilename,
+    width:mapFrame.width,height:mapFrame.height,bytes:mapBytes.length,
+    min:mapFrame.min,max:mapFrame.max,camera:mapFrame.cameraPosition});
+  await page.locator('#walk').click();
+  const indoorWalk=await page.evaluate(()=>{
+    const d=window.__SHIRETOKO_TERRAIN__.diagnostics();
+    return {mode:d.mode,player:d.player,floor:d.cabinReview.floorY};
+  });
+  assert.equal(indoorWalk.mode,'walk');
+  assert(Math.abs(indoorWalk.player.x+100)<.001 && Math.abs(indoorWalk.player.z-835)<.001,
+    'public indoor walk must begin on the real cabin floor, not at cape/stairs');
+  assert(Math.abs(indoorWalk.player.y-indoorWalk.floor)<1e-5);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().mode==='orbit',
+    {},{timeout:30000});
+  const indoorBack=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().camera);
+  for(const field of ['position','target'])for(let i=0;i<3;i++)
+    assert(Math.abs(indoorBack[field][i]-mapFirst.camera[field][i])<.02,
+      'indoor Escape must restore the very same wall map camera');
+  assert.deepEqual(await page.evaluate(()=>window.__natureStorageAccess),[]);
+  await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());
+  const indoorReleased=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
+  assert(indoorReleased.disposed && indoorReleased.geometries===0 && indoorReleased.textures===0);
+  assert.equal(await page.locator('canvas').count(),0);
+  result.tests.push({name:'public opt-in indoor map, real framebuffer, native walk and Escape',
+    pass:true,first:mapFirst,walk:indoorWalk,restored:indoorBack});
+
   // A second isolated URL is deliberately visited, not an internal viewFrom:
   // this proves the new public ?lookout=1 review truly starts beside the lake.
   await page.goto(pathToFileURL(artifact).href+'?lookout=1');

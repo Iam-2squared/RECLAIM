@@ -9,6 +9,7 @@ import { createFloraReviewLayer } from './flora-renderer.ts';
 import { createNearMeadowReview } from './near-meadow.ts';
 import { createBoardwalkReview } from './boardwalk.ts';
 import { createCliffCabinReview } from './cabin.ts';
+import { CABIN_SITE } from './cabin-site.ts';
 import { createLakeLookoutReview } from './lake-lookout.ts';
 import { natureReviewFocus } from './review-focus.ts';
 import { TerrainFrameDemand } from './frame-demand.ts';
@@ -238,6 +239,10 @@ async function boot() {
     // normal 480m game are deliberately unaffected.
     const cabinEntry = natureFocusActive && firstLook?.kind === 'cabin'
       ? cabinReview?.entrance : null;
+    // A separate, explicit cabin-map review opens and walks INSIDE the true
+    // 2.4km cabin; regular ?cabin=1 still begins on the original staircase.
+    const interiorEntry = natureFocusActive && firstLook?.kind === 'cabin' &&
+      ['1','true','on'].includes(query.get('interior') ?? '') ? CABIN_SITE : null;
     const lakeEntry = natureFocusActive && firstLook?.kind === 'lookout'
       ? lakeLookoutReview?.entrance : null;
     const highlandEntry = natureFocusActive && firstLook?.kind === 'highland'
@@ -250,7 +255,7 @@ async function boot() {
       ? ROUTE[3] : null;
     const floraEntry = natureFocusActive && firstLook?.kind === 'flora'
       ? LOCATIONS[1] : null;
-    const p = cabinEntry ?? lakeEntry ?? highlandEntry ?? boardwalkEntry ?? floraEntry
+    const p = interiorEntry ?? cabinEntry ?? lakeEntry ?? highlandEntry ?? boardwalkEntry ?? floraEntry
       ?? LOCATIONS[Math.max(0, activeLocation)];
     if (!walker.place(p.x, p.z)) return;
     transition = null; controls.enabled = false; walking = true; keys.clear(); accumulator = 0;
@@ -352,7 +357,22 @@ async function boot() {
   // This dedicated lake-only URL starts with its actual dynamically surveyed
   // dry shoreline deck, not an unrelated all-map/cape camera. Combined nature
   // URLs retain the existing cabin-first camera and all review scripts.
-  const firstLook = lakePoint && !cabinReview && !boardwalkReview
+  // Optional INDOOR visitor viewpoint. The 3D wall map is part of the actual
+  // cabin mesh and is already inside the unchanged west-wall collision shell.
+  // Use the authored cabin floor as the camera authority, never the outside
+  // terrain's sampled height; no gameplay world/save, TITLE or HOME changes.
+  // Without both cabin=1 and interior=1, the prior initial camera is identical.
+  const interiorRequested = Boolean(cabinReview) &&
+    ['1','true','on'].includes(query.get('interior') ?? '');
+  const firstLook = interiorRequested && cabinReview
+    ? {
+        kind:'cabin' as const,
+        position:[CABIN_SITE.x+4.6,cabinReview.floorY+2.35,CABIN_SITE.z-1.3] as const,
+        target:[CABIN_SITE.x-8.45,cabinReview.floorY+1.73,CABIN_SITE.z+1.6] as const,
+        title:'家の中、知床の地図。',
+        description:'実3Dの室内から木製地図を確認。歩くと同じ床・壁に接地します。',
+      }
+    : lakePoint && !cabinReview && !boardwalkReview
     ? {
         kind:'lookout' as const,
         position:[lakePoint.x-18,
