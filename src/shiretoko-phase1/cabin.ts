@@ -253,6 +253,48 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   gableFrames.computeBoundingSphere();
   group.add(gableFrames);parts++;
 
+  // Five visible interior cedar roof frames sit immediately below the REAL
+  // pitched ceiling, without adding a false flat roof or blocking the room.
+  // Each sloping rafter meets its wall-supported tie; the long ridge purlin
+  // follows the original ridge. Sixteen pieces share ONE colour-instanced
+  // GPU draw group, with no new textures, physical floors or save state.
+  const insideFrames:{matrix:T.Matrix4;color:number}[]=[];
+  const roofInsideAt=(x:number)=>peak-(peak-eave)*Math.abs(x-X)/roofHalf;
+  const beamAxis=new T.Vector3(1,0,0);
+  const addInsideBeam=(a:T.Vector3,b:T.Vector3,height:number,depth:number,color:number)=>{
+    const delta=b.clone().sub(a),length=delta.length();
+    if(!(length>.2))throw new RangeError('Interior cedar beam has no span');
+    const angle=new T.Quaternion().setFromUnitVectors(beamAxis,delta.multiplyScalar(1/length));
+    insideFrames.push({matrix:new T.Matrix4().compose(
+      a.clone().add(b).multiplyScalar(.5),angle,new T.Vector3(length,height,depth)),color});
+  };
+  for(let i=0;i<5;i++){
+    const z=back+.95+(DEPTH-1.9)*i/4;
+    for(const side of [-1,1] as const){
+      const xa=X+side*.14,xb=X+side*(WIDTH/2-.20);
+      addInsideBeam(
+        new T.Vector3(xa,roofInsideAt(xa)-.10,z),
+        new T.Vector3(xb,roofInsideAt(xb)-.10,z),
+        .22,.20,i%2?0x947558:0x86684e);
+    }
+    addInsideBeam(
+      new T.Vector3(left+.25,wallTop+.22,z),
+      new T.Vector3(right-.25,wallTop+.22,z),
+      .18,.18,i%2?0x76573f:0x866345);
+  }
+  addInsideBeam(new T.Vector3(X,peak-.11,back+.30),
+    new T.Vector3(X,peak-.11,front-.30),.22,.20,0xa0825d);
+  const roofFrames=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),insideFrames.length);
+  roofFrames.name='cabin / interior roof-contact cedar rafters and ties / instanced';
+  for(let i=0;i<insideFrames.length;i++){
+    roofFrames.setMatrixAt(i,insideFrames[i].matrix);
+    roofFrames.setColorAt(i,new T.Color(insideFrames[i].color));
+  }
+  roofFrames.instanceMatrix.needsUpdate=true;
+  if(roofFrames.instanceColor)roofFrames.instanceColor.needsUpdate=true;
+  roofFrames.computeBoundingSphere();group.add(roofFrames);parts++;
+
   box('cabin / stone chimney',X-4,wallTop+1.4,Z-3.8,1.25,3.1,1.3,mats.stone);
   for(const z of [back-.027,front+.027]){
     box('cabin / glazed window',WINDOW_X,floorY+1.86,z,WINDOW_W,1.32,.09,mats.glass);
