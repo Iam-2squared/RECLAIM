@@ -1,8 +1,8 @@
 {
-  "version": 8,
-  "as_of_jst": "2026-10-25 JST (automation run beginning 11:26)",
+  "version": 11,
+  "as_of_jst": "2026-10-25 14:43 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
+  "latest_known_main": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -241,35 +241,95 @@
       },
       "native_artifact_id": 12584377129,
       "state": "SOURCE_9_OF_9_GREEN_INTEGRATION_NEW_HEAD_ALL_9_PENDING_DO_NOT_MERGE"
+    },
+    {
+      "id": "near-field-3d-seed-stalks-121",
+      "pr": 121,
+      "branch": "feature/shiretoko-meadow-seed-stalks-20261025",
+      "source_head": "f22adfa506c715f1ca6770b9df7c84efa92698e6",
+      "original_failed_head": "71509b4bb7b50471d03809281dc4d099a4a69659",
+      "original_failed_runs": {
+        "terrain": 40163974312,
+        "preview": 40163974293
+      },
+      "source_runs": {
+        "terrain": 40164356925,
+        "preview": 40164356904,
+        "nature": 40164356914
+      },
+      "nature_artifact": 12587880509,
+      "state": "SOURCE_TERRAIN_3_PREVIEW_5_NATIVE_1_SUCCESS_ATTEMPT1_MERGED_MAIN_PUSH_8_PENDING",
+      "merged_sha": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1"
+    },
+    {
+      "id": "deadwood-physical-bracket-fungi",
+      "branch": "feature/shiretoko-deadwood-bracket-fungi-20261025",
+      "original_feature_head": "f375775443d396f081fd58c8a4b813742347cce2",
+      "base_sha": "9a1e42cbb502614521d5ea8ea600e960e5eee499",
+      "state": "MERGED_CORRECTED_SOURCE_9_9_GREEN_MAIN_TERRAIN_3_3_GREEN_PREVIEW_4_5_WHEN_CHECKED",
+      "pr": 122,
+      "original_failed_head": "288b411227aae75a22561e9bbf10399805edf46d",
+      "source_head": "afc5ea5ff28ff4b3616de6a94975da5ab717d57b",
+      "merged_sha": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
+      "source_runs": {
+        "terrain": 40165525305,
+        "preview": 40165525300,
+        "nature": 40165525336
+      },
+      "main_runs": {
+        "terrain": 40166133357,
+        "preview": 40166133366
+      }
+    },
+    {
+      "id": "native-nature-trailhead-123",
+      "pr": 123,
+      "branch": "feature/shiretoko-native-review-walk-trailhead-20261025",
+      "source_head": "79873ad734a041ca5966580a89fb0f50ed55769a",
+      "original_failed_head": "4031bdccf438f8c9bd90cbc05d096c4ab6bc9e4a",
+      "original_failed_runs": {
+        "terrain": 40165810218,
+        "preview": 40165810210
+      },
+      "source_runs": {
+        "terrain": 40166040311,
+        "preview": 40166040324,
+        "nature": 40166040354
+      },
+      "base_sha": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
+      "integration_base": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
+      "staged_real_webgl_verifier_blob": "020f6af1325096d0ea54fca9fb630f62f5d32a28",
+      "state": "SOURCE_9_9_GREEN_NEW_INTEGRATED_HEAD_CI_PENDING_DO_NOT_MERGE"
     }
   ],
-  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_21f0232_CABIN_GABLES_OFFLINE_20261025.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_36bfdb4_OFFLINE_REVIEW_20261025.zip",
   "next": [
-    "Verify exact main 21a3661b6f360f0d2c9aac0f75a03579978b7697 terrain #40155438968 3/3 and preview #40155438992 5/5",
-    "Collect new combined PR116 HEAD native WebGL 1/1 terrain 3/3 preview 5/5; guarded merge only with current main and verified exact SHA",
-    "Verify final main push 8/8 and package SHA-pinned source/visuals; Vercel BLOCKED_AUTH_403 until legitimate reauthentication"
+    "Complete exact main 7bc preview #40166133366 5/5 and combined PR123 native WebGL+terrain+preview 9/9",
+    "On exact checked source/base safely merge PR123, verify new main push 8/8 before any release",
+    "Create updated SHA-pinned PC ZIP with real browser evidence; existing Vercel authorization remains BLOCKED_AUTH_403"
   ],
   "current_integration": {
-    "pr": 116,
-    "branch": "feature/shiretoko-mixed-age-tree-canopy-20261025",
-    "prior_head": "bcd884913b613249dd5365d063e522c58c7d0d90",
-    "base_sha": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
-    "new_head": "READ_GITHUB_AFTER_NONFORCED_UPDATE",
-    "source_all_9_success": true,
-    "combined_all_9_success": false,
+    "pr": 123,
+    "branch": "feature/shiretoko-native-review-walk-trailhead-20261025",
+    "prior_head": "79873ad734a041ca5966580a89fb0f50ed55769a",
+    "base_sha": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
+    "new_head": "RE_READ_GITHUB_AFTER_NONFORCED_TWO_PARENT_UPDATE",
+    "native_verifier_blob": "020f6af1325096d0ea54fca9fb630f62f5d32a28",
+    "source_9_of_9_success": true,
+    "combined_9_of_9_success": false,
     "merged": false
   },
   "main_ci": {
-    "head": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
+    "head": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
     "terrain": {
-      "run_id": 40155438968,
+      "run_id": 40166133357,
       "attempt": 1,
-      "status": "PENDING_AT_HANDOFF_PREPARATION"
+      "status": "3_OF_3_SUCCESS"
     },
     "preview": {
-      "run_id": 40155438992,
+      "run_id": 40166133366,
       "attempt": 1,
-      "status": "PENDING_AT_HANDOFF_PREPARATION"
+      "status": "4_OF_5_SUCCESS_CHROMIUM_WORLD_PENDING_AT_STATUS"
     }
   }
 }
