@@ -11,11 +11,21 @@ test('near camera grass is one bounded, true 3D instanced mesh on the exact terr
   assert.equal(meshes.length,1);
   const mesh=meshes[0];
   assert(mesh.frustumCulled);
-  assert(mesh.geometry.getAttribute('position').count>=40);
-  assert(mesh.geometry.getAttribute('color').count>=40);
+  // The moving grass batch now includes two genuinely 3D seed-bearing
+  // culms with ochre grains, without creating additional draw groups.
+  assert(mesh.geometry.getAttribute('position').count>=75);
+  assert.equal(mesh.geometry.getAttribute('color').count,mesh.geometry.getAttribute('position').count);
+  const tone=new T.Color(0xa99b68),colour=mesh.geometry.getAttribute('color');
+  let seedVertices=0;
+  for(let i=0;i<colour.count;i++){
+    if(Math.abs(colour.getX(i)-tone.r)<.0001 &&
+      Math.abs(colour.getY(i)-tone.g)<.0001 &&
+      Math.abs(colour.getZ(i)-tone.b)<.0001)seedVertices++;
+  }
+  assert(seedVertices>=12,'visible seed clusters must be baked into the shared low-poly 3D geometry');
   const pos=mesh.geometry.getAttribute('position'),bounds=mesh.geometry.boundingBox;
   mesh.geometry.computeBoundingBox();
-  assert(mesh.geometry.boundingBox.max.y>.5 && mesh.geometry.boundingBox.max.y<.8);
+  assert(mesh.geometry.boundingBox.max.y>.80 && mesh.geometry.boundingBox.max.y<.88);
   let best=null;
   for(const [x,z] of [[-210,370],[-130,410],[-170,600],[-100,835],[-140,690]]){
     low.sync(x,z);
