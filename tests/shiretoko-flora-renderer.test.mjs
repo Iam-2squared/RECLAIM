@@ -177,17 +177,17 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
           assert(side.has(colour),'both end faces show genuine concentric wood colours');
         }
       }
-      // Four differently coloured, three-dimensional bracket caps are
+      // Two differently coloured, three-dimensional bracket caps are
       // welded into the existing horizontal log geometry on both bark
       // flanks, rather than extra loose scene objects or billboard decals.
-      for(const hex of [0xbba37a,0xc6b48d,0x9f825c,0xceb68b]){
+      for(const hex of [0xbba37a,0xc6b48d]){
         const c=new THREE.Color(hex),actual=[];
         for(let v=0;v<positions.count;v++){
           const rgb=[0,1,2].map(k=>Math.round(colours.getComponent(v,k)*255));
           if(rgb.every((n,k)=>Math.abs(n-Math.round(c.getComponent(k)*255))<=1))
             actual.push([positions.getX(v),positions.getY(v),positions.getZ(v)]);
         }
-        assert(actual.length>=5,'every native bark fungus must have real shared mesh vertices');
+        assert(actual.length>=12,'each faceted native bark fungus has four genuine depth-bearing faces');
         assert(actual.some(([x,y,z])=>Math.abs(z)>.23 && y>.29 && y<.58),
           'bracket projects beyond the log bark but stays rooted below knee height');
       }
