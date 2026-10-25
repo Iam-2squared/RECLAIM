@@ -645,6 +645,74 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   gutters.computeBoundingSphere();
   group.add(gutters);parts++;
 
+
+  // The east-facing 2.3m entrance receives a genuine lean-to canopy.
+  // Its pitched metal cover anchors into both opaque door-pier walls, while
+  // two timber posts meet the ACTUAL 5m terrain and gain matching collisions.
+  // All eight volumes share ONE colour-instanced GPU draw group, no textures,
+  // new floor, campaign-save mutation, or change to the stair/door centerline.
+  const canopyPieces:{matrix:T.Matrix4;color:number}[]=[];
+  const addCanopy=(center:T.Vector3,extent:T.Vector3,color:number,
+    rotation=new T.Quaternion())=>{
+    canopyPieces.push({matrix:new T.Matrix4().compose(center,rotation,extent),color});
+  };
+  const awningRootX=right-.22,awningEdgeX=right+2.66;
+  const awningRootY=floorY+3.18,awningEdgeY=floorY+2.72;
+  const awningDeltaX=awningEdgeX-awningRootX;
+  const awningDeltaY=awningEdgeY-awningRootY;
+  const awningLength=Math.hypot(awningDeltaX,awningDeltaY);
+  const awningAngle=new T.Quaternion().setFromAxisAngle(new T.Vector3(0,0,1),
+    Math.atan2(awningDeltaY,awningDeltaX));
+  const awningRoofAt=(x:number)=>awningRootY+awningDeltaY*(x-awningRootX)/awningDeltaX;
+  addCanopy(new T.Vector3((awningRootX+awningEdgeX)/2,
+    (awningRootY+awningEdgeY)/2,Z),
+    new T.Vector3(awningLength,.13,4.98),0x516562,awningAngle);
+  // Front fascia and two cedar side rafters physically meet the sloped
+  // cover, so the porch reads as timber carpentry rather than a floating slab.
+  addCanopy(new T.Vector3(awningEdgeX,awningEdgeY-.09,Z),
+    new T.Vector3(.17,.19,4.98),0x836b50);
+  for(const side of [-1,1] as const)
+    addCanopy(new T.Vector3((awningRootX+awningEdgeX)/2,
+      (awningRootY+awningEdgeY)/2-.12,Z+side*2.27),
+      new T.Vector3(awningLength,.17,.17),0x947656,awningAngle);
+  const canopyPostX=right+2.35,canopyPostOffsetZ=2.23;
+  const canopyPostTop=awningRoofAt(canopyPostX)-.045;
+  for(const side of [-1,1] as const){
+    const postZ=Z+side*canopyPostOffsetZ;
+    const ground=terrain.heightAt(canopyPostX,postZ);
+    if(!Number.isFinite(ground)||terrain.inWater(canopyPostX,postZ))
+      throw new RangeError('Entrance canopy requires dry real terrain footing');
+    const bottom=ground-.02,height=canopyPostTop-bottom;
+    if(!(height>1.5&&height<8))
+      throw new RangeError('Entrance canopy posts must reach the true roof and ground');
+    addCanopy(new T.Vector3(canopyPostX,bottom+height/2,postZ),
+      new T.Vector3(.19,height,.19),0x806247);
+  }
+  const beamFromTo=(a:T.Vector3,b:T.Vector3)=>{
+    const vector=b.clone().sub(a),length=vector.length();
+    const rotation=new T.Quaternion().setFromUnitVectors(
+      new T.Vector3(1,0,0),vector.clone().normalize());
+    addCanopy(a.clone().add(b).multiplyScalar(.5),
+      new T.Vector3(length,.16,.17),0x927358,rotation);
+  };
+  for(const side of [-1,1] as const){
+    const z=Z+side*canopyPostOffsetZ;
+    // Each diagonal braces an already opaque eastern wall pier to its post.
+    beamFromTo(new T.Vector3(right-.045,floorY+2.38,z),
+      new T.Vector3(canopyPostX,canopyPostTop-.18,z));
+  }
+  const entranceCanopy=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff}),canopyPieces.length);
+  entranceCanopy.name='cabin / grounded pitched entrance canopy / instanced';
+  for(let i=0;i<canopyPieces.length;i++){
+    entranceCanopy.setMatrixAt(i,canopyPieces[i].matrix);
+    entranceCanopy.setColorAt(i,new T.Color(canopyPieces[i].color));
+  }
+  entranceCanopy.instanceMatrix.needsUpdate=true;
+  if(entranceCanopy.instanceColor)entranceCanopy.instanceColor.needsUpdate=true;
+  entranceCanopy.computeBoundingSphere();
+  group.add(entranceCanopy);parts++;
+
   const heightAt=(x:number,z:number):number|null=>{
     if(!Number.isFinite(x)||!Number.isFinite(z))return null;
     if(x>=left&&x<=right+.04&&z>=back&&z<=front)return floorY;
@@ -670,7 +738,9 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
     // Guardrails are solid at the stair edges; never obstruct the centerline.
     const rail=x>=right+.25&&x<=outsideX&&
       Math.abs(z-Z)>=DOOR_HALF-.09&&Math.abs(z-Z)<=DOOR_HALF+.45;
-    return west||north||south||east||table||chairs||bunk||stove||rail;
+    const canopyPosts=[-1,1].some(side=>
+      rect(x,z,canopyPostX,Z+side*canopyPostOffsetZ,.19,.19));
+    return west||north||south||east||table||chairs||bunk||stove||rail||canopyPosts;
   };
   return {group,floorY,heightAt,blockedAt,stairs,parts,supports:pierSites.length,entrance:{x:right+1.7,z:Z}};
 }
