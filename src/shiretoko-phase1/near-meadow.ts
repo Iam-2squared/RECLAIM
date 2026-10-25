@@ -52,6 +52,37 @@ function grassGeometry():T.BufferGeometry {
     indices.push(base,base+1,base+2,base+1,base+3,base+2,
       base+2,base+3,base+4);
   }
+  // Two bent seed-bearing stalks rise above the short leaf fan. Tiny
+  // tetrahedral seed clusters have actual depth at walking distance, rather
+  // than facing the camera as sprites. All triangles live in the SAME
+  // vertex-coloured, sampler-free InstancedMesh as the original nine blades:
+  // zero extra draw calls, plant positions, clearance changes or allocations
+  // per frame. The seed tips stop below the walker's eye height.
+  const vertex=(x:number,y:number,z:number,hex:number):number=>{
+    const index=vertices.length/3,c=new T.Color(hex);
+    vertices.push(x,y,z);colors.push(c.r,c.g,c.b);return index;
+  };
+  function seed(x:number,y:number,z:number,r:number,hex:number):void {
+    const a=vertex(x,y+r*1.5,z,hex),b=vertex(x-r,y-r*.4,z-r*.6,hex);
+    const c=vertex(x+r,y-r*.4,z-r*.6,hex),d=vertex(x,y-r*.4,z+r,hex);
+    indices.push(a,b,c,a,c,d,a,d,b,b,d,c);
+  }
+  for(const [angle,h,grain] of [
+    [.43,.76,0xa99b68],[3.76,.69,0x9b885b],
+  ] as const){
+    const dx=Math.cos(angle),dz=Math.sin(angle),wx=-dz,wz=dx;
+    const root=vertex(wx*.022,.027,wz*.022,0x65764b);
+    const left=vertex(wx*-.025,.035,wz*-.025,0x65764b);
+    const right=vertex(wx*.025,.035,wz*.025,0x65764b);
+    const middleL=vertex(dx*.09+wx*-.016,h*.58,dz*.09+wz*-.016,0x778853);
+    const middleR=vertex(dx*.09+wx*.016,h*.58,dz*.09+wz*.016,0x778853);
+    const tip=vertex(dx*.21,h,dz*.21,0x7c8653);
+    indices.push(root,left,middleL,root,middleL,middleR,root,middleR,right,
+      middleL,tip,middleR);
+    seed(dx*.21,h-.035,dz*.21,.048,grain);
+    seed(dx*.18+wx*.040,h-.115,dz*.18+wz*.040,.037,grain);
+    seed(dx*.18-wx*.040,h-.155,dz*.18-wz*.040,.031,grain);
+  }
   const g=new T.BufferGeometry();
   g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
   g.setAttribute('color',new T.Float32BufferAttribute(colors,3));
