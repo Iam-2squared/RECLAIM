@@ -10,10 +10,10 @@ const dryPlain=Object.freeze({
   water:()=>false,
 });
 
-function census(quality){
+function census(quality,surface=dryPlain){
   const instances=[],tiles=new Map();
   for(let z=0;z<8;z++)for(let x=0;x<8;x++){
-    const chunk=planFlora(x,z,dryPlain,quality);
+    const chunk=planFlora(x,z,surface,quality);
     assert(Object.isFrozen(chunk),'chunk plans are read-only');
     for(const p of chunk){
       assert.equal(p.y,100);
@@ -55,4 +55,31 @@ test('wetlands, paths, water, buildings and out-of-range chunks retain safety ga
     assert.equal(planFlora(4,3,surface,'balanced').length,0);
   assert.throws(()=>planFlora(8,0,dryPlain,'low'),RangeError);
   assert.throws(()=>planFlora(0,0,dryPlain,'invalid'),RangeError);
+});
+
+// A previous attempt opened EXTRA seeded cells in dry forest. That truly
+// regressed the established invariant: highland wet sedge density must still
+// equal lowland dry density, and dry-to-damp plant positions must stay fixed.
+// Mature trees now replace some existing low brush instead, never new cells.
+test('dry groves replace low brush with mature birch without new cells, roads, marsh plants or FPS cost',()=>{
+  const dry=census('low');
+  const meadow=census('low',{...dryPlain,wetness:()=>.55});
+  const marsh=census('low',{...dryPlain,wetness:()=>.9});
+  const positions=plants=>plants.map(p=>[p.x,p.z]);
+  assert.deepEqual(positions(dry.instances),positions(meadow.instances),
+    'dry/midwet must retain the exact original 10m occupancy and seed');
+  assert.deepEqual(positions(dry.instances),positions(marsh.instances),
+    'no tree counts may increase by intruding on open wetland sites');
+  const mature=dry.instances.filter(p=>p.kind==='spruce'||p.kind==='birch');
+  assert(mature.length>dry.instances.length*.825,
+    'strong existing groves convert real lower shrubs to some more mature tree crowns');
+  assert(dry.instances.length>8000&&dry.instances.length<20000,
+    'same original low-detail CPU/instance budget as existing 2.4km forest');
+  const highland={...dryPlain,height:()=>420};
+  const oldHigh=planFlora(3,4,highland,'low');
+  assert.deepEqual(positions(oldHigh),positions(planFlora(3,4,{...highland,wetness:()=>.55},'low')),
+    'original alpine selection is unchanged by wooded lowland crown composition');
+  const forbidden={...dryPlain,routeDistance:()=>7.9};
+  assert.equal(planFlora(3,4,forbidden,'balanced').length,0,
+    'walker routes still override even the strongest potential mature grove');
 });

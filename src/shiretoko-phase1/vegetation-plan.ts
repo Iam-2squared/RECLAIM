@@ -90,7 +90,18 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   // Rare fallen trunks occupy only relatively gentle, dry woodland. The
   // existing 8m trail / 7m structure clearances also protect their ~2m ends.
   else if(slope<.27&&species>.92)kind='deadwood';
-  else kind=species<.57?'spruce':species<.82?'birch':random(gx,gz,19)<.5?'sasa':'meadow-grass';
+  else {
+   // Keep the EXACT original 10m positions, meadow occupancy, highland caps
+   // and rare windfall. Inside dry, gently pitched, existing 90m groves,
+   // some original grass/sasa turns into mature birch (no new instances,
+   // draw calls, terrain occupancy or asset cost). The boost fades to zero
+   // in the sparse glades and never reaches wetland or exposed cliff.
+   const matureStand=Math.min(1,Math.max(0,(stand-.50)/.50));
+   const crownCutoff=.82 + (wet<=.38 && slope<=.38
+     ? .10*matureStand*matureStand : 0);
+   kind=species<.57?'spruce':species<crownCutoff?'birch':
+     random(gx,gz,19)<.5?'sasa':'meadow-grass';
+  }
   const scale=.8+random(gx,gz,5)*.47;
   instances.push(Object.freeze({kind,x,y,z,rotation:random(gx,gz,6)*Math.PI*2,scale}));
  }
