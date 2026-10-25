@@ -57,27 +57,29 @@ test('wetlands, paths, water, buildings and out-of-range chunks retain safety ga
   assert.throws(()=>planFlora(0,0,dryPlain,'invalid'),RangeError);
 });
 
-// Prove fuller dry groves use the existing seeded lattice without filling
-// damp meadow, open marsh, highland or protected walking surfaces.
-test('dry woodland gains coherent mature stands but marsh retains sparse exact occupancy',()=>{
+// A previous attempt opened EXTRA seeded cells in dry forest. That truly
+// regressed the established invariant: highland wet sedge density must still
+// equal lowland dry density, and dry-to-damp plant positions must stay fixed.
+// Mature trees now replace some existing low brush instead, never new cells.
+test('dry groves replace low brush with mature birch without new cells, roads, marsh plants or FPS cost',()=>{
   const dry=census('low');
   const meadow=census('low',{...dryPlain,wetness:()=>.55});
   const marsh=census('low',{...dryPlain,wetness:()=>.9});
-  assert(dry.instances.length>meadow.instances.length*1.08,
-    'mature dry stands should gain enough physical trees for a visible forest');
-  assert(dry.instances.length<meadow.instances.length*1.25,
-    'low-end devices retain a strict bounded draw/instance envelope');
-  assert.equal(marsh.instances.length,meadow.instances.length,
-    'marsh and meadow retain the original sparse planted grid');
-  const key=p=>p.x+':'+p.z;
-  const dryPositions=new Set(dry.instances.map(key));
-  for(const p of meadow.instances)assert(dryPositions.has(key(p)),
-    'original tree positions stay fixed; no displacement into paths or homes');
-  assert.deepEqual(new Set(marsh.instances.map(key)),
-    new Set(meadow.instances.map(key)),
-    'wetland occupancy does not inherit the dry grove boost');
+  const positions=plants=>plants.map(p=>[p.x,p.z]);
+  assert.deepEqual(positions(dry.instances),positions(meadow.instances),
+    'dry/midwet must retain the exact original 10m occupancy and seed');
+  assert.deepEqual(positions(dry.instances),positions(marsh.instances),
+    'no tree counts may increase by intruding on open wetland sites');
+  const mature=dry.instances.filter(p=>p.kind==='spruce'||p.kind==='birch');
+  assert(mature.length>dry.instances.length*.825,
+    'strong existing groves convert real lower shrubs to some more mature tree crowns');
+  assert(dry.instances.length>8000&&dry.instances.length<20000,
+    'same original low-detail CPU/instance budget as existing 2.4km forest');
   const highland={...dryPlain,height:()=>420};
-  assert.deepEqual(census('low',highland).instances.map(key),
-    census('low',{...highland,wetness:()=>.55}).instances.map(key),
-    'highland retains the same alpine cap independent of dry forest density');
+  const oldHigh=planFlora(3,4,highland,'low');
+  assert.deepEqual(positions(oldHigh),positions(planFlora(3,4,{...highland,wetness:()=>.55},'low')),
+    'original alpine selection is unchanged by wooded lowland crown composition');
+  const forbidden={...dryPlain,routeDistance:()=>7.9};
+  assert.equal(planFlora(3,4,forbidden,'balanced').length,0,
+    'walker routes still override even the strongest potential mature grove');
 });

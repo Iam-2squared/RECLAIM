@@ -49,19 +49,13 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   const choose=random(gx,gz,1);
   const patch=random(Math.floor(gx/5),Math.floor(gz/5),17);
   const highlandLimit=quality==='low'?.28+.18*patch:.56+.24*patch;
-  // Highland and all non-forest environments retain the original budget.
-  // Eligible lowland dry groves may use extra existing 10m cells below.
+  if(choose>highlandLimit)continue;
   // Sparse glades and tighter spruce/birch stands keep almost the same
   // average population; low remains a true subset of balanced at every
   // lattice cell. The existing wetland, trail, lake and cabin guards run
   // after this selection exactly as before.
   const stand=woodlandStand(gx,gz);
   const woodlandLimit=quality==='low'?.06+.38*stand:.16+.74*stand;
-  // Conservative pre-filter: inspect terrain only where either the original
-  // alpine envelope or a potential dry woodland grove could permit a plant.
-  const maxGroveLimit=Math.min(quality==='low'?.72:.94,
-    woodlandLimit+(quality==='low'?.28:.17));
-  if(choose>Math.max(highlandLimit,maxGroveLimit))continue;
   const x=x0+(ix+.22+.56*random(gx,gz,2))*FLORA_RULES.cellMetres;
   const z=z0+(iz+.22+.56*random(gx,gz,3))*FLORA_RULES.cellMetres;
   // Unloaded/ambiguous terrain classification must not grow vegetation into a
@@ -69,7 +63,7 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   let y:number,slope:number,wet:number;
   try {
    y=surface.height(x,z);
-   if(!Number.isFinite(y))continue;
+   if(!Number.isFinite(y)|| (y<=300 && choose>woodlandLimit))continue;
    const water=surface.water(x,z),route=surface.routeDistance(x,z);
    if(water!==false||!Number.isFinite(route)||route<0||route<FLORA_RULES.trailClearance)continue;
    if(surface.structureDistance){
@@ -80,22 +74,9 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
    const rawWet=surface.wetness(x,z,y);
    if(![y,slope,rawWet].every(Number.isFinite)||slope<0)continue;
    wet=clamp(rawWet);
-   // Real forest pockets are denser ONLY on gently sloped, dry sub-300m
-   // ground. High stand strength opens more existing seeded cells (not a
-   // second scatter lattice); glades, wetlands, shores, cabin and trails
-   // keep their original occupancy. Draw groups and assets are unchanged.
-   const groveStrength=Math.max(0,(stand-.50)/.50);
-   const dryGrove=y<=300 && wet<=.38 && slope<=.38;
-   if(y<=300){
-    const limit=dryGrove ? Math.min(quality==='low'?.72:.94,
-      woodlandLimit+(quality==='low'?.28:.17)*groveStrength*groveStrength)
-     : Math.min(highlandLimit,woodlandLimit);
-    if(choose>limit)continue;
-   } else {
-    // The original alpine ceiling and wet/steep exclusions still apply.
-    if(choose>highlandLimit || (choose>woodlandLimit &&
-       (wet>.72 || slope>FLORA_RULES.maxSlope)))continue;
-   }
+   // Extra patches only occupy dry, traversable highland; do not fill
+   // sensitive wetland, steep talus slopes or the open shoreline with props.
+   if(choose>woodlandLimit && (wet>.72 || slope>FLORA_RULES.maxSlope))continue;
   } catch { continue; }
   let kind:FloraKind;
   const species=random(gx,gz,4);
@@ -109,7 +90,18 @@ export function planFlora(chunkX:number,chunkZ:number,surface:FloraSurface,quali
   // Rare fallen trunks occupy only relatively gentle, dry woodland. The
   // existing 8m trail / 7m structure clearances also protect their ~2m ends.
   else if(slope<.27&&species>.92)kind='deadwood';
-  else kind=species<.57?'spruce':species<.82?'birch':random(gx,gz,19)<.5?'sasa':'meadow-grass';
+  else {
+   // Keep the EXACT original 10m positions, meadow occupancy, highland caps
+   // and rare windfall. Inside dry, gently pitched, existing 90m groves,
+   // some original grass/sasa turns into mature birch (no new instances,
+   // draw calls, terrain occupancy or asset cost). The boost fades to zero
+   // in the sparse glades and never reaches wetland or exposed cliff.
+   const matureStand=Math.min(1,Math.max(0,(stand-.50)/.50));
+   const crownCutoff=.82 + (wet<=.38 && slope<=.38
+     ? .10*matureStand*matureStand : 0);
+   kind=species<.57?'spruce':species<crownCutoff?'birch':
+     random(gx,gz,19)<.5?'sasa':'meadow-grass';
+  }
   const scale=.8+random(gx,gz,5)*.47;
   instances.push(Object.freeze({kind,x,y,z,rotation:random(gx,gz,6)*Math.PI*2,scale}));
  }
