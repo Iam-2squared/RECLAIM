@@ -69,6 +69,21 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
             g.translate(Math.cos(angle)*.94,3.35+(i%3)*.35,Math.sin(angle)*.94);
           });
       }
+      // Two uneven, connected needle-wingtips project beyond the main crown.
+      // Unlike adding whole trees these are only 24 extra low-poly vertices
+      // per existing spruce, merged into the SAME colour-lit GPU species mesh.
+      // The tips overlap the real lower crown, not floating billboard cards;
+      // ground placement, 600m culling, save state and route gates stay fixed.
+      for(const tip of [
+        {x:-1.43,y:4.03,z:.37,lean:.29,color:0x2f4939},
+        {x:1.31,y:4.62,z:-.41,lean:-.36,color:0x456248},
+      ]){
+        part(parts,new T.TetrahedronGeometry(1,0),tip.color,g=>{
+          g.scale(.40,.67,.37);
+          g.rotateZ(tip.lean);
+          g.translate(tip.x,tip.y,tip.z);
+        });
+      }
       break;
     case 'birch':
       // A split, offset deciduous crown makes birch read differently from
