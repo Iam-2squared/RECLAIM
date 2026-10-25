@@ -308,6 +308,24 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
           g.translate(side*1.584,.205,0);
         });
       }
+      // Shelf fungi colonise the damp upper edges of the EXISTING fallen
+      // logs. Each low, irregular half-dome overlaps the real bark and
+      // projects beyond it in Z: no floating mushrooms or vertical tree.
+      // The same cullable, vertex-lit deadwood instance remains the sole
+      // draw call; nothing is scattered near protected paths or buildings.
+      for(const cap of [
+        {x:-1.04,z:.24,y:.335,w:.22,color:0xbba37a},
+        {x:-.44,z:-.25,y:.37,w:.18,color:0xc6b48d},
+        {x:.31,z:.235,y:.355,w:.24,color:0x9f825c},
+        {x:1.04,z:-.235,y:.33,w:.17,color:0xceb68b},
+      ]){
+        part(parts,new T.SphereGeometry(1,5,1,0,Math.PI*2,0,Math.PI/2),
+          cap.color,g=>{
+            g.scale(cap.w,.10,cap.w*.79);
+            g.rotateY(cap.x*.19);
+            g.translate(cap.x,cap.y,cap.z);
+          });
+      }
       break;
     }
     case 'stone':
