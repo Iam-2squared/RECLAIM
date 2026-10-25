@@ -418,9 +418,20 @@ export function createFloraReviewLayer(
       if(kind==='spruce' || kind==='birch'){
         // Birch crowns spread more laterally than columnar spruce. Use the
         // pre-existing deterministic rotation/grounded instance matrix.
-        const width=(kind==='birch'?.94:.90)+(kind==='birch'?.20:.14)*Math.abs(Math.sin(p.rotation*1.7));
-        const depth=(kind==='birch'?.92:.90)+(kind==='birch'?.18:.14)*Math.abs(Math.cos(p.rotation*1.3));
-        const height=.93+.12*Math.abs(Math.sin(p.rotation+.75));
+        // Mixed-age canopy strata WITHOUT planting any extra tree: shorter
+        // understorey crowns coexist with emergent older birch and spruce.
+        // Compute age from seeded instance coordinates/rotation, independent
+        // of camera, quality mode and frame time. Smaller trunks also narrow
+        // in BOTH horizontal axes, preserving 8m trails and 7m foundations.
+        // Reuse the exact original rooted instance, species mesh, 600m culling
+        // group and GPU draw/texture budget; no additional sampling or saves.
+        const age=Math.abs(Math.sin(p.rotation*1.43+x*.019-z*.011));
+        const width=((kind==='birch'?.94:.90)+(kind==='birch'?.20:.14)*
+          Math.abs(Math.sin(p.rotation*1.7)))*(.80+.28*age);
+        const depth=((kind==='birch'?.92:.90)+(kind==='birch'?.18:.14)*
+          Math.abs(Math.cos(p.rotation*1.3)))*(.83+.24*age);
+        const height=(kind==='birch'?.72:.78)+
+          (kind==='birch'?.48:.44)*age;
         scale.set(s*width,s*height,s*depth);
       } else if(kind==='alpine-shrub'){
         // Wind-flattened, laterally uneven tundra scrub; the shared actual

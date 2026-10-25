@@ -1,12 +1,12 @@
 {
-  "version": 7,
-  "as_of_jst": "2026-10-25 10:09 JST",
+  "version": 8,
+  "as_of_jst": "2026-10-25 JST (automation run beginning 11:26)",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "5ce4ffd9430bc207f204c428f147415d9887b776",
+  "latest_known_main": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
-    "status": "BLOCKED_AUTH_403",
+    "status": "BLOCKED_AUTH_403_VERIFIED_THIS_RUN",
     "live_sha": null,
     "live_url": null
   },
@@ -213,34 +213,63 @@
       "integration_base": "5ce4ffd9430bc207f204c428f147415d9887b776",
       "integration_head": "READ_GITHUB_AFTER_STATUS_COMMIT",
       "state": "INDEPENDENT_FEATURE_IMPLEMENTED_NEEDS_NEW_HEAD_3_PLUS_5_PLUS_1_CI"
+    },
+    {
+      "id": "cabin-interior-rafters-115",
+      "pr": 115,
+      "source_head": "aba0e30c16edc137a267a16d0ca90599f69b07f9",
+      "merged_sha": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
+      "source_runs": {
+        "terrain": 40154751107,
+        "preview": 40154751069,
+        "nature": 40154751115
+      },
+      "native_artifact_id": 12583857619,
+      "state": "MERGED_SOURCE_9_OF_9_GREEN_POST_MERGE_MAIN_8_CHECKS_PENDING"
+    },
+    {
+      "id": "mixed-age-tree-canopy-116",
+      "pr": 116,
+      "branch": "feature/shiretoko-mixed-age-tree-canopy-20261025",
+      "original_source_head": "bcd884913b613249dd5365d063e522c58c7d0d90",
+      "integration_base": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
+      "integration_head": "READ_PR116_HEAD_ON_GITHUB_AFTER_TWO_PARENT_COMMIT",
+      "source_runs": {
+        "terrain": 40154884692,
+        "preview": 40154884659,
+        "nature": 40154884645
+      },
+      "native_artifact_id": 12584377129,
+      "state": "SOURCE_9_OF_9_GREEN_INTEGRATION_NEW_HEAD_ALL_9_PENDING_DO_NOT_MERGE"
     }
   ],
-  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_5311226_SPRUCE_NATURE_OFFLINE_20261025.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_21f0232_CABIN_GABLES_OFFLINE_20261025.zip",
   "next": [
-    "Check exact merged main 5ce4ffd9430bc207f204c428f147415d9887b776 terrain #40149441369 3/3 preview #40149441320 5/5",
-    "Open independent knee braces branch from combined exact main and require full native WebGL + terrain + preview source CI; guard merge with current main",
-    "Build newest fully verified main offline package with visible boardwalk braces; deploy existing Vercel only after legitimate team access"
+    "Verify exact main 21a3661b6f360f0d2c9aac0f75a03579978b7697 terrain #40155438968 3/3 and preview #40155438992 5/5",
+    "Collect new combined PR116 HEAD native WebGL 1/1 terrain 3/3 preview 5/5; guarded merge only with current main and verified exact SHA",
+    "Verify final main push 8/8 and package SHA-pinned source/visuals; Vercel BLOCKED_AUTH_403 until legitimate reauthentication"
   ],
   "current_integration": {
-    "pr": "PENDING_OPEN_BOARDWALK",
-    "branch": "feature/shiretoko-boardwalk-guard-knee-bracing-20261025",
-    "prior_head": "58d05a331b6bb36ac56692ce9d52ad7187c002bf",
-    "base_sha": "5ce4ffd9430bc207f204c428f147415d9887b776",
-    "new_head": "READ_GITHUB_AFTER_STATUS_COMMIT",
-    "source_all_9_success": false,
+    "pr": 116,
+    "branch": "feature/shiretoko-mixed-age-tree-canopy-20261025",
+    "prior_head": "bcd884913b613249dd5365d063e522c58c7d0d90",
+    "base_sha": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
+    "new_head": "READ_GITHUB_AFTER_NONFORCED_UPDATE",
+    "source_all_9_success": true,
+    "combined_all_9_success": false,
     "merged": false
   },
   "main_ci": {
-    "head": "5ce4ffd9430bc207f204c428f147415d9887b776",
+    "head": "21a3661b6f360f0d2c9aac0f75a03579978b7697",
     "terrain": {
-      "run_id": 40149441369,
+      "run_id": 40155438968,
       "attempt": 1,
-      "status": "PENDING_AT_CHECKPOINT"
+      "status": "PENDING_AT_HANDOFF_PREPARATION"
     },
     "preview": {
-      "run_id": 40149441320,
+      "run_id": 40155438992,
       "attempt": 1,
-      "status": "PENDING_AT_CHECKPOINT"
+      "status": "PENDING_AT_HANDOFF_PREPARATION"
     }
   }
 }
