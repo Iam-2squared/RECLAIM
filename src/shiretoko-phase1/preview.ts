@@ -163,13 +163,13 @@ async function boot() {
     cabinReview?.heightAt(x,z) ?? boardwalkReview?.heightAt(x,z) ??
     lakeLookoutReview?.heightAt(x,z) ?? null;
   const reviewBlocked = (x:number,z:number) =>
-    Boolean(cabinReview?.blockedAt(x,z) || boardwalkReview?.blockedAt(x,z) ||
-      lakeLookoutReview?.blockedAt(x,z));
+    Boolean(floraReview?.blockedAt(x,z) || cabinReview?.blockedAt(x,z) ||
+      boardwalkReview?.blockedAt(x,z) || lakeLookoutReview?.blockedAt(x,z));
   const walker = new TerrainWalker(terrain,
     cabinReview || boardwalkReview || lakeLookoutReview ? reviewHeight : undefined,
     // A standalone boardwalk has real 3D guardrails: its native walk collider
     // must be enabled just like cabin walls and the lake lookout barriers.
-    cabinReview || boardwalkReview || lakeLookoutReview ? reviewBlocked : undefined),
+    floraReview || cabinReview || boardwalkReview || lakeLookoutReview ? reviewBlocked : undefined),
     keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
@@ -396,7 +396,7 @@ async function boot() {
     ready: Boolean(firstFrame), phase: 1, revision: 4, terrainOnly: !floraReview && !boardwalkReview && !cabinReview && !lakeLookoutReview,
     floraReview: floraReview ? { enabled: true, quality: floraReview.quality,
       instances: floraReview.instances, drawGroups: floraReview.drawGroups,
-      instanceBytes: floraReview.instanceBytes, saveWrites: 0 } : { enabled: false },
+      instanceBytes: floraReview.instanceBytes, treeColliders: floraReview.treeColliders, saveWrites: 0 } : { enabled: false },
     boardwalkReview: boardwalkReview ? { enabled: true, panels: boardwalkReview.panels,
       supports: boardwalkReview.supports, indexedTriangles: boardwalkReview.indexedTriangles,
       saveWrites: 0 } : { enabled: false },
@@ -422,6 +422,7 @@ async function boot() {
     const geometries = new Set<T.BufferGeometry>(), materials = new Set<T.Material>();
     scene.traverse(object => { if (object instanceof T.InstancedMesh) object.dispose(); if (object instanceof T.Mesh || object instanceof T.Line) { geometries.add(object.geometry); for (const m of Array.isArray(object.material) ? object.material : [object.material]) materials.add(m); } });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); detail.dispose(); height.dispose();
+    floraReview?.releaseColliders();
     gpuFrameGate.dispose();
     renderer.dispose();
     // This *standalone* preview owns its WebGL context (unlike the game
