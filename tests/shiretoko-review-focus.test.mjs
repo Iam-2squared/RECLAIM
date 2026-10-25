@@ -55,17 +55,17 @@ test('review camera tracks the real terrain elevation at BOTH camera and target'
 
 test('opt-in native woodland and wooden-walk buttons spawn on their actual visible safe terrain',()=>{
   const source=readFileSync(new URL('../src/shiretoko-phase1/preview.ts',import.meta.url),'utf8');
-  assert.match(source,/firstLook\\?\\.kind === 'boardwalk'[\\s\\S]*?ROUTE\\[3\\]/,
+  assert.match(source,/firstLook\?\.kind === 'boardwalk'[\s\S]*?ROUTE\[3\]/,
     'boardwalk URL must place the native walker at the actual first timber panel');
-  assert.match(source,/firstLook\\?\\.kind === 'flora'[\\s\\S]*?LOCATIONS\\[1\\]/,
+  assert.match(source,/firstLook\?\.kind === 'flora'[\s\S]*?LOCATIONS\[1\]/,
     'flora-only URL must spawn in the forest/wetland, never teleport to cape');
-  assert.match(source,/boardwalkEntry \\?\\? floraEntry/,
+  assert.match(source,/boardwalkEntry \?\? floraEntry/,
     'the actual walk button must use both opt-in scene launch points');
-  assert.match(source,/boardwalkEntry \\? Math\\.atan2/,
+  assert.match(source,/boardwalkEntry \? Math\.atan2/,
     'first-person boardwalk direction must face the true route, not open water');
-  assert.match(source,/floraEntry && firstLook[\\s\\S]*?Math\\.atan2/,
+  assert.match(source,/floraEntry && firstLook[\s\S]*?Math\.atan2/,
     'first-person woodland camera must face the originally inspected scene');
-  assert.match(source,/\\['cabin', 'lookout', 'highland', 'boardwalk', 'flora'\\]\\.includes/,
+  assert.match(source,/\['cabin', 'lookout', 'highland', 'boardwalk', 'flora'\]\.includes/,
     'escape returns to the same forest or timber preview, not a different overview');
   const terrain=new ShiretokoTerrain();
   const dry=LOCATIONS[1];
