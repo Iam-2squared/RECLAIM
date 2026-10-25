@@ -34,8 +34,11 @@ test('wind-offset 3D spruce crown wingtips preserve one bounded instanced specie
       if(actual===rgb)vertices.push([p.getX(i),p.getY(i),p.getZ(i)]);
     }
     assert.equal(vertices.length,12,'each tip is a real 3D tetrahedron, not a billboard');
-    assert(vertices.every(([x,y])=>tip.side*x>1.0&&y>3.1&&y<5.7),
-      'offset needles extend sideways from and overlap the real lower spruce crown');
+    const radial=vertices.map(([x])=>tip.side*x);
+    assert(vertices.every(([,y])=>y>3.1&&y<5.7),
+      'actual 3D tips stay within the lower spruce crown height envelope');
+    assert(Math.min(...radial)<1.27&&Math.max(...radial)>1.48,
+      'each wingtip must both overlap the central needle crown and project past its edge');
     assert(Math.max(...vertices.map(v=>v[2]))-Math.min(...vertices.map(v=>v[2]))>.35,
       'wingtip geometry has meaningful world-depth, not one flat sprite');
   }
