@@ -1,0 +1,10 @@
+node_modules/
+dist/
+review/
+archive/
+delivery/
+__pycache__/
+*.py[cod]
+*.blend[0-9]*
+assets/*/*-game.glb
+assets/*/game-material-adjustments.json

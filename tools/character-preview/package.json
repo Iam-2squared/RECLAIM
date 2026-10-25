@@ -1,0 +1,14 @@
+{
+  "name": "reclaim-character-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "serve": "python3 -m http.server 4173 --bind 0.0.0.0 --directory dist"
+  },
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "three": "0.185.1"
+  }
+}

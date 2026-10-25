@@ -1,0 +1,200 @@
+{
+  "started": "2026-10-25T12:34:29.641Z",
+  "url": "http://127.0.0.1:4173/",
+  "checks": [
+    {
+      "name": "Only the original two skins, source meshes and skeletons are present",
+      "status": "passed",
+      "ms": 4467
+    },
+    {
+      "name": "Original hair follows head motion and returns exactly to rest",
+      "status": "passed",
+      "ms": 3975,
+      "details": [
+        {
+          "gender": "male",
+          "hairMotion": 0.0035700449593702305
+        },
+        {
+          "gender": "female",
+          "hairMotion": 0.015444154043886174
+        }
+      ]
+    },
+    {
+      "name": "Body/head framing, drag, wheel, keyboard, auto rotation, reset and idle work",
+      "status": "passed",
+      "ms": 8158
+    },
+    {
+      "name": "Original skin choice persists after reload",
+      "status": "passed",
+      "ms": 6520
+    },
+    {
+      "name": "Pending gender loads are shared and cached GPU resources remain stable",
+      "status": "passed",
+      "ms": 6201,
+      "details": {
+        "requests": {
+          "male": 1,
+          "female": 1
+        },
+        "geometries": 9,
+        "textures": 22
+      }
+    },
+    {
+      "name": "Mobile original-skin controls are reachable without overflow",
+      "status": "passed",
+      "ms": 5547
+    },
+    {
+      "name": "Standalone embeds both original skins and needs no additional network",
+      "status": "passed",
+      "ms": 4200,
+      "details": {
+        "additionalNetworkRequests": 0,
+        "transport": "HTTP document with subsequent network blocked"
+      }
+    },
+    {
+      "name": "No browser errors; reviewed build unchanged throughout verification",
+      "status": "passed",
+      "ms": 78
+    }
+  ],
+  "browserErrors": [],
+  "screenshots": [
+    {
+      "file": "review/originals/male-original.png",
+      "bytes": 498868,
+      "sha256": "eeb7635152a25ea5be5713580a71ddfb9e26cc4a4cbc2ab4121da9bec044df5a"
+    },
+    {
+      "file": "review/originals/female-original.png",
+      "bytes": 463343,
+      "sha256": "796daa83daa2d91d108bb86e78ef45f20de097a0a81fdcb217e842bf1b76706b"
+    }
+  ],
+  "warnings": [
+    "This environment’s managed Chromium policy blocks file:// navigation. The exact standalone HTML is instead verified over HTTP with all subsequent network requests blocked. Direct file:// launch remains unverified here."
+  ],
+  "models": {
+    "male": {
+      "meshes": [
+        {
+          "name": "Object_129",
+          "visible": true,
+          "vertices": 37484,
+          "geometryHash": "9703a923",
+          "material": "M_Med_Soldier_04",
+          "color": "ffffff",
+          "map": true
+        },
+        {
+          "name": "Object_130",
+          "visible": true,
+          "vertices": 5892,
+          "geometryHash": "d8963093",
+          "material": "M_Med_Soldier_Grenade",
+          "color": "ffffff",
+          "map": true
+        },
+        {
+          "name": "Object_131",
+          "visible": true,
+          "vertices": 16812,
+          "geometryHash": "8965d9a1",
+          "material": "M_Med_Soldier_Head",
+          "color": "ffffff",
+          "map": true
+        },
+        {
+          "name": "Object_132",
+          "visible": true,
+          "vertices": 3411,
+          "geometryHash": "dc18cea9",
+          "material": "M_SML_Survivor_Hair_02",
+          "color": "ffffff",
+          "map": true
+        },
+        {
+          "name": "Object_133",
+          "visible": true,
+          "vertices": 108,
+          "geometryHash": "86d0bb6c",
+          "material": "Eyeshadow",
+          "color": "ffffff",
+          "map": true
+        }
+      ],
+      "bones": 123,
+      "originalHair": [
+        "Object_132"
+      ]
+    },
+    "female": {
+      "meshes": [
+        {
+          "name": "Object_189",
+          "visible": true,
+          "vertices": 10528,
+          "geometryHash": "14abd5f7",
+          "material": "F_MED_Commando_01",
+          "color": "ffffff",
+          "map": true
+        },
+        {
+          "name": "Object_190",
+          "visible": true,
+          "vertices": 1801,
+          "geometryHash": "0d45c731",
+          "material": "F_MED_Commando_Hair_01",
+          "color": "ffffff",
+          "map": true
+        },
+        {
+          "name": "Object_191",
+          "visible": true,
+          "vertices": 3254,
+          "geometryHash": "abd5262b",
+          "material": "F_MED_Commando_Head_01",
+          "color": "ffffff",
+          "map": true
+        }
+      ],
+      "bones": 183,
+      "originalHair": [
+        "Object_190"
+      ]
+    }
+  },
+  "failures": [],
+  "artifacts": [
+    {
+      "file": "dist/index.html",
+      "bytes": 644058,
+      "sha256": "9c531f18bac7abb70ee4824ccc52c63fd46c1381b4450b8686428b634afa50b1"
+    },
+    {
+      "file": "dist/assets/male/male.glb",
+      "bytes": 10672540,
+      "sha256": "b5c023ad489fb33e8897b7da6a02943781e5658de8e6ce6c84b9ef09d2dda059"
+    },
+    {
+      "file": "dist/assets/female/female.glb",
+      "bytes": 14979624,
+      "sha256": "2310d0bad3b4b32cc5a8f565b154371952be0f76e676654fc2757c29dcf887ee"
+    },
+    {
+      "file": "dist/RECLAIM_Character_Studio.html",
+      "bytes": 34847018,
+      "sha256": "ccb68c7ede432d70640528b3d403b11fc42fbb41889fb5a4a40ad1c73315035d"
+    }
+  ],
+  "browser": "154.0.8037.57",
+  "finished": "2026-10-25T12:35:11.179Z",
+  "passed": true
+}

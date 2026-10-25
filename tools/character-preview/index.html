@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="data:,">
+  <title>RECLAIM — Character Studio</title>
+</head>
+<body>
+  <main class="studio">
+    <header class="topbar">
+      <a class="brand" href="#"><span class="brand-mark">R</span>RECLAIM<span class="brand-sub">CHARACTER STUDIO</span></a>
+      <span class="edition">キャラクター制作プレビュー</span>
+    </header>
+    <section class="viewport" aria-label="キャラクターの3D表示">
+      <canvas id="canvas" aria-label="ドラッグでキャラクターを回転、ホイールで拡大できます" tabindex="0"></canvas>
+      <div class="model-label"><span class="eyebrow">SURVIVOR / 01</span><h1 id="model-name">JONESY</h1><p id="model-subtitle">初期スキン</p></div>
+      <div class="loader" id="loader" role="status"><span class="loader-ring"></span><span id="loading-label">キャラクターを読み込み中</span></div>
+      <div id="error" class="error" role="alert" hidden></div>
+      <div class="view-tools" aria-label="カメラ操作">
+        <button type="button" id="frame-body" class="tool active" aria-pressed="true">全身</button>
+        <button type="button" id="frame-head" class="tool" aria-pressed="false">顔・髪</button>
+        <span class="tool-divider"></span>
+        <button type="button" id="auto-rotate" class="tool" aria-pressed="false">自動回転</button>
+        <button type="button" id="reset-view" class="tool" aria-label="正面に戻す">正面に戻す</button>
+      </div>
+      <p class="view-hint">ドラッグで回転 <span>·</span> ホイールで拡大</p>
+    </section>
+    <aside class="customizer" aria-label="初期スキンの選択">
+      <div class="panel-heading"><span class="eyebrow">INITIAL SURVIVORS</span><h2>初期スキン</h2><p>サバイバーを選ぶ</p></div>
+      <fieldset class="section character-choice"><legend>キャラクター <small>2 CHARACTERS</small></legend><div class="segmented"><button type="button" data-gender="male" aria-pressed="true" class="selected">男性</button><button type="button" data-gender="female" aria-pressed="false">女性</button></div></fieldset>
+      <div class="original-note"><p>JONESY / RAMIREZ</p><span>髪・顔・服装は初期のまま。</span></div>
+      <div class="pose-section"><button type="button" id="pose-check" class="pose-button" aria-pressed="false"><span class="pose-dot"></span>首の可動を確認</button><p>頭を左右に動かして確認できます。</p></div>
+      <div class="panel-footer"><span class="status-dot"></span><p>初期スキン 2体</p><button type="button" id="reset-customization">表示をリセット</button></div>
+    </aside>
+    <footer class="bottom-bar"><span>CHARACTER REVIEW · 2026 <button type="button" id="show-credits">クレジット</button></span><span id="current-choice" aria-live="polite">男性 / 初期スキン</span></footer>
+  </main>
+  <dialog id="credits" aria-labelledby="credits-title"><h2 id="credits-title">クレジット</h2><p>Original character designs and game assets: Epic Games.</p><p><a href="https://sketchfab.com/3d-models/fortnite-jonesy-skin-y-skeleton-dedd58b24dba45f0ab2e34293e3bcbdd" target="_blank" rel="noreferrer">Fortnite Jonesy Skin y Skeleton</a> — Alexander M / AlexanderMonserrate</p><p><a href="https://sketchfab.com/3d-models/og-ramirez-e1670580065c4c65927e967fe8ea47e0" target="_blank" rel="noreferrer">OG Ramirez</a> — Yxboireal</p><p>Uploaders’ metadata: <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. Original skins retained. Studio material adjustments for this review.</p><p>Viewer: <a href="https://threejs.org/" target="_blank" rel="noreferrer">Three.js</a> · MIT · © three.js authors</p><form method="dialog"><button type="submit">閉じる</button></form></dialog>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

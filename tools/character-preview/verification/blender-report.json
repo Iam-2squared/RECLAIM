@@ -1,0 +1,22 @@
+[
+  {
+    "gender": "male",
+    "sourceSha256": "674d9108acf9666ebccfc49c719b291e22e610fdd8fd0a6a5d267f537b201358",
+    "output": "assets/male/male-original.blend",
+    "meshCount": 5,
+    "bones": 123,
+    "customHairMeshes": 0,
+    "images": 8,
+    "animations": 0
+  },
+  {
+    "gender": "female",
+    "sourceSha256": "819b8996a503c8ca7eee6169606910223516fdb1a60594f8edcee6e519bba36d",
+    "output": "assets/female/female-original.blend",
+    "meshCount": 3,
+    "bones": 183,
+    "customHairMeshes": 0,
+    "images": 9,
+    "animations": 0
+  }
+]

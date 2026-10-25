@@ -1,0 +1,33 @@
+{
+  "scope": "original male and female skins only",
+  "gameIntegration": false,
+  "savedBranch": "codex/checkpoint-original-skins-20261025",
+  "files": [
+    {
+      "path": "originals/male.glb",
+      "bytes": 10672216,
+      "sha256": "674d9108acf9666ebccfc49c719b291e22e610fdd8fd0a6a5d267f537b201358"
+    },
+    {
+      "path": "originals/female.glb",
+      "bytes": 14979328,
+      "sha256": "819b8996a503c8ca7eee6169606910223516fdb1a60594f8edcee6e519bba36d"
+    },
+    {
+      "path": "assets/male/male-original.blend",
+      "bytes": 14019149,
+      "sha256": "54493f5c78c6bb948926ea28de975d22b15e5d4080bb78bbb23f2a4900a1a204"
+    },
+    {
+      "path": "assets/male/male-original-fbx.blend",
+      "bytes": 23766432,
+      "sha256": "601607bf87f67ec2e809b9406e65d73d17a1c6e44c76821ed69f71c80042dd62"
+    },
+    {
+      "path": "assets/female/female-original.blend",
+      "bytes": 17903171,
+      "sha256": "c4a6020ebb4e4a45aa60091f6e3dc1f109bf52f7089c73ea49c4a43f708c9144"
+    }
+  ],
+  "rebuild": "npm ci && python3 scripts/prepare-game-assets.py && npm run build"
+}
