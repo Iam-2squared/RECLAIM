@@ -1,8 +1,8 @@
 {
-  "version": 6,
-  "as_of_jst": "2026-10-25 08:44:40 JST",
+  "version": 7,
+  "as_of_jst": "2026-10-25 10:09 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "a364eee48793754028829a9d8872efa9389649ca",
+  "latest_known_main": "5ce4ffd9430bc207f204c428f147415d9887b776",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -188,31 +188,57 @@
       "integration_head": "RE_READ_AFTER_NONFORCED_UPDATE",
       "state": "INTEGRATION_NEW_3_PLUS_5_PLUS_1_CI_REQUIRED",
       "feature": "28 real 3D upright infills, existing single 34-instance post batch, no extra draw group"
+    },
+    {
+      "id": "birch-crown-111",
+      "pr": 111,
+      "source_head": "838420a2f176a7e75acd9b4dc870b0d9a1a37429",
+      "merged_sha": "5ce4ffd9430bc207f204c428f147415d9887b776",
+      "source_runs": {
+        "terrain": 40148812867,
+        "preview": 40148813006,
+        "nature": 40148812855
+      },
+      "nature_artifact": 12582435557,
+      "main_runs": {
+        "terrain": 40149441369,
+        "preview": 40149441320
+      },
+      "state": "MERGED_MAIN_PUSH_8_CHECKS_PENDING_AT_10_09_JST"
+    },
+    {
+      "id": "marsh-knee-braces-112",
+      "branch": "feature/shiretoko-boardwalk-guard-knee-bracing-20261025",
+      "original_source_head": "2f989134eb5acc1c321bf35155bb6085e7fab3c0",
+      "integration_base": "5ce4ffd9430bc207f204c428f147415d9887b776",
+      "integration_head": "READ_GITHUB_AFTER_STATUS_COMMIT",
+      "state": "INDEPENDENT_FEATURE_IMPLEMENTED_NEEDS_NEW_HEAD_3_PLUS_5_PLUS_1_CI"
     }
   ],
-  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_70fc44b_INTERACTIVE_20261025.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_5311226_SPRUCE_NATURE_OFFLINE_20261025.zip",
   "next": [
-    "Verify exact main a364eee48793754028829a9d8872efa9389649ca push CI terrain 3/3 #40143453596 and preview 5/5 #40143453594",
-    "Verify exact combined PR109 commit fresh terrain 3/3 preview 5/5 real nature 1/1 and only merge against compatible main with expected head",
-    "Verify resulting main CI and deliver SHA-pinned interactive ZIP; Vercel remains authorization 403"
+    "Check exact merged main 5ce4ffd9430bc207f204c428f147415d9887b776 terrain #40149441369 3/3 preview #40149441320 5/5",
+    "Open independent knee braces branch from combined exact main and require full native WebGL + terrain + preview source CI; guard merge with current main",
+    "Build newest fully verified main offline package with visible boardwalk braces; deploy existing Vercel only after legitimate team access"
   ],
   "current_integration": {
-    "pr": 109,
-    "original_source_head": "d9ff13438fa231cc561b972fae29ab744ed515c4",
-    "base_sha": "a364eee48793754028829a9d8872efa9389649ca",
-    "new_head": "RE_READ_EXACT_HEAD_AFTER_PUSH",
-    "source_all_9_success": true,
+    "pr": "PENDING_OPEN_BOARDWALK",
+    "branch": "feature/shiretoko-boardwalk-guard-knee-bracing-20261025",
+    "prior_head": "58d05a331b6bb36ac56692ce9d52ad7187c002bf",
+    "base_sha": "5ce4ffd9430bc207f204c428f147415d9887b776",
+    "new_head": "READ_GITHUB_AFTER_STATUS_COMMIT",
+    "source_all_9_success": false,
     "merged": false
   },
   "main_ci": {
-    "head": "a364eee48793754028829a9d8872efa9389649ca",
+    "head": "5ce4ffd9430bc207f204c428f147415d9887b776",
     "terrain": {
-      "run_id": 40143453596,
+      "run_id": 40149441369,
       "attempt": 1,
       "status": "PENDING_AT_CHECKPOINT"
     },
     "preview": {
-      "run_id": 40143453594,
+      "run_id": 40149441320,
       "attempt": 1,
       "status": "PENDING_AT_CHECKPOINT"
     }

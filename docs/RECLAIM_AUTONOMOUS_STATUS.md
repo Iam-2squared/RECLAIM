@@ -1,3 +1,17 @@
+# RECLAIM — autonomous development checkpoint (2026-10-25 10:09 JST)
+
+Scope **only** Iam-2squared/RECLAIM and existing reclaim-safari-preview Vercel.
+
+- At run start main `5311226bd11a99791e07a4b28f22a6a3feaca45f` post-push terrain **#40146011928 3/3 success attempt 1** and preview **#40146011870 5/5 success attempt 1**; exact SHA checked.
+- **PR #111 merged**: `838420a2f176a7e75acd9b4dc870b0d9a1a37429` adds visibly wider grounded birch crowns, opposing existing fork limbs and deterministic depth/width variation, with unchanged instances, <500-vertex species geometry and 600m culling. Exact source terrain **#40148812867 3/3 success**, preview **#40148813006 5/5 success**, native Chromium/SwiftShader **#40148812855 1/1 success**, all attempt 1. Source evidence artifact **#12582435557**. Real same-view lake/woodland/wetland frames compared to PR110 source; wetland >30/255 pixel change **2338 / 748000 (0.313%)**, so appearance improvement is modest rather than photo-real. Merge exact expected source into main `5ce4ffd9430bc207f204c428f147415d9887b776`; new main push terrain **#40149441369** and preview **#40149441320** were **IN PROGRESS** when written, and must not be passed off as release-green.
+- In CI waiting time, prepared independent actual timber feature branch `feature/shiretoko-boardwalk-guard-knee-bracing-20261025` based on the merged main tree via a NONFORCED two-parent commit. Two files change: `boardwalk.ts` introduces real pitched wooden diagonal knee braces on every third existing side-guard post (one new bounded instanced draw group, unchanged central walking/physical deck/collision). `shiretoko-boardwalk.test.mjs` asserts real 3D attachment, draw-group count, physical edge collision and centre walkability. Its combined PR HEAD and **3+5+1 CI are NOT YET GREEN**; do not merge until all exact-source checks pass.
+- Independently delivered SHA-pinned PC ZIP `RECLAIM_SHIRETOKO_MAIN_5311226_SPRUCE_NATURE_OFFLINE_20261025.zip`, 18 files, built HTML source `5311226...` from exact main terrain CI artifact **#12581216650** and provenance-labelled PR110 nature frames artifact **#12580626078**. SHA256 **3af9f9ff0357e44e1874b9e62017b8116865c8c4a44778b4a496d3425020cc75**. Source manifest/link integrity and ZIP CRC verified. Local file:// and localhost Chromium launch both returned **ERR_BLOCKED_BY_ADMINISTRATOR**; physical Windows GPU and file:// gameplay cannot be claimed verified.
+- Normal **Vercel GET was rechecked once**, same original project/team, returns genuine **403 forbidden**. No deploy/alias, no scope switching, no permission changes or authorization bypass. Tokyo TITLE, Shiretoko HOME, protected original 480m campaign saves, mobile FPS guard, other repos/tasks unchanged.
+
+**Next three:** 1) Complete main `5ce4ffd9430bc207f204c428f147415d9887b776` 3+5 push CI. 2) Open combined boardwalk feature against that exact main, verify new HEAD terrain 3/3 + preview 5/5 + native WebGL 1/1, then guarded merge only if all succeed. 3) Verify the resulting main 8/8, prepare refreshed SHA-pinned PC ZIP and deploy only with legitimate existing-team Vercel access.
+
+---
+
 # RECLAIM — autonomous integration checkpoint (2026-10-25 08:44:40 JST)
 Scope only: Iam-2squared/RECLAIM and existing Vercel reclaim-safari-preview.
 
