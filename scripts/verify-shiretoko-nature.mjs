@@ -392,6 +392,79 @@ try{
   result.tests.push({name:'native highland public URL, actual 5m first camera, mountain walk, Escape and disposal',
     pass:true,initial:highland,walk:mountainWalk,returned:highlandReturned});
 
+  // Public flora-only and boardwalk review cards must place the ACTUAL
+  // first-person walker on the scene shown by their first-open 3D camera.
+  // The old native preview silently teleported these two modes to the cape.
+  // Perform real independent file:// navigation, framebuffer capture, click,
+  // physical 5m/deck height, Escape and resource/save release for BOTH URLs.
+  for(const sample of [
+    {query:'?flora=low',name:'forest-walk-entry',x:-130,z:410,deck:false},
+    {query:'?flora=low&boardwalk=1',name:'timber-walk-entry',x:-50,z:610,deck:true},
+  ]){
+    await page.goto(pathToFileURL(artifact).href+sample.query);
+    await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().ready,
+      {},{timeout:60000});
+    renderingContext=await page.evaluateHandle(()=>document.querySelector('canvas').getContext('webgl2'));
+    await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.freeze(true));
+    await page.waitForFunction(()=>{
+      const d=window.__SHIRETOKO_TERRAIN__?.diagnostics();
+      return d?.renderCallsTotal>=2 && d.mode==='orbit' && d.floraReview?.enabled;
+    },{},{timeout:30000});
+    const before=await page.evaluate(()=>{
+      const d=window.__SHIRETOKO_TERRAIN__.diagnostics();
+      return {camera:d.camera,flora:d.floraReview,boardwalk:d.boardwalkReview,
+        saveWrites:d.floraReview.saveWrites};
+    });
+    assert.equal(before.boardwalk.enabled,sample.deck,
+      'separate forest and timber URLs must load the correct real geometry');
+    assert.equal(before.saveWrites,0,'the scene is separate from the campaign save');
+    const realFrame=await page.evaluate(captureTerrainFramebuffer);
+    assert.equal(realFrame.glError,0);
+    assert(realFrame.max-realFrame.min>20,'native first-look scene has real WebGL pixels');
+    assert.ok(realFrame.image.startsWith('data:image/jpeg;base64,'),
+      'native framebuffer must contain JPEG bytes');
+    const nativeBytes=Buffer.from(realFrame.image.split(',')[1],'base64');
+    assert(nativeBytes.length>2000);
+    const picture=sample.name+'-actual-webgl.jpg';
+    await writeFile(resolve(out,picture),nativeBytes);
+    result.images.push({name:sample.name,filename:picture,bytes:nativeBytes.length,
+      width:realFrame.width,height:realFrame.height,
+      min:realFrame.min,max:realFrame.max,
+      frameCount:realFrame.renderCallsTotal,camera:realFrame.cameraPosition});
+    await page.locator('#walk').click();
+    const entered=await page.evaluate(({x,z,deck})=>{
+      const a=window.__SHIRETOKO_TERRAIN__,d=a.diagnostics();
+      return {mode:d.mode,player:d.player,
+        surface:deck?a.boardwalkHeightAt(x,z):a.terrain.heightAt(x,z),
+        terrain:a.terrain.heightAt(x,z)};
+    },sample);
+    assert.equal(entered.mode,'walk','visible 3D walk button enters first-person mode');
+    assert(Math.hypot(entered.player.x-sample.x,entered.player.z-sample.z)<.001,
+      'walking must start at the actual visible '+sample.name+' scene, not the cape');
+    assert(Number.isFinite(entered.surface));
+    assert(Math.abs(entered.player.y-entered.surface)<1e-5,
+      'native first-person feet must touch displayed 5m/deck triangles');
+    if(sample.deck)assert(entered.surface>=entered.terrain+.08,
+      'timber walker must stand atop the raised deck, not inside the ground');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>window.__SHIRETOKO_TERRAIN__?.diagnostics().mode==='orbit',
+      {},{timeout:30000});
+    const restored=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics().camera);
+    for(const field of ['position','target'])for(let i=0;i<3;i++)
+      assert(Math.abs(restored[field][i]-before.camera[field][i])<.02,
+        'Escape must restore this exact public nature first-look camera');
+    assert.deepEqual(await page.evaluate(()=>window.__natureStorageAccess),[]);
+    assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+    await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.dispose());
+    const released=await page.evaluate(()=>window.__SHIRETOKO_TERRAIN__.diagnostics());
+    assert.equal(released.disposed,true);
+    assert.equal(released.geometries,0);
+    assert.equal(released.textures,0);
+    assert.equal(await page.locator('canvas').count(),0);
+    result.tests.push({name:'native '+sample.name+' public URL, actual WebGL and true walk entry/return',
+      pass:true,before,entered,restored});
+  }
+
   console.log('NATURE WEBGL PASS',JSON.stringify({sourceSHA,images:result.images.length,
     instances:review.floral.instances,panels:review.boardwalk.panels,stairs:review.cabin.stairs}));
 }catch(error){

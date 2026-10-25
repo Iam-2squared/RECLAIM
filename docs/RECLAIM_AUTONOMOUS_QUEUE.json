@@ -1,8 +1,8 @@
 {
-  "version": 10,
-  "as_of_jst": "2026/10/25 14:18:00 JST",
+  "version": 11,
+  "as_of_jst": "2026-10-25 14:43 JST",
   "repo": "Iam-2squared/RECLAIM",
-  "latest_known_main": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
+  "latest_known_main": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
   "vercel": {
     "projectId": "prj_c5CQvrRjQRcesZC6GMoMv89evR69",
     "teamId": "team_ovY3gbfsldk7aCRexivv2MkF",
@@ -266,34 +266,70 @@
       "branch": "feature/shiretoko-deadwood-bracket-fungi-20261025",
       "original_feature_head": "f375775443d396f081fd58c8a4b813742347cce2",
       "base_sha": "9a1e42cbb502614521d5ea8ea600e960e5eee499",
-      "state": "INDEPENDENT_IMPLEMENTED_SAFE_INTEGRATION_ON_MAIN_PREPARATION_CI_PENDING"
+      "state": "MERGED_CORRECTED_SOURCE_9_9_GREEN_MAIN_TERRAIN_3_3_GREEN_PREVIEW_4_5_WHEN_CHECKED",
+      "pr": 122,
+      "original_failed_head": "288b411227aae75a22561e9bbf10399805edf46d",
+      "source_head": "afc5ea5ff28ff4b3616de6a94975da5ab717d57b",
+      "merged_sha": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
+      "source_runs": {
+        "terrain": 40165525305,
+        "preview": 40165525300,
+        "nature": 40165525336
+      },
+      "main_runs": {
+        "terrain": 40166133357,
+        "preview": 40166133366
+      }
+    },
+    {
+      "id": "native-nature-trailhead-123",
+      "pr": 123,
+      "branch": "feature/shiretoko-native-review-walk-trailhead-20261025",
+      "source_head": "79873ad734a041ca5966580a89fb0f50ed55769a",
+      "original_failed_head": "4031bdccf438f8c9bd90cbc05d096c4ab6bc9e4a",
+      "original_failed_runs": {
+        "terrain": 40165810218,
+        "preview": 40165810210
+      },
+      "source_runs": {
+        "terrain": 40166040311,
+        "preview": 40166040324,
+        "nature": 40166040354
+      },
+      "base_sha": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
+      "integration_base": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
+      "staged_real_webgl_verifier_blob": "020f6af1325096d0ea54fca9fb630f62f5d32a28",
+      "state": "SOURCE_9_9_GREEN_NEW_INTEGRATED_HEAD_CI_PENDING_DO_NOT_MERGE"
     }
   ],
-  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_9a1e42c_WALKABLE_REVIEW_OFFLINE_20261025.zip",
+  "offline_review_candidate": "RECLAIM_SHIRETOKO_MAIN_36bfdb4_OFFLINE_REVIEW_20261025.zip",
   "next": [
-    "Collect PR121 merged main 36bf exact terrain #40164948325 3/3 and preview #40164948290 5/5.",
-    "Collect integrated fungal feature new branch HEAD 3+5+1 and actual WebGL images; guarded merge only after main 8/8.",
-    "Verify resulting main 8/8; make SHA-pinned new PC ZIP; Vercel still 403 no deploy."
+    "Complete exact main 7bc preview #40166133366 5/5 and combined PR123 native WebGL+terrain+preview 9/9",
+    "On exact checked source/base safely merge PR123, verify new main push 8/8 before any release",
+    "Create updated SHA-pinned PC ZIP with real browser evidence; existing Vercel authorization remains BLOCKED_AUTH_403"
   ],
   "current_integration": {
-    "branch": "feature/shiretoko-deadwood-bracket-fungi-20261025",
-    "original_feature_head": "27d4529353a286f54689cc0dadb4e21591903194",
-    "base_sha": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
-    "head": "PREPARE_SAFE_TWO_PARENT_NEW_HEAD",
-    "source_all_9_success": false,
+    "pr": 123,
+    "branch": "feature/shiretoko-native-review-walk-trailhead-20261025",
+    "prior_head": "79873ad734a041ca5966580a89fb0f50ed55769a",
+    "base_sha": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
+    "new_head": "RE_READ_GITHUB_AFTER_NONFORCED_TWO_PARENT_UPDATE",
+    "native_verifier_blob": "020f6af1325096d0ea54fca9fb630f62f5d32a28",
+    "source_9_of_9_success": true,
+    "combined_9_of_9_success": false,
     "merged": false
   },
   "main_ci": {
-    "head": "36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1",
+    "head": "7bc063e45cbbef469afa9ec2b23e3a6e1305e904",
     "terrain": {
-      "run_id": 40164948325,
+      "run_id": 40166133357,
       "attempt": 1,
-      "status": "IN_PROGRESS_AT_CHECKPOINT"
+      "status": "3_OF_3_SUCCESS"
     },
     "preview": {
-      "run_id": 40164948290,
+      "run_id": 40166133366,
       "attempt": 1,
-      "status": "IN_PROGRESS_AT_CHECKPOINT"
+      "status": "4_OF_5_SUCCESS_CHROMIUM_WORLD_PENDING_AT_STATUS"
     }
   }
 }
