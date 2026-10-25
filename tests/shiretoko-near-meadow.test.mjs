@@ -35,7 +35,20 @@ test('near camera grass is one bounded, true 3D instanced mesh on the exact terr
     if(mesh.count>0){best={x,z,count:mesh.count};break;}
   }
   assert(best,'actual Shiretoko lowland near the visible marsh/forest must have grounded meadow tufts');
-  assert(mesh.count<=430);
+  assert(mesh.count<=600,'extra near-field tufts must respect the bounded low LOD pool');
+  assert(mesh.instanceColor && mesh.instanceColor.count>=mesh.count,
+    'patchy near-field grass shades through ONE instanced colour buffer');
+  assert(mesh.instanceColor.version>0,'the shared tint buffer must be uploaded after sync');
+  const shades=new Set(),instanceShade=new T.Color();
+  for(let i=0;i<mesh.count;i++){
+    mesh.getColorAt(i,instanceShade);
+    assert(instanceShade.r>.75&&instanceShade.r<1.3&&
+      instanceShade.g>.7&&instanceShade.g<1.3&&
+      instanceShade.b>.65&&instanceShade.b<1.3,
+      'slope/marsh-safe grass retains finite natural tint bounds');
+    shades.add([instanceShade.r,instanceShade.g,instanceShade.b].map(v=>v.toFixed(3)).join(':'));
+  }
+  if(mesh.count>8)assert(shades.size>4,'world-seeded dry/moist colour variation is visible');
   const matrix=new T.Matrix4(),origin=new T.Vector3();
   for(let i=0;i<mesh.count;i++){
     mesh.getMatrixAt(i,matrix);origin.setFromMatrixPosition(matrix);
@@ -57,7 +70,7 @@ test('near camera grass is one bounded, true 3D instanced mesh on the exact terr
   assert.equal(second.instances,best.count,'world-seeded placement never depends on camera or frame history');
   const higher=createNearMeadowReview(terrain,'balanced');
   higher.sync(best.x,best.z);
-  assert(higher.instances>best.count && higher.instances<=1150,'balanced has denser but bounded near grass');
+  assert(higher.instances>best.count && higher.instances<=1420,'balanced has denser but bounded near grass');
   assert.equal(higher.group.children.length,1);
   for(const layer of [low,second,higher]){const obj=layer.group.children[0];obj.dispose();obj.geometry.dispose();obj.material.dispose();layer.group.clear();}
 });
