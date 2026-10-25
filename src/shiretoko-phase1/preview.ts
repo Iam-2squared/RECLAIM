@@ -167,7 +167,9 @@ async function boot() {
       lakeLookoutReview?.blockedAt(x,z));
   const walker = new TerrainWalker(terrain,
     cabinReview || boardwalkReview || lakeLookoutReview ? reviewHeight : undefined,
-    cabinReview || lakeLookoutReview ? reviewBlocked : undefined),
+    // A standalone boardwalk has real 3D guardrails: its native walk collider
+    // must be enabled just like cabin walls and the lake lookout barriers.
+    cabinReview || boardwalkReview || lakeLookoutReview ? reviewBlocked : undefined),
     keys = new Set<string>(), frameTimes: number[] = [];
   let walking = false, disposed = false, contextLost = false, activeLocation = -1, selectedView = 0, animation = 0, lastFrame = performance.now(), accumulator = 0, firstFrame = 0, freeze = false, needsRender = true, renderCallsTotal = 0;
   const drawSubmissionMs: number[] = [];
