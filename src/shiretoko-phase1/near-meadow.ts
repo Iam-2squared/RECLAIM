@@ -18,8 +18,11 @@ export type NearMeadowReview = Readonly<{
 }>;
 
 const CONFIG = Object.freeze({
-  low:Object.freeze({spacing:3.6,radius:34,capacity:430,accept:.64}),
-  balanced:Object.freeze({spacing:2.8,radius:44,capacity:1150,accept:.78}),
+  // Twice as many visible knee-height tufts at walking distance, without
+  // changing the radius, ground grid, safe clearing or one-draw GPU layout.
+  // Worst-case dry-land instances remain bounded below these capacities.
+  low:Object.freeze({spacing:2.7,radius:34,capacity:600,accept:.74}),
+  balanced:Object.freeze({spacing:2.25,radius:44,capacity:1420,accept:.82}),
   step:12,
 });
 const hash=(x:number,z:number,salt:number)=>{
@@ -103,6 +106,7 @@ export function createNearMeadowReview(
   const group=new T.Group();group.name='opt-in terrain-grounded near-field meadow';
   group.add(mesh);
   const origin=new T.Vector3(),rotation=new T.Quaternion(),scale=new T.Vector3(),mat=new T.Matrix4(),axis=new T.Vector3(0,1,0);
+  const instanceTint=new T.Color();
   let anchorX=Infinity,anchorZ=Infinity,rebuilds=0;
   function sync(x:number,z:number):boolean {
     if(!Number.isFinite(x)||!Number.isFinite(z))return false;
@@ -119,14 +123,19 @@ export function createNearMeadowReview(
     for(let gz=loZ;gz<=hiZ;gz++)for(let gx=loX;gx<=hiX;gx++){
       const jx=.19+.62*hash(gx,gz,2),jz=.19+.62*hash(gx,gz,3);
       const px=Math.fround((gx+jx)*spec.spacing),pz=Math.fround((gz+jz)*spec.spacing);
+      // Coherent ~15m patches provide reed/grass bunches and open gaps,
+      // rather than a near-uniform lattice. The hash uses WORLD cells and
+      // never the current camera position, so walking cannot reshuffle it.
+      const patch=hash(Math.floor(gx/6),Math.floor(gz/6),21);
+      const localAccept=spec.accept*(.64+.58*patch);
       if((px-cx)**2+(pz-cz)**2>spec.radius**2 ||
         Math.abs(px)>=TERRAIN.extent-3||Math.abs(pz)>=TERRAIN.extent-3 ||
-        hash(gx,gz,1)>spec.accept)continue;
+        hash(gx,gz,1)>localAccept)continue;
       // Protect open water, sensitive marsh, the walkable trail, cabin stairs,
       // lookout site and existing unchanged 5m terrain/collision surface.
-      const y=terrain.heightAt(px,pz);
-      if(!Number.isFinite(y)||y>265||terrain.inWater(px,pz)||
-        terrain.slopeAt(px,pz)>.48||wetnessAt(px,pz,y)>.70||
+      const y=terrain.heightAt(px,pz),wet=wetnessAt(px,pz,y);
+      if(!Number.isFinite(y)||!Number.isFinite(wet)||y>265||terrain.inWater(px,pz)||
+        terrain.slopeAt(px,pz)>.48||wet>.70||
         routeSample(px,pz).distance<FLORA_RULES.trailClearance)continue;
       const foundation=Math.min(Math.hypot(px+170,pz-850)-65,
         Math.hypot(px+140,pz+310)-18,cabinSiteClearanceDistance(px,pz));
@@ -138,9 +147,17 @@ export function createNearMeadowReview(
       scale.set(s*(.83+.25*hash(gx,gz,6)),s*(.80+.17*hash(gx,gz,7)),
         s*(.87+.27*hash(gx,gz,8)));
       mat.compose(origin,rotation,scale);
+      // A single instanced colour attribute adds dry ochre / moist green
+      // variation to EXISTING vertex colours; no separate grass meshes,
+      // texture samplers, per-frame objects, save mutations or draw calls.
+      const sunny=.93+.13*hash(gx,gz,9);
+      instanceTint.setRGB(sunny*(.98+.06*(1-wet)),
+        sunny*(.94+.08*wet),sunny*(.84+.16*wet));
+      mesh.setColorAt(count,instanceTint);
       mesh.setMatrixAt(count++,mat);
     }
     mesh.count=count;mesh.instanceMatrix.needsUpdate=true;
+    if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
     mesh.computeBoundingSphere();
     return true;
   }
