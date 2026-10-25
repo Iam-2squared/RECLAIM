@@ -1,3 +1,12 @@
+# RECLAIM — PR #121 merged and independent fungi integration (2026/10/25 14:18:00 JST)
+
+- Verified PR #121 NEW source HEAD `f22adfa506c715f1ca6770b9df7c84efa92698e6`: exact attempt 1 terrain **#40164356925 3/3 SUCCESS**, preview **#40164356904 5/5 SUCCESS**, native real software-WebGL **#40164356914 1/1 SUCCESS**. Guarded merge response created latest main `36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1`; its push terrain **#40164948325** and preview **#40164948290** were **IN PROGRESS** at this checkpoint, so main is **NOT YET release-green**. Failed earlier PR121 test runs #40163974312/#40163974293 retained and explained in next historical entry.
+- Independent, non-overlapping actual 3D shelf fungi in `src/shiretoko-phase1/flora-renderer.ts` and focused test in `tests/shiretoko-flora-renderer.test.mjs`. Original independent feature is not CI-tested yet. This feature branch is now being combined via **NONFORCED two-parent commit** on exact new main `36bfdb4d2e6781a952fd2fd6d3fc8b3f57f971a1`, with no overwrites to the two PR #121 files. An entirely NEW 3 terrain + 5 preview + 1 native WebGL exact integrated-source checks are mandatory before any second merge, and main must finish 8/8 beforehand. Do not assume these checks have run from this note.
+- Existing Vercel original team/project GET returned real 403 this run; **no deployment/alias/auth workaround**. Last fully verified 8/8 green main for standalone local 3D PC ZIP is `9a1e42cbb502614521d5ea8ea600e960e5eee499`, packaged and manifest-checked as `RECLAIM_SHIRETOKO_MAIN_9a1e42c_WALKABLE_REVIEW_OFFLINE_20261025.zip`. Windows GPU / local browser file:// run not measured.
+- **Next 3:** (1) exact PR121 main push 3+5; (2) exact NEW combined fungal source 3+5+1 with real images, safely merge only after current green main; (3) post-merge 8/8 and SHA-pinned latest PC ZIP, Vercel only after actual authorization.
+
+---
+
 # RECLAIM — autonomous development checkpoint (2026/10/25 14:16:11 JST)
 
 **Scope:** ONLY `Iam-2squared/RECLAIM` and existing `reclaim-safari-preview` Vercel project. No TITLE/HOME, legacy 480m saves, smartphone FPS guard, other repos or automations touched.
