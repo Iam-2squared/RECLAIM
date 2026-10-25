@@ -447,6 +447,58 @@ export function createCliffCabinReview(terrain: ShiretokoTerrain): CabinReview {
   group.add(chairs);parts++;
 
 
+  // One genuine timber-mounted 3D walking-map relief on the WEST INTERIOR
+  // wall, in direct view when entering from the east door. An irregular raised
+  // route, two lake markers and four copper site pins sit on one physical,
+  // framed field. All 17 solid pieces use ONE frustum-cullable instanced draw
+  // group and ZERO textures, labels, overlays, gameplay state or new collision
+  // barriers. The entire 0.2m relief remains inside the existing wall's
+  // PERSON-padded collision envelope; walking and the east doorway are intact.
+  const mapPieces:{matrix:T.Matrix4;colour:number}[]=[];
+  const mapX=left+WALL+.09,mapY=floorY+1.73,mapZ=Z+1.6;
+  const mapAxis=new T.Vector3(1,0,0);
+  const mapPiece=(x:number,y:number,z:number,w:number,h:number,d:number,
+    colour:number,angle=0)=>{
+    const matrix=new T.Matrix4().compose(new T.Vector3(x,y,z),
+      new T.Quaternion().setFromAxisAngle(mapAxis,angle),new T.Vector3(w,h,d));
+    mapPieces.push({matrix,colour});
+  };
+  mapPiece(mapX,mapY,mapZ,.085,1.74,2.94,0xb5b39d); // weathered paperboard
+  for(const side of [-1,1]){
+    mapPiece(mapX+.052,mapY+side*.86,mapZ,.055,.082,3.02,0x594737);
+    mapPiece(mapX+.052,mapY,mapZ+side*1.46,.055,1.74,.078,0x594737);
+  }
+  // Route coordinates are local z/y in metres on this wall board, not actual
+  // campaign map positions. Raised segments have length equal to the exact
+  // endpoint distance and a true YZ tangent rotation, never floating lines.
+  const mapRoute=[
+    [-1.10,-.51],[-.84,-.19],[-.50,.07],[-.16,.37],
+    [.16,.13],[.57,.38],[1.04,.53],
+  ] as const;
+  for(let i=1;i<mapRoute.length;i++){
+    const [az,ay]=mapRoute[i-1],[bz,by]=mapRoute[i];
+    const dz=bz-az,dy=by-ay,length=Math.hypot(dz,dy);
+    mapPiece(mapX+.076,mapY+(ay+by)/2,mapZ+(az+bz)/2,.033,length,.044,
+      0xc18d49,Math.atan2(dz,dy));
+  }
+  // Lake surfaces are different sizes, deliberately off the raised dry path.
+  mapPiece(mapX+.075,mapY-.33,mapZ+.70,.030,.22,.43,0x68989d);
+  mapPiece(mapX+.075,mapY+.48,mapZ-.55,.030,.15,.31,0x528a93);
+  for(const [z,y] of [[-1.10,-.51],[-.50,.07],[.16,.13],[1.04,.53]] as const)
+    mapPiece(mapX+.104,mapY+y,mapZ+z,.045,.085,.085,0xa55c3a);
+  if(mapPieces.length!==17)throw new RangeError('Physical trail-map marker count changed');
+  const trailMap=new T.InstancedMesh(new T.BoxGeometry(1,1,1),
+    new T.MeshLambertMaterial({color:0xffffff,flatShading:true}),mapPieces.length);
+  trailMap.name='cabin / wall-mounted physical Shiretoko trail and lake map / instanced';
+  for(let i=0;i<mapPieces.length;i++){
+    trailMap.setMatrixAt(i,mapPieces[i].matrix);
+    trailMap.setColorAt(i,new T.Color(mapPieces[i].colour));
+  }
+  trailMap.instanceMatrix.needsUpdate=true;
+  if(trailMap.instanceColor)trailMap.instanceColor.needsUpdate=true;
+  trailMap.computeBoundingSphere();
+  group.add(trailMap);parts++;
+
   // Flat woven floor runner provides human-scale cabin interior detail
   // without modifying the 5m terrain, original physical timber floor,
   // collision or campaign save contract. Fourteen stripes/bindings share
