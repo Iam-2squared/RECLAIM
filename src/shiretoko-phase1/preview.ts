@@ -242,10 +242,22 @@ async function boot() {
       ? lakeLookoutReview?.entrance : null;
     const highlandEntry = natureFocusActive && firstLook?.kind === 'highland'
       ? LOCATIONS[3] : null;
-    const p = cabinEntry ?? lakeEntry ?? highlandEntry ?? LOCATIONS[Math.max(0, activeLocation)];
+    // The standalone wooden-walk and flora-only review URLs used to show a
+    // wetland/forest camera but teleport walkers back to the distant cape.
+    // Start on the ORIGINAL protected route instead: deck start for timber,
+    // nearby dry wetland waypoint for woodland. No route, save or world edits.
+    const boardwalkEntry = natureFocusActive && firstLook?.kind === 'boardwalk'
+      ? ROUTE[3] : null;
+    const floraEntry = natureFocusActive && firstLook?.kind === 'flora'
+      ? LOCATIONS[1] : null;
+    const p = cabinEntry ?? lakeEntry ?? highlandEntry ?? boardwalkEntry ?? floraEntry
+      ?? LOCATIONS[Math.max(0, activeLocation)];
     if (!walker.place(p.x, p.z)) return;
     transition = null; controls.enabled = false; walking = true; keys.clear(); accumulator = 0;
-    walker.yaw = cabinEntry ? Math.PI / 2 : lakeEntry ? -Math.PI / 2 : 0;
+    walker.yaw = cabinEntry ? Math.PI / 2 : lakeEntry ? -Math.PI / 2
+      : boardwalkEntry ? Math.atan2(boardwalkEntry.x - ROUTE[4].x, boardwalkEntry.z - ROUTE[4].z)
+      : floraEntry && firstLook
+        ? Math.atan2(floraEntry.x - firstLook.target[0], floraEntry.z - firstLook.target[2]) : 0;
     walker.pitch = 0;
     camera.fov = 66; camera.updateProjectionMatrix(); updateWalkCamera();
     document.body.classList.add('walking'); $('walk-overlay').hidden = false; $('walk-message').hidden = false;
@@ -270,7 +282,8 @@ async function boot() {
   // Escape/back preserves the opted-in cabin camera. Without this, the
   // viewer returned to the remote all-map view after walking into the house.
   function returnFromWalk() {
-    if (natureFocusActive && (firstLook?.kind === 'cabin' || firstLook?.kind === 'lookout' || firstLook?.kind === 'highland')) {
+    if (natureFocusActive && firstLook &&
+      ['cabin', 'lookout', 'highland', 'boardwalk', 'flora'].includes(firstLook.kind)) {
       exitWalk();
       camera.position.fromArray(firstLook.position);
       controls.target.fromArray(firstLook.target);
