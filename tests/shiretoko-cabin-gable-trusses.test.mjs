@@ -24,7 +24,9 @@ test('both blank cabin gables gain roof-connected 3D cedar trusses in one bounde
     mesh.getMatrixAt(i,m);m.decompose(centre,rot,scale);
     mesh.getColorAt(i,color);swatches.add(color.getHex());
     assert([...centre.toArray(),...scale.toArray()].every(Number.isFinite));
-    assert(Math.abs(centre.z-(i<6?back-.13:front+.13))<1e-6,
+    // Three.js stores instance matrices as Float32; near Z=835m their ULP is 0.000061m.
+    // Submillimetre tolerance is necessary for actual GPU matrix readback.
+    assert(Math.abs(centre.z-(i<6?back-.13:front+.13))<.00007,
       'rafters sit on the actual original north/south triangular wall plane');
     assert(scale.x>.5&&scale.x<19&&scale.y>.1&&scale.y<.21&&scale.z<.2);
     const ends=[-.5,.5].map(x=>new T.Vector3(x,0,0).applyMatrix4(m));
