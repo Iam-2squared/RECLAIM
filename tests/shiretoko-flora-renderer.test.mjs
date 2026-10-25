@@ -177,6 +177,22 @@ test('opt-in flora creates physical-grounded instanced 3D with bounded draw call
           assert(side.has(colour),'both end faces show genuine concentric wood colours');
         }
       }
+      // Two differently coloured, three-dimensional bracket caps are
+      // welded into the existing horizontal log geometry on both bark
+      // flanks, rather than extra loose scene objects or billboard decals.
+      for(const hex of [0xbba37a,0xc6b48d]){
+        const c=new THREE.Color(hex),actual=[];
+        for(let v=0;v<positions.count;v++){
+          const rgb=[0,1,2].map(k=>Math.round(colours.getComponent(v,k)*255));
+          if(rgb.every((n,k)=>Math.abs(n-Math.round(c.getComponent(k)*255))<=1))
+            actual.push([positions.getX(v),positions.getY(v),positions.getZ(v)]);
+        }
+        assert(actual.length>=12,'each faceted native bark fungus has four genuine depth-bearing faces');
+        assert(actual.some(([x,y,z])=>Math.abs(z)>.23 && y>.29 && y<.58),
+          'bracket projects beyond the log bark but stays rooted below knee height');
+      }
+      assert(geometry.getAttribute('position').count<400,
+        'fungus shapes must remain in the existing deadwood species vertex envelope');
       assert(bounds.min.y>=-.05&&bounds.max.y<1.1,
         'thin end-grain faces may not raise deadfall or invalidate 5m ground contact');
     }

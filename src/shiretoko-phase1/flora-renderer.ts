@@ -308,6 +308,24 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
           g.translate(side*1.584,.205,0);
         });
       }
+      // Shelf fungi colonise the damp upper edges of the EXISTING fallen
+      // logs. Each low, irregular half-dome overlaps the real bark and
+      // projects beyond it in Z: no floating mushrooms or vertical tree.
+      // The same cullable, vertex-lit deadwood instance remains the sole
+      // draw call; nothing is scattered near protected paths or buildings.
+      // Exactly two 12-vertex faceted brackets keep the pre-existing
+      // <400-vertex deadwood limit intact (and both crosscut ends visible).
+      // Their thin noncoplanar ridges project over opposite sides of bark.
+      for(const cap of [
+        {x:-.98,z:.265,y:.355,w:.26,color:0xbba37a},
+        {x:.71,z:-.265,y:.365,w:.21,color:0xc6b48d},
+      ]){
+        part(parts,new T.TetrahedronGeometry(1,0),cap.color,g=>{
+          g.scale(cap.w,.075,cap.w*.80);
+          g.rotateY(cap.x*.19);
+          g.translate(cap.x,cap.y,cap.z);
+        });
+      }
       break;
     }
     case 'stone':
