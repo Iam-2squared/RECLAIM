@@ -17,6 +17,10 @@ export type FloraReviewLayer = Readonly<{
   drawGroups: number;
   instanceBytes: number;
   quality: FloraReviewQuality;
+  /** Native preview only: the walker's body cannot pass through rendered tree trunks. */
+  blockedAt: (x: number, z: number) => boolean;
+  treeColliders: number;
+  releaseColliders: () => void;
 }>;
 
 const kinds: readonly FloraKind[] = ['spruce','birch','alpine-shrub','sedge','sasa','meadow-grass','stone','deadwood'];
@@ -349,8 +353,8 @@ function tint(x:number,z:number): T.Color {
 }
 
 /**
- * A review-only layer: no mutation of the world, save, walking collision,
- * TITLE/HOME, or story unlock state.
+ * A review-only layer: optional physical tree-trunk contact for its OWN
+ * walker; never modifies the campaign collision, TITLE/HOME or save state.
  */
 export function createFloraReviewLayer(
   terrain: ShiretokoTerrain, quality: FloraReviewQuality='low',
@@ -383,6 +387,28 @@ export function createFloraReviewLayer(
       group.push(plant);buckets[cell].set(plant.kind,group);
     }
   }
+  // Build a local 10m collision index from the SAME Float32 instance origins as
+  // the rendered spruce/birch trunks. 3x3 neighboring cells give bounded
+  // work per walker step even with thousands of instanced trees. Crowns,
+  // shrubs, sedges, water and the main 480m game have NO added blockers.
+  type Trunk = { x: number; z: number; radiusSquared: number };
+  const trunks = new Map<string,Trunk[]>();
+  let treeColliders = 0;
+  const collisionCell = (x:number,z:number) =>
+    `${Math.floor(x/10)}:${Math.floor(z/10)}`;
+  const blockedAt = (x:number,z:number):boolean => {
+    if(!Number.isFinite(x)||!Number.isFinite(z))return true;
+    const ix=Math.floor(x/10),iz=Math.floor(z/10);
+    for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
+      const near=trunks.get(`${ix+dx}:${iz+dz}`);
+      if(!near)continue;
+      for(const trunk of near){
+        const ox=x-trunk.x,oz=z-trunk.z;
+        if(ox*ox+oz*oz<=trunk.radiusSquared)return true;
+      }
+    }
+    return false;
+  };
   const group=new T.Group();
   group.name='DEVELOPMENT REVIEW foliage - opt in / no campaign or save';
   // Keep this first-stage low-poly review vertex-lit and sampler-free.
@@ -452,6 +478,16 @@ export function createFloraReviewLayer(
         const height=.93+.07*Math.abs(Math.sin(p.rotation*.91));
         scale.set(s*width,s*height,s*depth);
       } else scale.set(s,s,s);
+      if(kind==='spruce'||kind==='birch'){
+        // Trunk cylinders are 0.20m / 0.16m wide in species-local space.
+        // Include the walker's ~0.30m shoulder radius, but NOT the leafy
+        // crown. The larger of two real non-uniform horizontal scales is a
+        // conservative, rotation-independent cylinder footprint.
+        const radius=.30+(kind==='spruce'?.20:.16)*Math.max(scale.x,scale.z);
+        const key=collisionCell(x,z),cell=trunks.get(key)??[];
+        cell.push({x,z,radiusSquared:radius*radius});
+        trunks.set(key,cell);treeColliders++;
+      }
       matrix.compose(origin,rotation,scale);
       mesh.setMatrixAt(i,matrix);
       mesh.setColorAt(i,tint(p.x,p.z));
@@ -468,5 +504,6 @@ export function createFloraReviewLayer(
   const sun=new T.DirectionalLight(0xffebca,2.1);
   sun.position.set(-900,1400,650);
   group.add(ambient,sun);
-  return Object.freeze({group,instances,drawGroups,instanceBytes,quality});
+  return Object.freeze({group,instances,drawGroups,instanceBytes,quality,
+    blockedAt,treeColliders,releaseColliders:()=>trunks.clear()});
 }
