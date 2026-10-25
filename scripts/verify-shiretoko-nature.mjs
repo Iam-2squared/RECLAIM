@@ -203,7 +203,7 @@ try{
   const mapFrame=await page.evaluate(captureTerrainFramebuffer);
   assert.equal(mapFrame.glError,0);
   assert(mapFrame.max-mapFrame.min>20,'indoor wall map must be actual varying WebGL pixels');
-  assert.match(mapFrame.image,/^data:image\\/jpeg;base64,/);
+  assert.match(mapFrame.image,/^data:image\/jpeg;base64,/);
   const mapBytes=Buffer.from(mapFrame.image.split(',')[1],'base64');
   assert(mapBytes.length>2000);
   const mapFilename='cabin-wall-map-first-open-actual-webgl.jpg';

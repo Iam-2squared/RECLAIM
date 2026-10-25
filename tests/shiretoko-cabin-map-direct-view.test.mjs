@@ -10,12 +10,12 @@ import {natureReviewFocus} from '../src/shiretoko-phase1/review-focus.ts';
 
 test('only the explicit cabin+interior URL selects the real map-focused room camera',()=>{
   const source=readFileSync(new URL('../src/shiretoko-phase1/preview.ts',import.meta.url),'utf8');
-  assert.match(source,/const interiorRequested = Boolean\\(cabinReview\\)/);
-  assert.match(source,/query\\.get\\('interior'\\)/);
+  assert.match(source,/const interiorRequested = Boolean\(cabinReview\)/);
+  assert.match(source,/query\.get\('interior'\)/);
   assert.match(source,/const firstLook = interiorRequested && cabinReview/);
-  assert.match(source,/position:\\[CABIN_SITE\\.x\\+4\\.6,cabinReview\\.floorY\\+2\\.35/);
-  assert.match(source,/target:\\[CABIN_SITE\\.x-8\\.45,cabinReview\\.floorY\\+1\\.73/);
-  assert.match(source,/interiorEntry \\?\\? cabinEntry/);
+  assert.match(source,/position:\[CABIN_SITE\.x\+4\.6,cabinReview\.floorY\+2\.35/);
+  assert.match(source,/target:\[CABIN_SITE\.x-8\.45,cabinReview\.floorY\+1\.73/);
+  assert.match(source,/interiorEntry \?\? cabinEntry/);
   assert.equal(natureReviewFocus(new URLSearchParams('interior=1'),()=>100),null,
     'indoor flag alone cannot create a phantom building or alter baseline');
   const ext=natureReviewFocus(new URLSearchParams('cabin=1'),()=>100);
