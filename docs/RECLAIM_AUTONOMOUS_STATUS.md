@@ -1,3 +1,15 @@
+# RECLAIM — marsh-fringe cotton-grass 3D integration candidate (2026-10-25 15:26 JST)
+
+Scope ONLY `Iam-2squared/RECLAIM` and existing Vercel `reclaim-safari-preview`. Protected Tokyo TITLE, Shiretoko HOME, legacy 480m saves and smartphone FPS guard untouched.
+
+- Read fresh **main `7b84111b6b721553a7c395f481c95efa8f619e98`**; exact main push terrain #40168058424 attempt 1 **3/3 SUCCESS** and ordinary preview #40168058435 attempt 1 **5/5 SUCCESS** (no pending main runs at observation).
+- Independently implementing two non-billboard, white-cream cotton heads per cottongrass stem (physical 3D, indexed coloured geometry) on original 5m grounded lowland marsh fringe. Reuses original world-seeded 12m camera ring and accepted near-field grass terrain placements; protects water, path, foundations, slopes; ONE extra dynamic frustum-culled draw group with bounded low/balanced pools 240/600; disposable with existing WebGL scene. Reviews via `/shiretoko-terrain.html?flora=low` and `?flora=low&boardwalk=1`. No photorealism/FPS claims.
+- New focused checks examine exact 3D cotton vertex colours, geometry, bounded pools, physical ground/route/wetness, deterministic replay and native diagnostics. **At candidate creation: NEW feature SHA, source CI 3+5+1, main integration, actual WebGL images and release are PENDING, not passed.** Old main run IDs do not validate this change.
+- Existing Vercel team/project ordinary GET this run returned **403 forbidden**: BLOCKED_AUTH. No scope bypass, deployment or alias.
+- **Next three:** (1) run and inspect exact PR HEAD terrain 3/3 + preview 5/5 + native WebGL 1/1 and inspect actual cotton plant presence/draws in screenshots; (2) after fresh base/HEAD check merge only if fully green, confirm new main push 8/8; (3) package SHA-pinned reviewed PC HTML/ZIP and report availability, leaving online Vercel blocked pending legitimate existing-team authorization.
+
+---
+
 # RECLAIM — integrated fungi; native forest/boardwalk walk-entry review (2026-10-25 14:43 JST)
 
 Scope exclusively `Iam-2squared/RECLAIM` and previously approved Vercel `reclaim-safari-preview`. The user-approved Tokyo TITLE, Shiretoko HOME, existing 480m campaign saves and mobile FPS guard are unchanged.

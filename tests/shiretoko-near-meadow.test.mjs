@@ -2,14 +2,30 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as T from 'three';
 import {readFileSync} from 'node:fs';
-import {ShiretokoTerrain,routeSample} from '../src/shiretoko-phase1/terrain.ts';
+import {ShiretokoTerrain,routeSample,wetnessAt} from '../src/shiretoko-phase1/terrain.ts';
 import {createNearMeadowReview} from '../src/shiretoko-phase1/near-meadow.ts';
 
 test('near camera grass is one bounded, true 3D instanced mesh on the exact terrain with safe travel clearances',()=>{
   const terrain=new ShiretokoTerrain(),low=createNearMeadowReview(terrain,'low');
   const meshes=low.group.children.filter(o=>o instanceof T.InstancedMesh);
-  assert.equal(meshes.length,1);
-  const mesh=meshes[0];
+  assert.equal(meshes.length,2,'one original grass draw plus one cullable damp-edge cotton batch');
+  const [mesh,cotton]=meshes;
+  assert.equal(cotton.name,'flora/review/near-field-cottongrass/moisture-gated');
+  assert(cotton.frustumCulled&&cotton.count===0);
+  const cp=cotton.geometry.getAttribute('position'),cc=cotton.geometry.getAttribute('color');
+  assert(cp.count>=50&&cp.count<150,'two real 3D cotton-tuft stems fit a compact geometry');
+  assert.equal(cc.count,cp.count);
+  assert(cotton.geometry.index.count>=100,'stalks and fluffy off-centre heads use indexed 3D triangles');
+  const cb=cotton.geometry.boundingBox;
+  assert(cb.min.y>=0&&cb.max.y>.95&&cb.max.y<1.2,
+    'cotton grows from the actual terrain root, with small raised heads');
+  const cream=new T.Color(0xf7f5e9),cottonColors=cc;
+  let white=0;
+  for(let v=0;v<cc.count;v++)
+    if(Math.abs(cottonColors.getX(v)-cream.r)<.0001&&
+      Math.abs(cottonColors.getY(v)-cream.g)<.0001&&
+      Math.abs(cottonColors.getZ(v)-cream.b)<.0001)white++;
+  assert(white>=12,'off-white cotton puffs are actual coloured 3D vertices, not texture cards');
   assert(mesh.frustumCulled);
   // The moving grass batch now includes two genuinely 3D seed-bearing
   // culms with ochre grains, without creating additional draw groups.
@@ -71,8 +87,41 @@ test('near camera grass is one bounded, true 3D instanced mesh on the exact terr
   const higher=createNearMeadowReview(terrain,'balanced');
   higher.sync(best.x,best.z);
   assert(higher.instances>best.count && higher.instances<=1420,'balanced has denser but bounded near grass');
-  assert.equal(higher.group.children.length,1);
-  for(const layer of [low,second,higher]){const obj=layer.group.children[0];obj.dispose();obj.geometry.dispose();obj.material.dispose();layer.group.clear();}
+  assert.equal(higher.group.children.length,2);
+  assert(higher.cottonClusters<=600,'balanced damp plants have a strict GPU instance cap');
+  assert(higher.drawGroups<=2,'new cottongrass adds at most one cullable draw batch');
+  // The review should show a real white-tipped fringe in damp lowlands.
+  // Every instance is rooted on the SAME indexed 5m terrain, and inherits
+  // the original water, route, slope and building clearance decisions.
+  const wetReview=createNearMeadowReview(terrain,'low');
+  let cottonEvidence=null;
+  for(const [x,z] of [[-210,370],[-130,410],[-170,600],[-140,690],
+    [-230,310],[-80,510],[145,435],[-60,440],[20,410],[-220,460]]){
+    wetReview.sync(x,z);
+    if(wetReview.cottonClusters>0){cottonEvidence={x,z,count:wetReview.cottonClusters};break;}
+  }
+  assert(cottonEvidence,'visible moist-marsh fringe grows natural, terrain-rooted cotton heads');
+  assert(wetReview.cottonClusters<=240);
+  const cottonBatch=wetReview.group.children[1];
+  for(let i=0;i<cottonBatch.count;i++){
+    cottonBatch.getMatrixAt(i,matrix);origin.setFromMatrixPosition(matrix);
+    assert(Math.abs(origin.y-terrain.heightAt(origin.x,origin.z))<.0001,'cotton rooted in rendered 5m terrain');
+    assert(!terrain.inWater(origin.x,origin.z),'white heads cannot be planted in water');
+    assert(routeSample(origin.x,origin.z).distance>=8,'protect the entire native walk');
+    const moisture=wetnessAt(origin.x,origin.z,origin.y);
+    assert(moisture>=.14-1e-6&&moisture<=.65+1e-6,'cotton grows only on damp, drained marsh fringes');
+    assert(terrain.slopeAt(origin.x,origin.z)<.35,'no tufts hanging off cliffs');
+  }
+  const replay=createNearMeadowReview(terrain,'low');
+  replay.sync(cottonEvidence.x,cottonEvidence.z);
+  assert.equal(replay.cottonClusters,wetReview.cottonClusters,'cotton placement is world-seeded, not frame-seeded');
+  for(let i=0;i<cottonBatch.count;i++){
+    replay.group.children[1].getMatrixAt(i,new T.Matrix4());
+  }
+  for(const layer of [low,second,higher,wetReview,replay]){
+    for(const obj of layer.group.children){obj.dispose();obj.geometry.dispose();obj.material.dispose();}
+    layer.group.clear();
+  }
 });
 test('native page opt-in enables and updates near-field grass but ordinary TITLE/HOME do not',()=>{
   const page=readFileSync(new URL('../src/shiretoko-phase1/preview.ts',import.meta.url),'utf8');
@@ -80,5 +129,8 @@ test('native page opt-in enables and updates near-field grass but ordinary TITLE
   assert(page.includes("if (nearMeadowReview) root.add(nearMeadowReview.group);"));
   assert(page.includes('nearMeadowReview?.sync(walking?walker.x:controls.target.x,'));
   assert(page.includes('nearMeadowTufts: nearMeadowReview?.instances ?? 0,'));
+  assert(page.includes('nearMeadowCottonClusters: nearMeadowReview?.cottonClusters ?? 0,'));
+  assert(page.includes('nearMeadowDrawGroups: nearMeadowReview?.drawGroups ?? 0,'));
+  assert(!page.includes('nearMeadowDrawGroups: nearMeadowReview?.instances ? 1 : 0,'));
   assert.throws(()=>createNearMeadowReview({},'ultra'),RangeError);
 });
