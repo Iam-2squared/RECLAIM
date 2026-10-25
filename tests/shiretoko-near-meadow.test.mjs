@@ -25,7 +25,10 @@ test('near camera grass is one bounded, true 3D instanced mesh on the exact terr
   assert(seedVertices>=12,'visible seed clusters must be baked into the shared low-poly 3D geometry');
   const pos=mesh.geometry.getAttribute('position'),bounds=mesh.geometry.boundingBox;
   mesh.geometry.computeBoundingBox();
-  assert(mesh.geometry.boundingBox.max.y>.80 && mesh.geometry.boundingBox.max.y<.88);
+  // The tallest genuine grain is h=.76 - .035 + .048*1.5 = .797 m
+  // above the rooted origin. Assert the actual compact envelope rather
+  // than the rejected (incorrectly assumed) >.80 m synthetic threshold.
+  assert(mesh.geometry.boundingBox.max.y>.79 && mesh.geometry.boundingBox.max.y<.81);
   let best=null;
   for(const [x,z] of [[-210,370],[-130,410],[-170,600],[-100,835],[-140,690]]){
     low.sync(x,z);
