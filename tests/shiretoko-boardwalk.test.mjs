@@ -224,3 +224,34 @@ test('real sloped wooden diagonal braces tie guard posts to pitched handrail wit
   for(let i=0;i<90;i++)original.step({forward:0,right:0,sprint:false,jump:false},1/60);
   assert(original.grounded&&Math.abs(original.y-boardwalk.heightAt(midpoint.x,midpoint.z))<1e-7);
 });
+
+
+test('actual terrain WebGL preview passes standalone boardwalk guard collision to the native walker', async()=>{
+  // Catch accidental page-level omission: boardwalk.blockedAt worked in unit
+  // tests but the real /shiretoko-terrain.html?boardwalk=1 walker ignored it.
+  const {readFileSync}=await import('node:fs');
+  const preview=readFileSync(new URL('../src/shiretoko-phase1/preview.ts',import.meta.url),'utf8');
+  assert(preview.includes('cabinReview || boardwalkReview || lakeLookoutReview ? reviewBlocked : undefined'),
+    'the native 3D page must enable every optional structure blocker, even boardwalk alone');
+  const rider=new TerrainWalker(terrain,boardwalk.heightAt,boardwalk.blockedAt);
+  assert(rider.place(midpoint.x,midpoint.z),'central 3.2m walking lane remains accessible');
+  const position=boardwalk.group.children[0].geometry.getAttribute('position');
+  let nearest=null, distance=Infinity;
+  for(let panel=0;panel<boardwalk.panels;panel++){
+    const a=panel*4;
+    for(const [first,last] of [[a,a+2],[a+1,a+3]]){
+      const x=(position.getX(first)+position.getX(last))*.5;
+      const z=(position.getZ(first)+position.getZ(last))*.5;
+      const d=Math.hypot(x-midpoint.x,z-midpoint.z);
+      if(d<distance && boardwalk.heightAt(x,z)!==null &&
+        boardwalk.blockedAt(x,z)){nearest={x,z};distance=d;}
+    }
+  }
+  assert(nearest && distance<4,'a physically guarded deck edge borders the walking lane');
+  assert.equal(rider.place(nearest.x,nearest.z),false,
+    'the actual preview walker may not stand inside the visible side guard');
+  assert(rider.place(midpoint.x,midpoint.z),'collision does not seal off the walkway');
+  for(let i=0;i<90;i++)rider.step({forward:0,right:0,sprint:false,jump:false},1/60);
+  assert(rider.grounded && Math.abs(rider.y-boardwalk.heightAt(midpoint.x,midpoint.z))<1e-7,
+    'the rail fix must preserve actual indexed deck contact and stable standing');
+});
