@@ -331,5 +331,22 @@
       "attempt": 1,
       "status": "4_OF_5_SUCCESS_CHROMIUM_WORLD_PENDING_AT_STATUS"
     }
+  },
+  "current_candidate": {
+    "branch": "feature/shiretoko-marsh-cottongrass-20261025",
+    "base_sha": "7b84111b6b721553a7c395f481c95efa8f619e98",
+    "feature": "marsh-fringe rooted white cottongrass, original 5m near camera grid, max one extra draw group",
+    "status": "SOURCE_CI_PENDING_UNMERGED",
+    "source_checks": {
+      "terrain": null,
+      "preview": null,
+      "native_webgl": null
+    },
+    "vercel": "BLOCKED_AUTH_403",
+    "next": [
+      "Source SHA exact 3+5+1 plus actual framebuffer/cotton count",
+      "Guarded merge on fresh main + main push 8/8",
+      "SHA pinned offline PC review or existing Vercel on legitimate access"
+    ]
   }
 }

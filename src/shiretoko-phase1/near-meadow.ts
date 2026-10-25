@@ -13,6 +13,8 @@ export type MeadowQuality = 'low' | 'balanced';
 export type NearMeadowReview = Readonly<{
   group:T.Group;
   get instances():number;
+  get cottonClusters():number;
+  get drawGroups():number;
   get rebuilds():number;
   sync:(x:number,z:number)=>boolean;
 }>;
@@ -21,8 +23,8 @@ const CONFIG = Object.freeze({
   // Twice as many visible knee-height tufts at walking distance, without
   // changing the radius, ground grid, safe clearing or one-draw GPU layout.
   // Worst-case dry-land instances remain bounded below these capacities.
-  low:Object.freeze({spacing:2.7,radius:34,capacity:600,accept:.74}),
-  balanced:Object.freeze({spacing:2.25,radius:44,capacity:1420,accept:.82}),
+  low:Object.freeze({spacing:2.7,radius:34,capacity:600,cottonCapacity:240,accept:.74}),
+  balanced:Object.freeze({spacing:2.25,radius:44,capacity:1420,cottonCapacity:600,accept:.82}),
   step:12,
 });
 const hash=(x:number,z:number,salt:number)=>{
@@ -92,6 +94,60 @@ function grassGeometry():T.BufferGeometry {
   g.setIndex(indices);g.computeVertexNormals();g.computeBoundingSphere();
   return g;
 }
+
+/**
+ * Moisture-gated Eriophorum-inspired cottongrass: two slender, slightly bent
+ * 3D stems and uneven cream cotton tufts per root. Frustum-cullable instances
+ * follow the SAME world-hashed 12m ring as ordinary meadow blades. There are
+ * no sprites, alpha cards, textures, static distant carpet, or RAF allocations.
+ */
+function cottonGrassGeometry():T.BufferGeometry {
+  const vertices:number[]=[],colours:number[]=[],indices:number[]=[];
+  const vertex=(x:number,y:number,z:number,hex:number):number=>{
+    const i=vertices.length/3,c=new T.Color(hex);
+    vertices.push(x,y,z);colours.push(c.r,c.g,c.b);return i;
+  };
+  function puff(x:number,y:number,z:number,r:number,hex:number):void {
+    const t=vertex(x,y+r,z,hex),b=vertex(x,y-r,z,hex);
+    const l=vertex(x-r,y,z,hex),right=vertex(x+r,y,z,hex);
+    const f=vertex(x,y,z+r,hex),back=vertex(x,y,z-r,hex);
+    indices.push(t,f,right,t,l,f,t,back,l,t,right,back,
+      b,right,f,b,f,l,b,l,back,b,back,right);
+  }
+  const stems=[
+    {x:-.09,z:.025,h:.94,dx:-.065,dz:.075},
+    {x:.115,z:-.05,h:.78,dx:.07,dz:-.045},
+  ] as const;
+  for(const [i,stem] of stems.entries()){
+    const start=vertices.length/3;
+    for(let ring=0;ring<3;ring++){
+      const t=ring/2,h=(stem.h-.085)*t,r=.016-.006*t;
+      const x=stem.x+stem.dx*t*t,z=stem.z+stem.dz*t*t;
+      for(let side=0;side<3;side++){
+        const angle=side*Math.PI*2/3+i*.3;
+        vertex(x+Math.cos(angle)*r,.012+h,z+Math.sin(angle)*r,
+          ring===0?0x627b4c:ring===1?0x8da16c:0xabb48a);
+      }
+    }
+    for(let ring=0;ring<2;ring++)for(let side=0;side<3;side++){
+      const a=start+ring*3+side,b=start+ring*3+(side+1)%3;
+      indices.push(a,b,a+3,b,b+3,a+3);
+    }
+    const tipX=stem.x+stem.dx,tipZ=stem.z+stem.dz;
+    // Separated, nonidentical octahedra make a cotton tuft with volume in
+    // every viewing direction instead of the same flat white billboard.
+    puff(tipX,stem.h,tipZ,.073,i?0xe7e2cf:0xf3f0e2);
+    puff(tipX-.045,stem.h+.012,tipZ+.02,.051,0xf7f5e9);
+    puff(tipX+.047,stem.h-.025,tipZ-.034,.046,0xdedbc8);
+    puff(tipX+.008,stem.h+.035,tipZ+.052,.043,0xeee9d7);
+  }
+  const g=new T.BufferGeometry();
+  g.setAttribute('position',new T.Float32BufferAttribute(vertices,3));
+  g.setAttribute('color',new T.Float32BufferAttribute(colours,3));
+  g.setIndex(indices);g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();
+  return g;
+}
+
 export function createNearMeadowReview(
   terrain:ShiretokoTerrain,quality:MeadowQuality='low',
 ):NearMeadowReview {
@@ -103,8 +159,15 @@ export function createNearMeadowReview(
   mesh.count=0;
   mesh.instanceMatrix.setUsage(T.DynamicDrawUsage);
   mesh.frustumCulled=true;
+  // One extra bounded draw batch ONLY where the real terrain is damp, not
+  // a full-map mesh. No additional per-frame material or geometry creation.
+  const cotton=new T.InstancedMesh(cottonGrassGeometry(),
+    new T.MeshLambertMaterial({vertexColors:true,flatShading:true}),spec.cottonCapacity);
+  cotton.name='flora/review/near-field-cottongrass/moisture-gated';
+  cotton.count=0;cotton.instanceMatrix.setUsage(T.DynamicDrawUsage);
+  cotton.frustumCulled=true;
   const group=new T.Group();group.name='opt-in terrain-grounded near-field meadow';
-  group.add(mesh);
+  group.add(mesh,cotton);
   const origin=new T.Vector3(),rotation=new T.Quaternion(),scale=new T.Vector3(),mat=new T.Matrix4(),axis=new T.Vector3(0,1,0);
   const instanceTint=new T.Color();
   let anchorX=Infinity,anchorZ=Infinity,rebuilds=0;
@@ -115,7 +178,7 @@ export function createNearMeadowReview(
     const cz=Math.floor(z/CONFIG.step)*CONFIG.step;
     if(cx===anchorX&&cz===anchorZ)return false;
     anchorX=cx;anchorZ=cz;rebuilds++;
-    let count=0;
+    let count=0,cottonCount=0;
     const loX=Math.floor((cx-spec.radius)/spec.spacing);
     const hiX=Math.ceil((cx+spec.radius)/spec.spacing);
     const loZ=Math.floor((cz-spec.radius)/spec.spacing);
@@ -133,9 +196,10 @@ export function createNearMeadowReview(
         hash(gx,gz,1)>localAccept)continue;
       // Protect open water, sensitive marsh, the walkable trail, cabin stairs,
       // lookout site and existing unchanged 5m terrain/collision surface.
-      const y=terrain.heightAt(px,pz),wet=wetnessAt(px,pz,y);
-      if(!Number.isFinite(y)||!Number.isFinite(wet)||y>265||terrain.inWater(px,pz)||
-        terrain.slopeAt(px,pz)>.48||wet>.70||
+      const y=terrain.heightAt(px,pz),wet=wetnessAt(px,pz,y),slope=terrain.slopeAt(px,pz);
+      if(!Number.isFinite(y)||!Number.isFinite(wet)||!Number.isFinite(slope)||
+        y>265||terrain.inWater(px,pz)||
+        slope>.48||wet>.70||
         routeSample(px,pz).distance<FLORA_RULES.trailClearance)continue;
       const foundation=Math.min(Math.hypot(px+170,pz-850)-65,
         Math.hypot(px+140,pz+310)-18,cabinSiteClearanceDistance(px,pz));
@@ -155,7 +219,16 @@ export function createNearMeadowReview(
         sunny*(.94+.08*wet),sunny*(.84+.16*wet));
       mesh.setColorAt(count,instanceTint);
       mesh.setMatrixAt(count++,mat);
+      // Marsh-fringe cottongrass shares that ROOT/rotation/scale, so every
+      // white head grows out of an accepted physical 5m-ground grass clump.
+      // Wet inland edges only: the dry forest, open water, steep banks, route
+      // and all timber/cabin clearances remain free.
+      if(wet>=.14&&wet<=.65&&slope<.35&&
+        hash(gx,gz,19)<.40&&cottonCount<spec.cottonCapacity)
+        cotton.setMatrixAt(cottonCount++,mat);
     }
+    cotton.count=cottonCount;cotton.instanceMatrix.needsUpdate=true;
+    cotton.computeBoundingSphere();
     mesh.count=count;mesh.instanceMatrix.needsUpdate=true;
     if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
     mesh.computeBoundingSphere();
@@ -163,5 +236,7 @@ export function createNearMeadowReview(
   }
   return Object.freeze({group,
     get instances(){return mesh.count;},
+    get cottonClusters(){return cotton.count;},
+    get drawGroups(){return (mesh.count>0?1:0)+(cotton.count>0?1:0);},
     get rebuilds(){return rebuilds;},sync});
 }
