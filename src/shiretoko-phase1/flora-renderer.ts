@@ -86,22 +86,25 @@ function geometryFor(kind: FloraKind): T.BufferGeometry {
       }
       break;
     case 'birch':
-      // A split, offset deciduous crown makes birch read differently from
-      // spruce in both distant silhouette and low-density SwiftShader mode.
+      // Five offset, overlapping deciduous crown lobes now project into
+      // distinct west/east/depth silhouettes instead of hiding the pale
+      // fork limbs inside one oval canopy. This relocates existing geometry,
+      // not a second foliage population: every real vertex stays inside the
+      // original one-material, one-instanced-mesh, <500-vertex birch budget.
       trunk(0xbab3a0,7.25,.16);
-      rock(0x6b8554,-.75,5.35,.08,1.11,1.18,.99);
-      rock(0x6e925c,.60,5.86,-.31,1.28,1.16,1.10);
-      rock(0x4e7651,-.19,6.77,.52,1.11,1.13,1.02);
-      rock(0x729057,.46,7.49,.11,.73,.87,.78);
-      rock(0x547a52,-.51,6.79,-.58,.79,.95,.77);
-      // Two uneven pale fork limbs, partly emerging between crown lobes.
-      // Their geometry and bark scars are merged into this SAME shared birch
-      // species mesh. No new textures, draw calls, instances or collision.
+      rock(0x6b8554,-1.02,5.40,.28,1.14,1.18,.99);
+      rock(0x6e925c,.99,5.95,-.54,1.13,1.16,1.04);
+      rock(0x4e7651,-.35,6.76,.68,1.11,1.13,1.02);
+      rock(0x729057,.41,7.55,.20,.73,.87,.78);
+      rock(0x547a52,-.85,6.80,-.66,.79,.95,.77);
+      // These TWO pre-existing fork cylinders lean towards opposite actual
+      // leaf lobes, partly visible against the sky. Rotations and centres
+      // change, not branch count, 5m foot contact, route clearing or saves.
       part(parts,new T.CylinderGeometry(.045,.10,2.35,4,1),0xa59f8a,g=>{
-        g.rotateZ(.51);g.translate(.43,5.54,.18);
+        g.rotateZ(-.66);g.translate(.76,5.64,-.20);
       });
       part(parts,new T.CylinderGeometry(.04,.085,1.84,4,1),0xb4ad98,g=>{
-        g.rotateZ(-.63);g.translate(-.53,6.10,-.18);
+        g.rotateZ(.76);g.translate(-.80,5.98,.23);
       });
       // Lenticel scars break up the bright, formerly featureless trunk from
       // near walking distance. Six double-sided planes, not six scene meshes.
@@ -413,8 +416,10 @@ export function createFloraReviewLayer(
       // Species-specific, deterministic nonuniform silhouettes prevent
       // identical trees without extra instances, materials or draw calls.
       if(kind==='spruce' || kind==='birch'){
-        const width=.90+.14*Math.abs(Math.sin(p.rotation*1.7));
-        const depth=.90+.14*Math.abs(Math.cos(p.rotation*1.3));
+        // Birch crowns spread more laterally than columnar spruce. Use the
+        // pre-existing deterministic rotation/grounded instance matrix.
+        const width=(kind==='birch'?.94:.90)+(kind==='birch'?.20:.14)*Math.abs(Math.sin(p.rotation*1.7));
+        const depth=(kind==='birch'?.92:.90)+(kind==='birch'?.18:.14)*Math.abs(Math.cos(p.rotation*1.3));
         const height=.93+.12*Math.abs(Math.sin(p.rotation+.75));
         scale.set(s*width,s*height,s*depth);
       } else if(kind==='alpine-shrub'){
