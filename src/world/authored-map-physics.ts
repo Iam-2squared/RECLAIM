@@ -16,6 +16,20 @@ export interface AuthoredMapPhysicsData {
   trail?:{path?:readonly (readonly number[])[];playable_end?:readonly number[]};
 }
 
+/** Runtime additions are separate from the immutable supplied map payload. */
+export interface AuthoredPhysicsLayer {
+  walkingMeshes:readonly AuthoredMesh[];
+  colliders:readonly Collider[];
+  groundMask?:AuthoredGroundMask;
+}
+export interface AuthoredGroundMask {center:{x:number;z:number};radius:number;sides:number}
+export function authoredGroundMaskContains(mask:AuthoredGroundMask,x:number,z:number):boolean {
+  const dx=x-mask.center.x,dz=z-mask.center.z,squared=dx*dx+dz*dz,sector=Math.PI*2/mask.sides,inner=mask.radius*Math.cos(sector/2);
+  if(squared>=mask.radius*mask.radius)return false;if(squared<inner*inner)return true;
+  const angle=Math.atan2(dz,dx),local=((angle%sector)+sector)%sector-sector/2;
+  const edge=inner/Math.cos(local);return squared<edge*edge;
+}
+
 type Triangle={ax:number;az:number;ay:number;bx:number;bz:number;by:number;cx:number;cz:number;cy:number;den:number;slope:number;kind:number};
 type Surface={height:number;slope:number;kind:number};
 const CELL=12,COLLISION_CELL=16,STEP=.48;
@@ -73,6 +87,7 @@ export class AuthoredMapPhysics {
   private readonly ground=new TriangleIndex();
   private readonly walking=new TriangleIndex();
   private readonly water=new TriangleIndex();
+  private readonly groundMasks:readonly AuthoredGroundMask[];
   private readonly colliderCells=new Map<string,Collider[]>();
   private readonly nearbyCache=new Map<string,readonly Collider[]>();
   private readonly sample:Surface={height:-Infinity,slope:Infinity,kind:-1};
@@ -84,8 +99,9 @@ export class AuthoredMapPhysics {
   private readonly sampleHasHeight=new Uint8Array(128);
   private readonly samples:Array<Surface|null|undefined>=new Array(128);
 
-  constructor(data:AuthoredMapPhysicsData){
+  constructor(data:AuthoredMapPhysicsData,layers:readonly AuthoredPhysicsLayer[]=[]){
     this.data=data;
+    this.groundMasks=layers.flatMap(layer=>layer.groundMask?[layer.groundMask]:[]);
     const sourceBounds=data.bounds;
     this.bounds=sourceBounds?{minX:sourceBounds.min[0],maxX:sourceBounds.max[0],minZ:Math.max(-sourceBounds.max[1],-(data.boundary?.hardLimit??630)+(data.boundary?.safetyMargin??1.25)),maxZ:-sourceBounds.min[1]}:{...AUTHORED_MAP_META.bounds};
     for(const mesh of data.meshes){
@@ -99,6 +115,7 @@ export class AuthoredMapPhysics {
       const trail=/Trail \/ (木道と登山階段|土と高山の小径|山越えの展望デッキ|山道の岩混じり盛土)$/.test(name);
       if(house||warehouse||trail)this.walking.add(mesh,/StartHouse_floor2/.test(name)?3:/Mezzanine/.test(name)?4:1);
     }
+    for(const layer of layers)for(const mesh of layer.walkingMeshes)this.walking.add(mesh,1);
     const collisions:Collider[]=[],dedup=new Set<string>();
     const addCollider=(collider:Collider)=>{
       const key=collider.type==='aabb'?`${Math.round(collider.minX*100)},${Math.round(collider.maxX*100)},${Math.round(collider.minZ*100)},${Math.round(collider.maxZ*100)},${Math.round(collider.minY*100)},${Math.round(collider.maxY*100)}`:`${collider.x},${collider.z},${collider.radius}`;
@@ -150,6 +167,7 @@ export class AuthoredMapPhysics {
       addCollider({type:'cylinder',x:p.x,z:p.z,radius:Math.max(.15,Math.min(3,radius)),minY:p.y,maxY:p.y+height,tag:`authored/${tree?'tree':'stone'}`});
     }
     addCollider({type:'aabb',minX:this.bounds.minX-10,maxX:this.bounds.maxX+10,minZ:this.bounds.minZ-2,maxZ:this.bounds.minZ-.02,minY:-100,maxY:1000,tag:'authored/fog-boundary'});
+    for(const layer of layers)for(const collider of layer.colliders)addCollider(collider);
     this.colliders=collisions;
     for(const collider of collisions){
       const minX=collider.type==='aabb'?collider.minX:collider.x-collider.radius,maxX=collider.type==='aabb'?collider.maxX:collider.x+collider.radius,minZ=collider.type==='aabb'?collider.minZ:collider.z-collider.radius,maxZ=collider.type==='aabb'?collider.maxZ:collider.z+collider.radius;
@@ -169,7 +187,10 @@ export class AuthoredMapPhysics {
     let hash=bits[0]^bits[1]^bits[2]^bits[3]^bits[4]^bits[5];hash=Math.imul(hash^(hash>>>16),0x45d9f3b);const slot=(hash^(hash>>>16))&127;
     if(this.sampleValid[slot]&&this.sampleX[slot]===x&&this.sampleZ[slot]===z&&this.sampleHasHeight[slot]===explicit&&(!explicit||this.sampleY[slot]===referenceY))return this.samples[slot]??null;
     this.sample.height=-Infinity;this.sample.slope=Infinity;this.sample.kind=-1;
-    let found=this.ground.top(x,z,this.sample);
+    // The replacement patch is visible instead of the original ground. Existing
+    // trail/building tops remain valid walking surfaces above the new earthworks.
+    const replaced=this.groundMasks.length>0&&this.groundMasks.some(mask=>authoredGroundMaskContains(mask,x,z));
+    let found=!replaced&&this.ground.top(x,z,this.sample);
     // Upper floors still require the caller's exact current height. Cache keys
     // retain the exact coordinates and reference height; no position rounding.
     found=this.walking.top(x,z,this.sample,explicit?referenceY!+STEP:Infinity,!!explicit,this.sample.height)||found;
@@ -212,4 +233,4 @@ export class AuthoredMapPhysics {
   }
 }
 
-export function createAuthoredMapPhysics(data:AuthoredMapPhysicsData):AuthoredMapPhysics{return new AuthoredMapPhysics(data);}
+export function createAuthoredMapPhysics(data:AuthoredMapPhysicsData,layers:readonly AuthoredPhysicsLayer[]=[]):AuthoredMapPhysics{return new AuthoredMapPhysics(data,layers);}

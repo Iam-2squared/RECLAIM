@@ -31,3 +31,17 @@ test('destroyed factory devices lose their energy indicators and damage digits u
  const initial=view.snapshot().activeDamage;for(const amount of [0,-1,NaN,Infinity])view.showDamage({x:0,y:1,z:0},amount);assert.equal(view.snapshot().activeDamage,initial);
  view.setReducedMotion(true);view.step(.1);assert(number.position.y<1.4);view.dispose();
 });
+
+test('two warehouses display four independent devices and reuse their visuals across resets',()=>{
+ const {view,scene}=fixture();
+ const four=devices.flatMap((device,index)=>[0,1].map(source=>({...device,id:`warehouse-${source}:${device.id}`,position:{x:source*100+index*5,y:0,z:0},hp:500,maxHp:500})));
+ const fill=()=>{for(let i=0;i<50;i++)view.setEnemyHealth(`unit-${i}`,{x:i,y:0,z:0},30,30);view.setSpawnDevices(four);};
+ fill();const initial=view.snapshot();assert.equal(initial.devices.length,4);assert.equal(initial.deviceBars,4);assert.equal(initial.healthBarCapacity,54);
+ view.setViewDistance(30);view.step(0);assert.equal(scene.children.filter(child=>['Humanoid assembly bay','Drone launch platform'].includes(child.name)&&child.visible).length,2);
+ view.setDeviceHealth(four[0].id,four[0].position,0,500);
+ assert.equal(view.snapshot().devices.find(device=>device.id===four[0].id).destroyed,true);
+ assert.equal(view.snapshot().devices.find(device=>device.id===four[1].id).destroyed,false);
+ for(let i=0;i<12;i++){view.reset();fill();assert.deepEqual(view.snapshot().resources,initial.resources);assert.equal(view.snapshot().healthBarCapacity,54);}
+ view.setSpawnDevices(four.map(device=>({...device,id:`replacement:${device.id}`})));assert.equal(view.snapshot().devices.length,4);assert.deepEqual(view.snapshot().resources,initial.resources);
+ view.dispose();assert.deepEqual(view.snapshot().resources,{geometries:0,materials:0,textures:0});
+});

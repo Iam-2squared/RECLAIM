@@ -1,5 +1,6 @@
 import {HumanoidEnemy,RamDrone,ENEMY_RULES,type EnemyPosition,type EnemyState} from './enemy-ai.ts';
 import {authoredPoint,type AuthoredMapPhysicsData,type AuthoredMesh} from '../world/authored-map-physics.ts';
+import {createShiretokoEncounterLayout} from '../world/shiretoko-encounter-layout.ts';
 
 export type HordeKind='humanoid'|'drone';
 export type HordeTerrain={
@@ -11,14 +12,16 @@ export type HordeTerrain={
 export type HordeConfig={cap:number;spawnInterval:number;deviceHp:number;level:number;roadHalfWidth:number;fixedStep:number;initialRoadDistances:readonly number[]};
 export const HORDE_DEFAULTS:Readonly<HordeConfig>=Object.freeze({cap:50,spawnInterval:5,deviceHp:500,level:1,roadHalfWidth:1.45,fixedStep:1/30,initialRoadDistances:Object.freeze([28,44])});
 export type HordeEvent=
-  |{type:'spawn';id:string;kind:HordeKind;position:EnemyPosition;initial:boolean;at:number}
-  |{type:'skipped';kind:HordeKind;slot:number;at:number}
+  |{type:'spawn';id:string;sourceId:string;kind:HordeKind;position:EnemyPosition;initial:boolean;at:number}
+  |{type:'skipped';sourceId:string;kind:HordeKind;slot:number;at:number}
   |{type:'hit'|'death';id:string;kind:HordeKind;position:EnemyPosition;amount:number}
   |{type:'device-hit'|'device-destroyed';id:string;kind:HordeKind;position:EnemyPosition;amount:number}
   |{type:'player-damage';id:string;amount:number;position:EnemyPosition};
 export type HordeStepContext={visible?:(unit:HordeUnit)=>boolean;canMove?:(from:Readonly<EnemyPosition>,to:Readonly<EnemyPosition>,radius:number,kind:HordeKind)=>boolean;combatEnabled?:boolean};
-export type HordeDevice={id:string;kind:HordeKind;position:EnemyPosition;radius:number;hp:number;maxHp:number;destroyed:boolean};
-export type HordeOptions={road:readonly EnemyPosition[];warehouseRoad:Readonly<Record<HordeKind,readonly EnemyPosition[]>>;terrain:HordeTerrain;devices:readonly {kind:HordeKind;position:EnemyPosition;radius?:number}[];warehouseBounds?:{minX:number;maxX:number;minZ:number;maxZ:number};config?:Partial<HordeConfig>};
+export type HordeDevice={id:string;sourceId:string;kind:HordeKind;position:EnemyPosition;radius:number;hp:number;maxHp:number;destroyed:boolean};
+export type HordeWarehouseBounds={minX:number;maxX:number;minZ:number;maxZ:number};
+export type HordeSourceOptions={id:string;cap:number;warehouseRoad:Readonly<Record<HordeKind,readonly EnemyPosition[]>>;devices:readonly {kind:HordeKind;position:EnemyPosition;radius?:number}[];warehouseBounds?:HordeWarehouseBounds};
+export type HordeOptions={road:readonly EnemyPosition[];terrain:HordeTerrain;sources?:readonly HordeSourceOptions[];warehouseRoad?:HordeSourceOptions['warehouseRoad'];devices?:HordeSourceOptions['devices'];warehouseBounds?:HordeWarehouseBounds;config?:Partial<HordeConfig>};
 const flat=(a:Readonly<EnemyPosition>,b:Readonly<EnemyPosition>)=>Math.hypot(a.x-b.x,a.z-b.z);
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const finitePoint=(p:Readonly<EnemyPosition>)=>[p.x,p.y,p.z].every(Number.isFinite);
@@ -67,10 +70,10 @@ class Road {
 }
 
 export class HordeUnit {
-  readonly id:string;readonly kind:HordeKind;readonly machine:HumanoidEnemy|RamDrone;
+  readonly id:string;readonly sourceId:string;readonly sourceSlot:number;readonly kind:HordeKind;readonly machine:HumanoidEnemy|RamDrone;
   roadDistance:number;warehouseDistance=0;lane:'road'|'warehouse';readonly slot:number;readonly initial:boolean;
-  constructor(id:string,kind:HordeKind,position:EnemyPosition,slot:number,initial:boolean,level:number,roadDistance:number){
-    this.id=id;this.kind=kind;this.slot=slot;this.initial=initial;this.roadDistance=roadDistance;this.lane=initial?'road':'warehouse';
+  constructor(id:string,kind:HordeKind,position:EnemyPosition,slot:number,initial:boolean,level:number,roadDistance:number,sourceId='warehouse',sourceSlot=slot){
+    this.id=id;this.sourceId=sourceId;this.sourceSlot=sourceSlot;this.kind=kind;this.slot=slot;this.initial=initial;this.roadDistance=roadDistance;this.lane=initial?'road':'warehouse';
     this.machine=kind==='humanoid'?new HumanoidEnemy(position.x,position.z,position.y,level):new RamDrone(position.x,position.z,position.y,level);
   }
   get position():EnemyPosition{return this.machine.position;}
@@ -79,45 +82,60 @@ export class HordeUnit {
   get yaw():number{return this.machine.yaw;}
   get state():EnemyState{return this.machine.state;}
   get motion(){return this.machine.motion;}
-  snapshot(){return{...this.machine.snapshot(),id:this.id,slot:this.slot,initial:this.initial,lane:this.lane,roadDistance:this.roadDistance,warehouseDistance:this.warehouseDistance};}
+  snapshot(){return{...this.machine.snapshot(),id:this.id,sourceId:this.sourceId,sourceSlot:this.sourceSlot,slot:this.slot,initial:this.initial,lane:this.lane,roadDistance:this.roadDistance,warehouseDistance:this.warehouseDistance};}
 }
+
+type HordeSource={id:string;cap:number;warehouseRoad:Record<HordeKind,Road>;warehouseBounds?:HordeWarehouseBounds;joins:Record<HordeKind,number>;devices:HordeDevice[];scheduled:number;spawned:number;killed:number;skipped:number;nextSpawnAt:number;playerBranch:Record<HordeKind,RoadProjection|null>};
 
 /** Pure fixed-step encounter scheduler and road-bound navigation. No wall clock or rendering. */
 export class HordeDirector {
   readonly config:HordeConfig;readonly terrain:HordeTerrain;readonly units:HordeUnit[]=[];readonly devices:HordeDevice[];
-  readonly road:Road;readonly warehouseRoad:Record<HordeKind,Road>;
-  private readonly warehouseBounds:HordeOptions['warehouseBounds'];private readonly joins:Record<HordeKind,number>;
-  private accumulator=0;private pending:HordeEvent[]=[];private nextSpawnAt=Infinity;
+  readonly road:Road;readonly warehouseRoad:Record<HordeKind,Road>;readonly sources:readonly HordeSource[];
+  private readonly sourceById=new Map<string,HordeSource>();private readonly multiSource:boolean;
+  private accumulator=0;private pending:HordeEvent[]=[];
   private playerX=NaN;private playerZ=NaN;private playerMain:RoadProjection|null=null;
-  private readonly playerBranch:Record<HordeKind,RoadProjection|null>={humanoid:null,drone:null};
   elapsed=0;scheduled=0;spawned=0;killed=0;skipped=0;
   constructor(options:HordeOptions){
     this.config={...HORDE_DEFAULTS,...options.config};this.config.cap=Math.max(2,Math.min(50,Math.floor(this.config.cap)));this.config.spawnInterval=Math.max(.1,this.config.spawnInterval);this.config.fixedStep=clamp(this.config.fixedStep,1/120,.1);
-    this.terrain=options.terrain;this.road=new Road(options.road);this.warehouseRoad={humanoid:new Road(options.warehouseRoad.humanoid),drone:new Road(options.warehouseRoad.drone)};this.warehouseBounds=options.warehouseBounds;
-    this.joins={humanoid:this.road.project(this.warehouseRoad.humanoid.at(this.warehouseRoad.humanoid.length)).along,drone:this.road.project(this.warehouseRoad.drone.at(this.warehouseRoad.drone.length)).along};
-    this.devices=(['humanoid','drone'] as const).map(kind=>{const source=options.devices.find(d=>d.kind===kind);if(!source||!finitePoint(source.position))throw new RangeError(`Missing finite ${kind} spawn device`);return{id:`spawn-${kind}`,kind,position:{...source.position},radius:source.radius??.75,hp:this.config.deviceHp,maxHp:this.config.deviceHp,destroyed:false};});
+    this.terrain=options.terrain;this.road=new Road(options.road);this.multiSource=options.sources!==undefined;
+    if(!this.multiSource&&(!options.warehouseRoad||!options.devices))throw new RangeError('A horde requires warehouse roads and spawn devices');
+    const definitions=options.sources??[{id:'warehouse',cap:this.config.cap,warehouseRoad:options.warehouseRoad!,devices:options.devices!,warehouseBounds:options.warehouseBounds}];
+    if(!definitions.length)throw new RangeError('A horde requires at least one spawn source');
+    let totalCap=0;
+    this.sources=definitions.map(definition=>{
+      if(!definition.id||this.sourceById.has(definition.id)||!Number.isInteger(definition.cap)||definition.cap<1)throw new RangeError('Horde spawn sources require unique ids and positive integer caps');
+      totalCap+=definition.cap;
+      const warehouseRoad={humanoid:new Road(definition.warehouseRoad.humanoid),drone:new Road(definition.warehouseRoad.drone)},joins={humanoid:this.road.project(warehouseRoad.humanoid.at(warehouseRoad.humanoid.length)).along,drone:this.road.project(warehouseRoad.drone.at(warehouseRoad.drone.length)).along};
+      const devices=(['humanoid','drone'] as const).map(kind=>{const device=definition.devices.find(d=>d.kind===kind);if(!device||!finitePoint(device.position))throw new RangeError(`Missing finite ${kind} spawn device in ${definition.id}`);return{id:this.multiSource?`${definition.id}:spawn-${kind}`:`spawn-${kind}`,sourceId:definition.id,kind,position:{...device.position},radius:device.radius??.75,hp:this.config.deviceHp,maxHp:this.config.deviceHp,destroyed:false};});
+      const source:HordeSource={id:definition.id,cap:definition.cap,warehouseRoad,warehouseBounds:definition.warehouseBounds,joins,devices,scheduled:0,spawned:0,killed:0,skipped:0,nextSpawnAt:this.config.spawnInterval,playerBranch:{humanoid:null,drone:null}};this.sourceById.set(source.id,source);return source;
+    });
+    if(totalCap>50)throw new RangeError('Horde spawn source caps cannot exceed 50 in total');
+    this.config.cap=totalCap;if(this.multiSource)this.config.initialRoadDistances=[];
+    this.warehouseRoad=this.sources[0].warehouseRoad;this.devices=this.sources.flatMap(source=>source.devices);
     this.reset();
   }
   private initialSpawn(slot:number,distance:number):void {
     const kind:HordeKind=slot%2?'humanoid':'drone',point=this.road.at(distance),ground=this.terrain.heightAt(point.x,point.z,point.y);point.y=Number.isFinite(ground)?ground:point.y;
-    this.addUnit(kind,point,slot,true,distance);
+    this.addUnit(this.sources[0],kind,point,slot,true,distance);
   }
-  private addUnit(kind:HordeKind,point:EnemyPosition,slot:number,initial:boolean,distance:number):void {
-    const id=`horde-${kind}-${String(slot).padStart(3,'0')}`,unit=new HordeUnit(id,kind,point,slot,initial,this.config.level,distance);this.units.push(unit);this.spawned++;
-    this.pending.push({type:'spawn',id,kind,position:{...unit.position},initial,at:this.elapsed});
+  private addUnit(source:HordeSource,kind:HordeKind,point:EnemyPosition,sourceSlot:number,initial:boolean,distance:number):void {
+    const id=this.multiSource?`horde-${source.id}-${kind}-${String(sourceSlot).padStart(3,'0')}`:`horde-${kind}-${String(sourceSlot).padStart(3,'0')}`,unit=new HordeUnit(id,kind,point,this.scheduled,initial,this.config.level,distance,source.id,sourceSlot);this.units.push(unit);this.spawned++;source.spawned++;
+    this.pending.push({type:'spawn',id,sourceId:source.id,kind,position:{...unit.position},initial,at:this.elapsed});
   }
   reset():void {
-    this.units.length=0;this.pending=[];this.elapsed=0;this.accumulator=0;this.scheduled=0;this.spawned=0;this.killed=0;this.skipped=0;this.nextSpawnAt=this.config.spawnInterval;
+    this.units.length=0;this.pending=[];this.elapsed=0;this.accumulator=0;this.scheduled=0;this.spawned=0;this.killed=0;this.skipped=0;
     for(const device of this.devices){device.hp=device.maxHp;device.destroyed=false;}
-    this.playerX=this.playerZ=NaN;this.playerMain=this.playerBranch.humanoid=this.playerBranch.drone=null;
-    for(let i=0;i<Math.min(2,this.config.cap);i++){this.scheduled++;this.initialSpawn(i+1,this.config.initialRoadDistances[i]??28+i*16);}
+    this.playerX=this.playerZ=NaN;this.playerMain=null;
+    for(const source of this.sources){source.scheduled=source.spawned=source.killed=source.skipped=0;source.nextSpawnAt=this.config.spawnInterval;source.playerBranch.humanoid=source.playerBranch.drone=null;}
+    if(!this.multiSource)for(let i=0;i<Math.min(2,this.config.cap,this.config.initialRoadDistances.length);i++){this.scheduled++;this.sources[0].scheduled++;this.initialSpawn(i+1,this.config.initialRoadDistances[i]);}
   }
-  get finished():boolean{return this.scheduled>=this.config.cap||this.devices.every(device=>device.destroyed);}
+  private sourceFinished(source:HordeSource):boolean{return source.scheduled>=source.cap||source.devices.every(device=>device.destroyed);}
+  get finished():boolean{return this.sources.every(source=>this.sourceFinished(source));}
   get targets():readonly HordeUnit[]{return this.units.filter(unit=>unit.hp>0);}
   hit(id:string,damage:number):boolean {
     const unit=this.units.find(unit=>unit.id===id);if(!unit||!unit.machine.hit(damage))return false;
     this.pending.push({type:'hit',id,kind:unit.kind,position:{...unit.position},amount:damage});
-    if(unit.hp===0){this.killed++;this.pending.push({type:'death',id,kind:unit.kind,position:{...unit.position},amount:damage});}
+    if(unit.hp===0){this.killed++;this.sourceById.get(unit.sourceId)!.killed++;this.pending.push({type:'death',id,kind:unit.kind,position:{...unit.position},amount:damage});}
     return true;
   }
   hitDevice(id:string,damage:number):boolean {
@@ -128,18 +146,20 @@ export class HordeDirector {
     return true;
   }
   private schedule():void {
-    if(this.finished||this.elapsed+1e-7<this.nextSpawnAt)return;
-    const slot=++this.scheduled,kind:HordeKind=slot%2?'humanoid':'drone',device=this.devices.find(device=>device.kind===kind)!;
-    this.nextSpawnAt+=this.config.spawnInterval;
-    if(device.destroyed){this.skipped++;this.pending.push({type:'skipped',kind,slot,at:this.elapsed});return;}
-    const point=this.warehouseRoad[kind].at(0),ground=this.terrain.heightAt(point.x,point.z,point.y);point.y=Number.isFinite(ground)?ground:point.y;
-    this.addUnit(kind,point,slot,false,this.joins[kind]);
+    for(const source of this.sources){
+      if(this.sourceFinished(source)||this.elapsed+1e-7<source.nextSpawnAt)continue;
+      const sourceSlot=++source.scheduled,slot=++this.scheduled,kind:HordeKind=sourceSlot%2?'humanoid':'drone',device=source.devices[kind==='humanoid'?0:1];
+      source.nextSpawnAt+=this.config.spawnInterval;
+      if(device.destroyed){this.skipped++;source.skipped++;this.pending.push({type:'skipped',sourceId:source.id,kind,slot,at:this.elapsed});continue;}
+      const point=source.warehouseRoad[kind].at(0),ground=this.terrain.heightAt(point.x,point.z,point.y);point.y=Number.isFinite(ground)?ground:point.y;
+      this.addUnit(source,kind,point,sourceSlot,false,source.joins[kind]);
+    }
   }
   private corridor(point:Readonly<EnemyPosition>,unit:HordeUnit,radius:number):boolean {
-    const b=this.warehouseBounds;
+    const source=this.sourceById.get(unit.sourceId)!,b=source.warehouseBounds;
     if(b&&point.x>=b.minX+radius&&point.x<=b.maxX-radius&&point.z>=b.minZ+radius&&point.z<=b.maxZ-radius)return true;
     const half=Math.max(.55,this.config.roadHalfWidth-radius);
-    return this.road.project(point).distance<=half||this.warehouseRoad[unit.kind].project(point).distance<=Math.max(half,1.2);
+    return this.road.project(point).distance<=half||source.warehouseRoad[unit.kind].project(point).distance<=Math.max(half,1.2);
   }
   private permission(unit:HordeUnit,from:Readonly<EnemyPosition>,to:Readonly<EnemyPosition>,radius:number,context:HordeStepContext):boolean {
     if(!finitePoint(to))return false;
@@ -155,14 +175,14 @@ export class HordeDirector {
   }
   private syncDistances(unit:HordeUnit):void {
     if(unit.lane==='road')unit.roadDistance=this.road.project(unit.position).along;
-    else unit.warehouseDistance=this.warehouseRoad[unit.kind].project(unit.position).along;
+    else unit.warehouseDistance=this.sourceById.get(unit.sourceId)!.warehouseRoad[unit.kind].project(unit.position).along;
   }
   private navigate(unit:HordeUnit,player:Readonly<EnemyPosition>,dt:number,context:HordeStepContext):void {
-    if(player.x!==this.playerX||player.z!==this.playerZ){this.playerX=player.x;this.playerZ=player.z;this.playerMain=this.playerBranch.humanoid=this.playerBranch.drone=null;}
-    const branch=this.warehouseRoad[unit.kind],mainPlayer=this.playerMain??(this.playerMain=this.road.project(player)),branchPlayer=this.playerBranch[unit.kind]??(this.playerBranch[unit.kind]=branch.project(player)),playerOnBranch=branchPlayer.distance+1<mainPlayer.distance;
-    let route=unit.lane==='road'?this.road:branch,along=unit.lane==='road'?unit.roadDistance:unit.warehouseDistance,target=unit.lane==='road'?(playerOnBranch?this.joins[unit.kind]:mainPlayer.along):(playerOnBranch?branchPlayer.along:branch.length);
+    if(player.x!==this.playerX||player.z!==this.playerZ){this.playerX=player.x;this.playerZ=player.z;this.playerMain=null;for(const source of this.sources)source.playerBranch.humanoid=source.playerBranch.drone=null;}
+    const source=this.sourceById.get(unit.sourceId)!,branch=source.warehouseRoad[unit.kind],mainPlayer=this.playerMain??(this.playerMain=this.road.project(player)),branchPlayer=source.playerBranch[unit.kind]??(source.playerBranch[unit.kind]=branch.project(player)),playerOnBranch=branchPlayer.distance+1<mainPlayer.distance;
+    let route=unit.lane==='road'?this.road:branch,along=unit.lane==='road'?unit.roadDistance:unit.warehouseDistance,target=unit.lane==='road'?(playerOnBranch?source.joins[unit.kind]:mainPlayer.along):(playerOnBranch?branchPlayer.along:branch.length);
     if(Math.abs(target-along)<.18){
-      if(unit.lane==='warehouse'&&!playerOnBranch){unit.lane='road';unit.roadDistance=this.joins[unit.kind];route=this.road;along=unit.roadDistance;target=mainPlayer.along;}
+      if(unit.lane==='warehouse'&&!playerOnBranch){unit.lane='road';unit.roadDistance=source.joins[unit.kind];route=this.road;along=unit.roadDistance;target=mainPlayer.along;}
       else if(unit.lane==='road'&&playerOnBranch){unit.lane='warehouse';unit.warehouseDistance=branch.length;route=branch;along=branch.length;target=branchPlayer.along;}
       else return;
     }
@@ -205,7 +225,12 @@ export class HordeDirector {
   }
   drainEvents():HordeEvent[]{const events=this.pending;this.pending=[];return events;}
   /** HUD counters do not need copies of all actor states and device positions. */
-  summary(){let alive=0;for(const unit of this.units)if(unit.hp>0)alive++;return{elapsed:this.elapsed,target:this.config.cap,scheduled:this.scheduled,spawned:this.spawned,killed:this.killed,alive,skipped:this.skipped,finished:this.finished,nextSpawnIn:!this.finished?Math.max(0,this.nextSpawnAt-this.elapsed):null,devices:this.devices as readonly Readonly<HordeDevice>[]};}
+  summary(){
+    const sources=this.sources.map(source=>({id:source.id,target:source.cap,scheduled:source.scheduled,spawned:source.spawned,killed:source.killed,alive:0,skipped:source.skipped,finished:this.sourceFinished(source),nextSpawnIn:this.sourceFinished(source)?null:Math.max(0,source.nextSpawnAt-this.elapsed)}));
+    let alive=0;for(const unit of this.units)if(unit.hp>0){alive++;sources[this.sources.indexOf(this.sourceById.get(unit.sourceId)!)].alive++;}
+    let nextSpawnIn:number|null=null;for(const source of sources)if(source.nextSpawnIn!==null)nextSpawnIn=nextSpawnIn===null?source.nextSpawnIn:Math.min(nextSpawnIn,source.nextSpawnIn);
+    return{elapsed:this.elapsed,target:this.config.cap,scheduled:this.scheduled,spawned:this.spawned,killed:this.killed,alive,skipped:this.skipped,finished:this.finished,nextSpawnIn,sources,devices:this.devices as readonly Readonly<HordeDevice>[]};
+  }
   snapshot(){const{devices,...summary}=this.summary();return{...summary,units:this.units.map(unit=>unit.snapshot()),devices:devices.map(device=>({...device,position:{...device.position}}))};}
 }
 
@@ -248,5 +273,7 @@ export function createAuthoredHorde(data:AuthoredMapPhysicsData,terrain:HordeTer
   const approach=approachRoute(rampEnd,join,data.structures?.find(mesh=>mesh.name.includes('荒れた搬入口')),terrain);
   const points=warehouse.spawnpoints??[],humanoid=authoredPoint(points[0]?.position??[-201,90,110.24]),drone=authoredPoint(points[1]?.position??[-184,89,110.24]);
   const centre=authoredPoint(warehouse.center),footprint=warehouse.metadata?.footprint_local??[-21,21,-14,14];
-  return new HordeDirector({road,warehouseRoad:{humanoid:[humanoid,door,...approach],drone:[drone,door,...approach]},terrain,devices:[{kind:'humanoid',position:humanoid},{kind:'drone',position:drone}],warehouseBounds:{minX:centre.x+footprint[0],maxX:centre.x+footprint[1],minZ:centre.z-footprint[3],maxZ:centre.z-footprint[2]},config});
+  const additional=createShiretokoEncounterLayout(data,terrain).warehouse;
+  const original:HordeSourceOptions={id:'warehouse-original',cap:20,warehouseRoad:{humanoid:[humanoid,door,...approach],drone:[drone,door,...approach]},devices:[{kind:'humanoid',position:humanoid},{kind:'drone',position:drone}],warehouseBounds:{minX:centre.x+footprint[0],maxX:centre.x+footprint[1],minZ:centre.z-footprint[3],maxZ:centre.z-footprint[2]}};
+  return new HordeDirector({road,terrain,sources:[original,{id:additional.id,cap:30,warehouseRoad:additional.paths,devices:additional.devices,warehouseBounds:additional.bounds}],config});
 }

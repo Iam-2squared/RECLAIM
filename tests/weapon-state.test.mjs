@@ -12,7 +12,8 @@ test('a complete click between fixed ticks fires exactly once',()=>{
 test('held assault repeats at its cadence and cannot fire past magazine capacity',()=>{
   const gun=new WeaponState();gun.trigger(true);
   const shots=advance(gun,8);assert.equal(shots.length,WEAPON_RULES.assault.magazine);
-  assert.equal(gun.snapshot().ammo,0);assert.equal(gun.snapshot().reserve,120);
+  assert.equal(gun.snapshot().ammo,0);assert.equal(gun.snapshot().reserve,null);
+  assert.equal(gun.snapshot().unlimitedReserve,true);
   assert.equal(new Set(shots.map(s=>s.id)).size,shots.length);
   assert.ok(shots.every(s=>!s.melee&&s.damage===8&&s.speed<=300&&s.spread>0));
 });
@@ -31,15 +32,15 @@ test('reload commits one ammo transfer only on completion',()=>{
   const gun=new WeaponState();tap(gun);advance(gun,.2);tap(gun);
   assert.equal(gun.snapshot().ammo,22);assert.equal(gun.reload(),true);
   assert.equal(advance(gun,1).length,0);assert.equal(gun.snapshot().ammo,22);
-  assert.equal(gun.snapshot().reserve,120);assert.ok(gun.snapshot().reloadProgress>0);
+  assert.equal(gun.snapshot().reserve,null);assert.ok(gun.snapshot().reloadProgress>0);
   assert.equal(advance(gun,1).length,0);assert.equal(gun.snapshot().ammo,24);
-  assert.equal(gun.snapshot().reserve,118);assert.equal(gun.snapshot().reloading,false);
-  advance(gun,5);assert.equal(gun.snapshot().reserve,118);assert.equal(gun.reload(),false);
+  assert.equal(gun.snapshot().reserve,null);assert.equal(gun.snapshot().reloading,false);
+  advance(gun,5);assert.equal(gun.snapshot().reserve,null);assert.equal(gun.reload(),false);
 });
 test('switching cancels uncommitted reload without manufacturing ammunition',()=>{
   const gun=new WeaponState();tap(gun);assert.equal(gun.reload(),true);advance(gun,.9);
   gun.select('sniper');advance(gun,3);gun.select('assault');
-  assert.equal(gun.snapshot().ammo,23);assert.equal(gun.snapshot().reserve,120);assert.equal(gun.snapshot().reloading,false);
+  assert.equal(gun.snapshot().ammo,23);assert.equal(gun.snapshot().reserve,null);assert.equal(gun.snapshot().reloading,false);
   assert.equal(advance(gun,1).length,0);
 });
 test('switching away and back cannot bypass a weapon cooldown',()=>{
@@ -51,7 +52,7 @@ test('pause clears a buffered click, held fire, reload and recoil',()=>{
   const gun=new WeaponState();gun.trigger(true);gun.trigger(false);gun.clearInput();
   assert.equal(advance(gun,1).length,0);assert.equal(gun.snapshot().ammo,24);
   tap(gun);assert.ok(gun.pose.cameraPitch>0);gun.reload();gun.clearInput();
-  assert.equal(advance(gun,3).length,0);assert.equal(gun.snapshot().ammo,23);assert.equal(gun.snapshot().reserve,120);
+  assert.equal(advance(gun,3).length,0);assert.equal(gun.snapshot().ammo,23);assert.equal(gun.snapshot().reserve,null);
   assert.deepEqual(gun.pose,{rear:0,drop:0,rise:0,flash:0,cameraPitch:0,cameraYaw:0,reload:0,swing:0,aim:0});
 });
 test('aiming improves spread while movement broadens it',()=>{
@@ -64,6 +65,7 @@ test('knife swings once per click and never generates a projectile or spends amm
   const gun=new WeaponState('knife');gun.trigger(true);const shots=advance(gun,1);
   assert.equal(shots.length,1);assert.equal(shots[0].melee,true);assert.equal(shots[0].speed,0);
   assert.equal(gun.snapshot().ammo,null);assert.equal(gun.snapshot().reserve,null);
+  assert.equal(gun.snapshot().unlimitedReserve,false);
   assert.equal(gun.reload(),false);gun.setAiming(true);assert.equal(gun.snapshot().aiming,false);
   gun.trigger(false);assert.equal(tap(gun).length,1);advance(gun,.1);assert.ok(gun.pose.swing>0);
 });
@@ -79,14 +81,52 @@ test('recoil is finite, bounded and returns without permanent camera drift',()=>
 test('reset restores all three weapon inventories and drops old input',()=>{
   const gun=new WeaponState();gun.trigger(true);advance(gun,4);gun.select('sniper');tap(gun);gun.reset();
   assert.equal(gun.snapshot().ammo,5);gun.select('assault');assert.equal(gun.snapshot().ammo,24);
-  assert.equal(gun.snapshot().reserve,120);assert.equal(advance(gun,1).length,0);
+  assert.equal(gun.snapshot().reserve,null);assert.equal(gun.snapshot().unlimitedReserve,true);
+  assert.equal(advance(gun,1).length,0);
 });
-test('all reserve ammunition is finite and reload cannot replenish an exhausted inventory',()=>{
-  const gun=new WeaponState();let count=0;
+test('optional finite reserve cannot replenish an exhausted inventory and survives reset',()=>{
+  const gun=new WeaponState('assault',{unlimitedReserve:false});let count=0;
   for(let magazine=0;magazine<6;magazine++){
     gun.trigger(true);count+=advance(gun,5).length;gun.trigger(false);
     if(magazine<5){assert.equal(gun.reload(),true);advance(gun,2);}
   }
   assert.equal(count,144);assert.equal(gun.snapshot().ammo,0);assert.equal(gun.snapshot().reserve,0);
+  assert.equal(gun.snapshot().unlimitedReserve,false);
   assert.equal(gun.reload(),false);assert.equal(tap(gun).length,0);
+  gun.reset();assert.equal(gun.snapshot().ammo,24);assert.equal(gun.snapshot().reserve,120);
+  assert.equal(gun.snapshot().unlimitedReserve,false);
+});
+
+for(const kind of ['assault','sniper'])test(`${kind} can reload forty empty magazines with unchanged capacity and reload time`,()=>{
+  const gun=new WeaponState(kind),rule=WEAPON_RULES[kind];
+  const expected={assault:{magazine:24,reload:1.8,interval:.16},sniper:{magazine:5,reload:2.4,interval:.85}}[kind];
+  for(const field of ['magazine','reload','interval'])assert.equal(rule[field],expected[field]);
+  for(let magazine=0;magazine<40;magazine++){
+    for(let shot=0;shot<rule.magazine;shot++){
+      assert.equal(tap(gun).length,1);advance(gun,rule.interval,.05);
+    }
+    assert.equal(gun.snapshot().ammo,0);assert.equal(tap(gun).length,0);
+    assert.equal(advance(gun,rule.interval*2,.05).length,0,'empty magazine stops firing');
+    assert.equal(gun.reload(),true);assert.equal(gun.reload(),false);
+    assert.equal(advance(gun,rule.reload-.01,.05).length,0);
+    assert.equal(gun.snapshot().ammo,0);assert.equal(gun.snapshot().reloading,true);
+    assert.equal(advance(gun,.01,.005).length,0);
+    assert.equal(gun.snapshot().ammo,rule.magazine);assert.equal(gun.snapshot().reloading,false);
+    const serialized=JSON.parse(JSON.stringify(gun.snapshot()));
+    assert.equal(serialized.unlimitedReserve,true);assert.equal(serialized.reserve,null);
+    assert.equal(gun.reload(),false,'a full magazine cannot start another reload');
+  }
+  assert.equal(gun.snapshot().shots,40*rule.magazine);
+});
+
+test('unlimited reserve survives weapon switches, canceled reloads, pause and reset',()=>{
+  const gun=new WeaponState('sniper');tap(gun);assert.equal(gun.reload(),true);
+  advance(gun,1);gun.select('assault');assert.equal(gun.snapshot().unlimitedReserve,true);
+  gun.select('sniper');assert.equal(gun.snapshot().ammo,4);assert.equal(gun.snapshot().reloading,false);
+  assert.equal(gun.reload(),true);advance(gun,1);gun.clearInput();
+  assert.equal(advance(gun,3).length,0);assert.equal(gun.snapshot().ammo,4);
+  assert.equal(gun.reload(),true);advance(gun,WEAPON_RULES.sniper.reload);
+  assert.equal(gun.snapshot().ammo,5);gun.select('knife');assert.equal(gun.snapshot().unlimitedReserve,false);
+  gun.reset('assault');assert.equal(gun.snapshot().ammo,24);assert.equal(gun.snapshot().unlimitedReserve,true);
+  assert.equal(gun.snapshot().shots,0);assert.equal(advance(gun,1).length,0);
 });

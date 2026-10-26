@@ -1,7 +1,9 @@
 import{test}from'node:test';
 import assert from'node:assert/strict';
-import{authoredScenarioData,physicsScenario,hordeScenario}from'./helpers/authored-performance-scenario.mjs';
-import{HordeDirector}from'../src/mission/horde-director.ts';
+import{authoredScenarioData,physicsScenario}from'./helpers/authored-performance-scenario.mjs';
+import{HordeDirector,createAuthoredHorde}from'../src/mission/horde-director.ts';
+import{createAuthoredMapPhysics}from'../src/world/authored-map-physics.ts';
+import{createShiretokoEncounterLayout}from'../src/world/shiretoko-encounter-layout.ts';
 
 let data;
 const actualData=()=>data??=(authoredScenarioData());
@@ -14,10 +16,19 @@ test('optimized physics matches the original authored floor, water and collision
  assert.deepEqual(measured.stats,{terrainTriangles:10636,walkingTriangles:107931,waterTriangles:2634,colliders:48582});
 });
 
-test('all authored horde states remain identical from initialspawn through50 enemies at240s',async()=>{
- const measured=hordeScenario(await actualData());
- assert.equal(measured.digest,'a3ef94b2e8dc0015f9106effa6f49dd3d9c276a15991c6ff09479da9c47eca1f');
- assert.equal(measured.spawned,50);assert.ok(Math.abs(measured.elapsed-240)<1e-6);
+test('authored warehouses independently reach20 at100s and30 at150s with no initial road enemies',async()=>{
+ const authored=await actualData(),layout=createShiretokoEncounterLayout(authored),physics=createAuthoredMapPhysics(authored,[layout]),horde=createAuthoredHorde(authored,physics),player={...physics.spawn},idle={combatEnabled:false};
+ assert.equal(horde.units.length,0);assert.equal(horde.devices.length,4);assert.deepEqual(horde.summary().sources.map(source=>source.target),[20,30]);
+ assert.equal(horde.devices.every(device=>device.hp===500&&device.maxHp===500),true);
+ horde.step(5,player,idle);assert.deepEqual(horde.units.map(unit=>unit.kind),['humanoid','humanoid']);
+ horde.step(95,player,idle);assert.deepEqual(horde.summary().sources.map(source=>[source.spawned,source.finished]),[[20,true],[20,false]]);
+ horde.step(50,player,idle);assert.deepEqual(horde.summary().sources.map(source=>[source.spawned,source.finished]),[[20,true],[30,true]]);assert.equal(horde.finished,true);
+ for(const source of horde.sources){
+  const units=horde.units.filter(unit=>unit.sourceId===source.id);assert.equal(units.filter(unit=>unit.kind==='humanoid').length,source.cap/2);assert.equal(units.filter(unit=>unit.kind==='drone').length,source.cap/2);
+  assert.ok(units.some(unit=>unit.lane==='road'),'Each warehouse has a clear exit onto the actual trail');
+  for(const unit of units){assert.ok(Object.values(unit.position).every(Number.isFinite));const route=unit.lane==='road'?horde.road:source.warehouseRoad[unit.kind];assert.ok(route.project(unit.position).distance<=1.5);}
+ }
+ horde.step(10,player,idle);assert.equal(horde.units.length,50);horde.hitDevice(horde.devices[0].id,500);horde.reset();assert.equal(horde.units.length,0);assert.equal(horde.devices.every(device=>device.hp===500&&!device.destroyed),true);
 });
 
 function fixture(){return new HordeDirector({road:[{x:0,y:0,z:0},{x:0,y:0,z:-300}],warehouseRoad:{humanoid:[{x:10,y:0,z:-100},{x:0,y:0,z:-100}],drone:[{x:12,y:0,z:-100},{x:0,y:0,z:-100}]},terrain:{heightAt:()=>0,inWater:()=>false,blockedAt:()=>false},devices:[{kind:'humanoid',position:{x:10,y:0,z:-100}},{kind:'drone',position:{x:12,y:0,z:-100}}]});}

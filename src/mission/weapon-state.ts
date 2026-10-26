@@ -13,9 +13,10 @@ export type ShootingPose = Readonly<{
   rear:number;drop:number;rise:number;flash:number;cameraPitch:number;cameraYaw:number;reload:number;swing:number;aim:number;
 }>;
 export type WeaponSnapshot = Readonly<{
-  kind:EquippedWeapon;aiming:boolean;ammo:number|null;reserve:number|null;reloading:boolean;
+  kind:EquippedWeapon;aiming:boolean;ammo:number|null;reserve:number|null;unlimitedReserve:boolean;reloading:boolean;
   reloadProgress:number;cooldown:number;triggerHeld:boolean;shots:number;
 }>;
+export type WeaponSupplyOptions = Readonly<{unlimitedReserve?:boolean}>;
 const finite=(n:number)=>Number.isFinite(n);
 const approach=(value:number,target:number,dt:number,speed:number)=>target+(value-target)*Math.exp(-speed*dt);
 
@@ -24,6 +25,7 @@ export class WeaponState {
   kind:EquippedWeapon;
   private elapsed=0;
   private supply:Record<EquippedWeapon,Supply>;
+  private readonly unlimitedReserve:boolean;
   private held=false;
   private pending=false;
   private aiming=false;
@@ -33,8 +35,9 @@ export class WeaponState {
   private serial=0;
   private rear=0;private drop=0;private rise=0;private flash=0;
   private pitch=0;private yaw=0;private aim=0;private swingTime=0;
-  constructor(kind:EquippedWeapon='assault') {
+  constructor(kind:EquippedWeapon='assault',options:WeaponSupplyOptions={}) {
     this.kind=kind;
+    this.unlimitedReserve=options.unlimitedReserve!==false;
     this.supply=this.freshSupply();
   }
   private freshSupply():Record<EquippedWeapon,Supply> {
@@ -55,9 +58,10 @@ export class WeaponState {
     // explicit pause/switch clears this buffered edge; releasing stops autofire.
   }
   get reloading():boolean {return this.reloadDuration>0;}
+  private hasUnlimitedReserve():boolean {return this.kind!=='knife'&&this.unlimitedReserve;}
   reload():boolean {
     const rule=WEAPON_RULES[this.kind],stock=this.supply[this.kind];
-    if(this.kind==='knife'||this.reloading||stock.ammo>=rule.magazine||stock.reserve<=0)return false;
+    if(this.kind==='knife'||this.reloading||stock.ammo>=rule.magazine||(!this.hasUnlimitedReserve()&&stock.reserve<=0))return false;
     this.held=false;this.pending=false;this.aiming=false;
     this.reloadTime=0;this.reloadDuration=rule.reload;this.swingTime=0;
     return true;
@@ -76,8 +80,8 @@ export class WeaponState {
       this.reloadTime+=dt;
       if(this.reloadTime+1e-8>=this.reloadDuration){
         const stock=this.supply[this.kind],rule=WEAPON_RULES[this.kind];
-        const transfer=Math.min(rule.magazine-stock.ammo,stock.reserve);
-        stock.ammo+=transfer;stock.reserve-=transfer;
+        const transfer=this.hasUnlimitedReserve()?rule.magazine-stock.ammo:Math.min(rule.magazine-stock.ammo,stock.reserve);
+        stock.ammo+=transfer;if(!this.hasUnlimitedReserve())stock.reserve-=transfer;
         this.reloadTime=0;this.reloadDuration=0;
       }
       return [];
@@ -109,8 +113,10 @@ export class WeaponState {
       swing:this.swingTime>0?Math.sin((1-this.swingTime/.36)*Math.PI):0,aim:this.aim};
   }
   snapshot():WeaponSnapshot {
-    const stock=this.supply[this.kind];
-    return {kind:this.kind,aiming:this.aiming,ammo:this.kind==='knife'?null:stock.ammo,reserve:this.kind==='knife'?null:stock.reserve,
+    const stock=this.supply[this.kind],unlimitedReserve=this.hasUnlimitedReserve();
+    // null plus an explicit flag remains unambiguous through JSON serialization.
+    return {kind:this.kind,aiming:this.aiming,ammo:this.kind==='knife'?null:stock.ammo,
+      reserve:this.kind==='knife'||unlimitedReserve?null:stock.reserve,unlimitedReserve,
       reloading:this.reloading,reloadProgress:this.pose.reload,cooldown:Math.max(0,stock.readyAt-this.elapsed),
       triggerHeld:this.held,shots:this.serial};
   }

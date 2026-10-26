@@ -9,7 +9,7 @@ type Damage={root:T.Group;glyphs:T.Mesh[];material:T.MeshBasicMaterial;origin:T.
 type Device={root:T.Group;kind:EnemyKind;energy:T.Object3D[];destroyed:boolean};
 
 const valid=(p:ActorPosition)=>[p.x,p.y,p.z].every(Number.isFinite);
-const MAX_ENEMIES=50,MAX_DEVICES=2,MAX_DAMAGE=32,MAX_MARKERS=16;
+const MAX_ENEMIES=50,MAX_DEVICES=4,MAX_DAMAGE=32,MAX_MARKERS=16;
 const GLYPHS='0123456789-+';
 
 function damageAtlas():T.Texture {
@@ -52,7 +52,7 @@ export class EncounterPresentation {
   private readonly markers:T.Group[]=[];
   private markerCount=0;
   private readonly devices=new Map<string,Device>();
-  private readonly devicePool=new Map<EnemyKind,Device>();
+  private readonly devicePool:Device[]=[];
   private readonly cameraPosition=new T.Vector3();
   private readonly cameraRotation=new T.Quaternion();
   private reduced=false;private distance=180;private disposed=false;
@@ -144,11 +144,12 @@ export class EncounterPresentation {
     return{root,kind,energy,destroyed:false};
   }
   setSpawnDevices(devices:readonly SpawnDeviceVisual[]):void {
-    if(this.disposed)return;const active=new Set<string>(),kinds=new Set<EnemyKind>();
+    if(this.disposed)return;const active=new Set<string>(),wanted=new Set(devices.slice(0,MAX_DEVICES).map(spec=>spec.id));
+    for(const id of [...this.devices.keys()])if(!wanted.has(id))this.removeDevice(id);
     for(const spec of devices.slice(0,MAX_DEVICES)){
-      if(!spec.id||!valid(spec.position)||!['humanoid','drone'].includes(spec.kind)||kinds.has(spec.kind))continue;kinds.add(spec.kind);
+      if(!spec.id||!valid(spec.position)||!['humanoid','drone'].includes(spec.kind)||active.has(spec.id))continue;
       let device=this.devices.get(spec.id);
-      if(!device||device.kind!==spec.kind){if(device)this.removeDevice(spec.id);if(!this.devicePool.has(spec.kind))this.devicePool.set(spec.kind,this.device(spec.kind));device=this.devicePool.get(spec.kind)!;for(const [priorId,prior]of this.devices)if(prior===device)this.removeDevice(priorId);this.devices.set(spec.id,device);this.scene.add(device.root);}
+      if(!device||device.kind!==spec.kind){if(device)this.removeDevice(spec.id);const attached=new Set(this.devices.values());device=this.devicePool.find(candidate=>candidate.kind===spec.kind&&!attached.has(candidate));if(!device){if(this.devicePool.length>=MAX_DEVICES*2)continue;device=this.device(spec.kind);this.devicePool.push(device);}this.devices.set(spec.id,device);this.scene.add(device.root);}
       device.root.position.set(spec.position.x,spec.position.y,spec.position.z);device.destroyed=!!spec.destroyed;for(const part of device.energy)part.visible=!device.destroyed;active.add(spec.id);
       if(Number.isFinite(spec.hp)&&Number.isFinite(spec.maxHp))this.setDeviceHealth(spec.id,spec.position,spec.hp!,spec.maxHp!);
     }
@@ -157,6 +158,7 @@ export class EncounterPresentation {
 
   step(seconds:number):void {
     if(this.disposed)return;const dt=Number.isFinite(seconds)?T.MathUtils.clamp(seconds,0,.1):0;this.camera.getWorldPosition(this.cameraPosition);this.camera.getWorldQuaternion(this.cameraRotation);
+    for(const device of this.devices.values())device.root.visible=device.root.position.distanceToSquared(this.cameraPosition)<=this.distance*this.distance;
     for(const bar of [...this.bars.values(),...this.deviceBars.values()]){bar.root.quaternion.copy(this.cameraRotation);bar.root.visible=bar.alive&&bar.position.distanceToSquared(this.cameraPosition)<=this.distance*this.distance;}
     for(const entry of this.damage){
       if(!entry.active)continue;entry.age+=dt;const duration=this.reduced?.65:.85;
@@ -170,5 +172,5 @@ export class EncounterPresentation {
     for(const entry of this.damage){entry.active=false;entry.root.visible=false;}this.damageCursor=0;
   }
   snapshot(){return{enemyBars:this.bars.size,visibleEnemyBars:[...this.bars.values()].filter(bar=>bar.root.visible).length,deviceBars:this.deviceBars.size,devices:[...this.devices].map(([id,device])=>({id,kind:device.kind,destroyed:device.destroyed})),activeDamage:this.damage.filter(entry=>entry.active).length,damageCapacity:this.damage.length,healthBarCapacity:this.barsCreated,markers:this.markers.filter(marker=>marker.visible).length,limits:{enemies:MAX_ENEMIES,devices:MAX_DEVICES,damage:MAX_DAMAGE,markers:MAX_MARKERS},resources:{geometries:this.geometries.size,materials:this.materials.size,textures:this.disposed?0:1},disposed:this.disposed};}
-  dispose():void {if(this.disposed)return;this.reset();this.disposed=true;for(const entry of this.damage)entry.root.removeFromParent();for(const marker of this.markers)marker.removeFromParent();for(const device of this.devicePool.values())device.root.removeFromParent();for(const geometry of this.geometries)geometry.dispose();for(const material of this.materials)material.dispose();this.atlas.dispose();this.geometries.clear();this.materials.clear();this.damage.length=0;this.markers.length=0;this.barPool.length=0;this.devicePool.clear();}
+  dispose():void {if(this.disposed)return;this.reset();this.disposed=true;for(const entry of this.damage)entry.root.removeFromParent();for(const marker of this.markers)marker.removeFromParent();for(const device of this.devicePool)device.root.removeFromParent();for(const geometry of this.geometries)geometry.dispose();for(const material of this.materials)material.dispose();this.atlas.dispose();this.geometries.clear();this.materials.clear();this.damage.length=0;this.markers.length=0;this.barPool.length=0;this.devicePool.length=0;}
 }
