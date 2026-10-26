@@ -8,15 +8,17 @@ export const PALETTES = [
 ] as const;
 export type PaletteId = typeof PALETTES[number]['id'];
 export const GUNS = [
-  { id: 'assault', name: 'アサルト', code: 'AR / 01', description: '箱形の機関部と短いハンドガード。' },
-  { id: 'sniper', name: 'スナイパー', code: 'SR / 02', description: '長い銃身と光学スコープを備えた形状。' },
-  { id: 'rifle', name: '小銃', code: 'RF / 03', description: '木製ストックの軽量な銃。分類は設計上の仮置き。' },
+  { id: 'assault', name: 'アサルト', code: 'AR / 01', description: '使い込まれた装甲と布巻きのアサルト。' },
+  { id: 'sniper', name: 'スナイパー', code: 'SR / 02', description: '長銃身と大型スコープを備えたスナイパー。' },
 ] as const;
-export type GunId = typeof GUNS[number]['id'];
+export const MELEE = { id:'knife', name:'サバイバルナイフ', code:'MELEE / 03', description:'幅広の刃と布巻きグリップを備えたサバイバルナイフ。' } as const;
+export type FirearmId = typeof GUNS[number]['id'];
+/** Kept for existing mission/legacy-renderer contracts; rifle is not selectable. */
+export type GunId = FirearmId | 'rifle';
 export type Appearance = { name: string; palette: PaletteId };
-export type HomePreview = { version: 1; appearance: Appearance; primary: GunId; secondary: GunId; held: 'primary' | 'secondary' };
+export type HomePreview = { version: 1; appearance: Appearance; primary: FirearmId; secondary: FirearmId; held: 'primary' | 'secondary' };
 export const defaults = (): HomePreview => ({ version: 1, appearance: { name: 'SURVIVOR', palette: 'olive' }, primary: 'assault', secondary: 'sniper', held: 'primary' });
-export const gunName = (id: GunId) => GUNS.find(g => g.id === id)!.name;
+export const gunName = (id: GunId) => (GUNS.find(g => g.id === id) ?? GUNS[0]).name;
 export function normalizeName(name: string): string {
   return Array.from(name.replace(/[\u0000-\u001f\u007f-\u009f]/g, '').trim()).slice(0, MAX_NAME).join('') || 'SURVIVOR';
 }
@@ -29,17 +31,20 @@ export function parseHome(raw: string | null): HomePreview {
       if (typeof v.appearance.name === 'string') d.appearance.name = normalizeName(v.appearance.name);
       if (PALETTES.some(p => p.id === v.appearance.palette)) d.appearance.palette = v.appearance.palette;
     }
-    if (GUNS.some(g => g.id === v.primary)) d.primary = v.primary;
-    if (GUNS.some(g => g.id === v.secondary) && v.secondary !== d.primary) d.secondary = v.secondary;
-    else d.secondary = GUNS.find(g => g.id !== d.primary)!.id;
+    const primary=GUNS.find(g=>g.id===v.primary),secondary=GUNS.find(g=>g.id===v.secondary);
+    if(primary)d.primary=primary.id;
+    else if(secondary)d.primary=GUNS.find(g=>g.id!==secondary.id)!.id;
+    d.secondary=secondary&&secondary.id!==d.primary?secondary.id:GUNS.find(g=>g.id!==d.primary)!.id;
     if (v.held === 'secondary') d.held = 'secondary';
     return d;
   } catch { return d; }
 }
 /** Choosing the other slot's gun swaps the pair, preserving two distinct guns. */
 export function chooseGun(preview: HomePreview, slot: 'primary' | 'secondary', id: GunId): HomePreview {
+  const selection=GUNS.find(g=>g.id===id);
+  if(!selection)return preview;
   const other = slot === 'primary' ? 'secondary' : 'primary';
-  return { ...preview, [slot]: id, [other]: preview[other] === id ? preview[slot] : preview[other] };
+  return { ...preview, [slot]: selection.id, [other]: preview[other] === selection.id ? preview[slot] : preview[other] };
 }
 export const RARITIES = ['コモン', 'アンコモン', 'レア', 'エピック', 'レジェンダリー', 'ディビィアン'] as const;
 // Positions are an original schematic, not geographic survey data. Two Tokyo stops are intentional.

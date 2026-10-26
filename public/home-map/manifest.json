@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "id": "shiretoko-authored",
+  "name": "知床 / 高画質マップ",
+  "revision": "Purple apocalyptic storm sky and readable warm/violet game lighting",
+  "integration": "Shared lazy source payload for the HOME viewer and the actual walkable Mission renderer. Authored-coordinate campaign saves use their own namespace.",
+  "sourceViewer": {
+    "path": "map/知床_高画質版/知床_地形プレビュー_高画質.html",
+    "bytes": 54148955,
+    "sha256": "1c4ee031c691da072e8a234114c5862049c7f7879cc0d06a525fccf757ae3081"
+  },
+  "sourceData": {
+    "path": "map/知床_高画質版/viewer-data.json",
+    "bytes": 91855049,
+    "sha256": "d83fee5592d9bebee08c766a95dce2bb23240860c440dac30f9a02afc86a1764"
+  },
+  "sourceModel": {
+    "path": "map/知床_高画質版/知床_地形_高画質.glb",
+    "bytes": 52464772,
+    "sha256": "445125159695b8d4626c605303ff3cddaa7f677ea0faa8ab9ea2cc8b5a259bf3"
+  },
+  "sourceMetadata": {
+    "path": "map/知床_高画質版/terrain_manifest.json",
+    "bytes": 702854,
+    "sha256": "a34306abddb905c3e2718263e0212b94aa5429134d99c48ef127134da2902a06"
+  },
+  "sourceVerification": {
+    "path": "map/知床_高画質版/opening_world_verification.json",
+    "bytes": 38016,
+    "sha256": "fc2b1ee1344f0663f2786d6233f4037b78b5f88871eaee685e40041817538277"
+  },
+  "runtimeViewer": {
+    "path": "home-map/shiretoko.html",
+    "bytes": 54148955,
+    "sha256": "1c4ee031c691da072e8a234114c5862049c7f7879cc0d06a525fccf757ae3081"
+  },
+  "runtimePreview": {
+    "path": "home-map/overview.webp",
+    "bytes": 36406,
+    "sha256": "d2b3d2b00bc1a34413f1f05586129a1505e005c5228c97986e723e0d30350ae0",
+    "dimensions": [
+      837,
+      720
+    ]
+  },
+  "sourcePreview": {
+    "path": "map/知床_高画質版/知床_高画質_俯瞰.png",
+    "bytes": 3287177,
+    "sha256": "33772ff3189325d0a9ab7a3837091bdbb1a82f2d66c9de2ddae338be601ba00d"
+  },
+  "viewerUnmodified": true,
+  "embeddedDataMatchesSource": true,
+  "externalResources": 0,
+  "terrainMeshes": 12,
+  "structureMeshes": 64,
+  "vegetationInstances": 3330,
+  "pointsOfInterest": 19,
+  "sizeMetres": {
+    "length": 1420,
+    "width": 820
+  },
+  "features": [
+    "始まりの家と室内",
+    "柵のある庭",
+    "自然な土道と木道",
+    "修復した山道",
+    "廃倉庫",
+    "荒れた畑と廃バス",
+    "山奥の霧と境界"
+  ],
+  "missionCollisionReady": true,
+  "collisionScope": "Runtime triangle-based terrain/floor/stair/boardwalk support, spatial structure collision and authored phase boundary; the original standalone viewer retains its free-camera navigation.",
+  "missionWorld": "src/world/authored-map-world.ts",
+  "runtimePhysics": "src/world/authored-map-physics.ts",
+  "sourceCollisionScope": "The unchanged source viewer contains only its authored phase-boundary collider and free-camera navigation.",
+  "runtimeCollisionScope": "Triangle-sampled terrain, floors, stairs and trails; spatially derived walls, structures, trees and rocks, plus the phase boundary.",
+  "runtimeProofReferences": [
+    "tools/home-lobby/verify_authored_world.mjs"
+  ]
+}

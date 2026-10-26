@@ -23,13 +23,14 @@ async function emit(opts,files) {
 }
 test('appends opt-in 3D page without changing approved index or existing assets',async()=>{
  await fixture(async ({root,dist})=>{
+  const linkedReview=REVIEW.replace('</body>','<script src="./assets/shiretoko.js"></script></body>');
   const r=await appendShiretokoReview({root,build:opts=>emit(opts,{
-   'shiretoko-terrain.html':REVIEW,'assets/shiretoko.js':'console.log("Shiretoko")',
+   'shiretoko-terrain.html':linkedReview,'assets/shiretoko.js':'console.log("Shiretoko")',
   })});
   assert.deepEqual(r,{review:'shiretoko-terrain.html',created:2,reused:0});
   assert.equal(await readFile(resolve(dist,'index.html'),'utf8'),'<html>APPROVED TITLE and HOME</html>');
   assert.equal(await readFile(resolve(dist,'assets/existing.css'),'utf8'),'body{color:white}');
-  assert.equal(await readFile(resolve(dist,'shiretoko-terrain.html'),'utf8'),REVIEW);
+  assert.equal(await readFile(resolve(dist,'shiretoko-terrain.html'),'utf8'),linkedReview);
  });
 });
 test('a failed Vite build and missing HTML do not modify production',async()=>{

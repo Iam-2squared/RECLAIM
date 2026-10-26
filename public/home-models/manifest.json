@@ -1,0 +1,432 @@
+{
+  "purpose": "Actual user-provided animated player characters for the RECLAIM HOME lobby",
+  "preparationScript": "tools/home-lobby/prepare_characters.py",
+  "models": [
+    {
+      "id": "jonesy",
+      "file": "jonesy.glb",
+      "source": "motion/characters/Jonesy/Jonesy_animated.glb",
+      "sourceBytes": 10995036,
+      "runtimeBytes": 6002332,
+      "sourceSha256": "bd397482115db642211cb1d8bb4944c2ab9738a16943fe3c77da8dd77cc88881",
+      "runtimeSha256": "1a6d6443b9607ac9ea7b1949d9fcf65e689f21eca0200386bad0728ea8966280",
+      "meshes": 5,
+      "skins": 1,
+      "animations": 10,
+      "clips": [
+        {
+          "name": "Aim",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.2333333492279053,
+          "nominalSeconds": 1.2,
+          "channels": 372
+        },
+        {
+          "name": "Death",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.4333332777023315,
+          "nominalSeconds": 1.4,
+          "channels": 372
+        },
+        {
+          "name": "Hit",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.46666666865348816,
+          "nominalSeconds": 0.43333333333333335,
+          "channels": 372
+        },
+        {
+          "name": "Idle",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 2.0333333015441895,
+          "nominalSeconds": 2,
+          "channels": 372
+        },
+        {
+          "name": "Jump",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1,
+          "nominalSeconds": 0.9666666666666667,
+          "channels": 372
+        },
+        {
+          "name": "Melee",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.6333333253860474,
+          "nominalSeconds": 0.6,
+          "channels": 372
+        },
+        {
+          "name": "Reload",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.8333333730697632,
+          "nominalSeconds": 1.8,
+          "channels": 372
+        },
+        {
+          "name": "Run",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.7666666507720947,
+          "nominalSeconds": 0.7333333333333333,
+          "channels": 372
+        },
+        {
+          "name": "Shoot",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.30000001192092896,
+          "nominalSeconds": 0.26666666666666666,
+          "channels": 372
+        },
+        {
+          "name": "Walk",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.100000023841858,
+          "nominalSeconds": 1.0666666666666667,
+          "channels": 372
+        }
+      ],
+      "lobbyClip": "Idle",
+      "rootMotion": false,
+      "sourceOrigin": "feet",
+      "sourceHeightMetres": 1.8000000678274681,
+      "verifiedNonImageBufferViews": 1912,
+      "geometrySkeletonUvPreserved": true,
+      "animationDataPreserved": true,
+      "images": [
+        {
+          "index": 0,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 2288803,
+          "runtimeBytes": 276054,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 1,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 1298372,
+          "runtimeBytes": 568985,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 2,
+          "sourceSize": [
+            1024,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 486551,
+          "runtimeBytes": 261189,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 3,
+          "sourceSize": [
+            1024,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 148950,
+          "runtimeBytes": 207897,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 4,
+          "sourceSize": [
+            2048,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            512
+          ],
+          "sourceBytes": 678085,
+          "runtimeBytes": 76473,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 5,
+          "sourceSize": [
+            2048,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            512
+          ],
+          "sourceBytes": 464579,
+          "runtimeBytes": 152551,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 6,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 1339213,
+          "runtimeBytes": 136490,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 7,
+          "sourceSize": [
+            512,
+            512
+          ],
+          "runtimeSize": [
+            512,
+            512
+          ],
+          "sourceBytes": 98352,
+          "runtimeBytes": 132415,
+          "mimeType": "image/png"
+        }
+      ]
+    },
+    {
+      "id": "ramirez",
+      "file": "ramirez.glb",
+      "source": "motion/characters/Ramirez/Ramirez_animated.glb",
+      "sourceBytes": 15587508,
+      "runtimeBytes": 6628596,
+      "sourceSha256": "41003247689442b7832e5ea31f5791814a4668416b0b4f4634dc804c40ffb6cf",
+      "runtimeSha256": "49f9b1b38d157545a97694a594fa033c2eae69f478fd107e37a5b32176ed6ca8",
+      "meshes": 3,
+      "skins": 1,
+      "animations": 10,
+      "clips": [
+        {
+          "name": "Aim",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.2333333492279053,
+          "nominalSeconds": 1.2,
+          "channels": 552
+        },
+        {
+          "name": "Death",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.4333332777023315,
+          "nominalSeconds": 1.4,
+          "channels": 552
+        },
+        {
+          "name": "Hit",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.46666666865348816,
+          "nominalSeconds": 0.43333333333333335,
+          "channels": 552
+        },
+        {
+          "name": "Idle",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 2.0333333015441895,
+          "nominalSeconds": 2,
+          "channels": 552
+        },
+        {
+          "name": "Jump",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1,
+          "nominalSeconds": 0.9666666666666667,
+          "channels": 552
+        },
+        {
+          "name": "Melee",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.6333333253860474,
+          "nominalSeconds": 0.6,
+          "channels": 552
+        },
+        {
+          "name": "Reload",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.8333333730697632,
+          "nominalSeconds": 1.8,
+          "channels": 552
+        },
+        {
+          "name": "Run",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.7666666507720947,
+          "nominalSeconds": 0.7333333333333333,
+          "channels": 552
+        },
+        {
+          "name": "Shoot",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 0.30000001192092896,
+          "nominalSeconds": 0.26666666666666666,
+          "channels": 552
+        },
+        {
+          "name": "Walk",
+          "startSeconds": 0.03333333507180214,
+          "seconds": 1.100000023841858,
+          "nominalSeconds": 1.0666666666666667,
+          "channels": 552
+        }
+      ],
+      "lobbyClip": "Idle",
+      "rootMotion": false,
+      "sourceOrigin": "feet",
+      "sourceHeightMetres": 1.799999952386356,
+      "verifiedNonImageBufferViews": 2956,
+      "geometrySkeletonUvPreserved": true,
+      "animationDataPreserved": true,
+      "images": [
+        {
+          "index": 0,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 4225659,
+          "runtimeBytes": 1630749,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 1,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 2346289,
+          "runtimeBytes": 266114,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 2,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 1353295,
+          "runtimeBytes": 749376,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 3,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 2832879,
+          "runtimeBytes": 1145164,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 4,
+          "sourceSize": [
+            2048,
+            2048
+          ],
+          "runtimeSize": [
+            1024,
+            1024
+          ],
+          "sourceBytes": 1176644,
+          "runtimeBytes": 127478,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 5,
+          "sourceSize": [
+            32,
+            32
+          ],
+          "runtimeSize": [
+            32,
+            32
+          ],
+          "sourceBytes": 84,
+          "runtimeBytes": 101,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 6,
+          "sourceSize": [
+            2048,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            512
+          ],
+          "sourceBytes": 674770,
+          "runtimeBytes": 287433,
+          "mimeType": "image/png"
+        },
+        {
+          "index": 7,
+          "sourceSize": [
+            2048,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            512
+          ],
+          "sourceBytes": 575716,
+          "runtimeBytes": 83387,
+          "mimeType": "image/jpeg"
+        },
+        {
+          "index": 8,
+          "sourceSize": [
+            2048,
+            1024
+          ],
+          "runtimeSize": [
+            1024,
+            512
+          ],
+          "sourceBytes": 205312,
+          "runtimeBytes": 144849,
+          "mimeType": "image/png"
+        }
+      ]
+    }
+  ],
+  "optimization": "Animated source meshes, skeletons, UVs, accessors and all animation/non-image buffer bytes retained exactly. Embedded source textures reduced to max1024. Established nonmetallic material factors retained. HOME plays only supplied Idle; all ten clips remain available in each GLB.",
+  "runtimeDisplayCorrection": "Ramirez animated Head has inconsistent source vertex normals. HOME renderer recomputes that mesh's normals from the existing indexed triangles. Positions, UVs, indices, skeleton and animation files remain unchanged."
+}

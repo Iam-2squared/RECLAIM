@@ -25,59 +25,55 @@
     </header>
     <main>
       <section id="title-screen" class="title-screen" aria-label="RECLAIM タイトル画面">
-        <div class="location-tab"><span class="little-square"></span> TOKYO <span class="separator">/</span> JAPAN <span class="location-jp">東京・制圧区域</span></div>
+        <div class="title-location"><span class="title-location-line"></span><span>TOKYO / JAPAN</span><small>東京 ― AI占領区域</small></div>
         <div class="title-content">
-          <p class="eyebrow"><span></span> THE WORLD IS NOT THEIRS. <span></span></p>
-          <h1><button id="title-button" class="title-button" type="button" aria-label="RECLAIM — 東京の大ボスの影を見る" aria-describedby="title-hint" disabled>
-            <span class="sr-only">RECLAIM</span>
-            <svg class="wordmark" viewBox="0 0 862 148" role="img" aria-hidden="true">
-              <defs><mask id="wear-mask"><rect width="862" height="148" fill="white"/><path d="M0 100L862 94v2L0 103zM65 25h28v1H65zm96 107h58v1h-58zm330-78h36v2h-36zm259 61h37v1h-37z" fill="black"/></mask></defs>
-              <g fill="currentColor" fill-rule="evenodd" mask="url(#wear-mask)">
-                <path d="M0 148V0h82l22 22v48L81 88l26 60H72L48 92H32v56zM32 29v35h38V29z"/>
-                <path d="M127 0h95v30h-62v29h52v29h-52v30h62v30h-95z"/>
-                <path d="M260 0h65l19 19v26h-32V30h-39v88h39v-17h32v28l-19 19h-65l-20-20V20z"/>
-                <path d="M367 0h33v118h61v30h-94z"/>
-                <path d="M478 148L510 0h48l32 148h-34l-5-28h-36l-5 28zM520 92h26l-13-65z"/>
-                <path d="M610 0h34v148h-34z"/>
-                <path d="M668 148V0h37l32 76 32-76h37v148h-33V61l-26 62h-21l-25-62v87z"/>
-              </g>
-              <path d="M833 116h29v32h-29z" fill="#a0644f"/>
-            </svg>
-          </button></h1>
+          <p class="title-kicker">A WORLD WAITING TO BE RECLAIMED</p>
+          <h1><button id="title-button" class="title-button" type="button" aria-label="RECLAIM" tabindex="-1" disabled><span class="title-wordmark">RECLAIM</span></button></h1>
           <p class="tagline">奪われた世界を、取り戻せ。</p>
-          <div class="entry-group">
-            <button id="home-button" class="home-button" type="button" disabled><span class="button-index">01</span><span>HOME</span><svg viewBox="0 0 28 16" aria-hidden="true"><path d="M0 8h25M18 1l7 7-7 7"/></svg></button>
-            <span class="entry-subtitle">ホームへ進む</span>
-          </div>
-          <p id="title-hint" class="title-hint"><span class="hint-line"></span>タイトルに触れる。その向こうに、何かがいる。</p>
+          <nav id="title-menu" class="title-menu" aria-label="スタートメニュー">
+            <button id="home-button" class="title-menu-button title-menu-start" type="button" disabled><span>START</span><svg viewBox="0 0 28 16" aria-hidden="true"><path d="M0 8h25M18 1l7 7-7 7"/></svg></button>
+            <button id="title-settings" class="title-menu-button" type="button" aria-label="SETTINGS — 設定を開く">SETTINGS</button>
+          </nav>
+          <p class="title-key-hint"><kbd>↑</kbd><kbd>↓</kbd> 選択 <span>·</span> <kbd>ENTER</kbd> 決定</p>
         </div>
-        <div id="boss-caption" class="boss-caption" aria-hidden="true"><span>UNIDENTIFIED PRESENCE</span><strong>まだ、立ち向かう時ではない。</strong></div>
-        <div class="title-bottom">
-          <div class="chapter"><span class="overline">JAPAN CAMPAIGN</span><p>終わりの景色から、<br>始まりの地へ。</p><span class="chapter-route">知床 <i>────────</i> 東京</span></div>
-          <div class="title-bottom-right"><span class="small-cross">+</span><p>この街は、まだ奪われたままだ。</p><span class="overline">A WORLD WAITING TO BE RECLAIMED.</span></div>
-        </div>
+        <div id="boss-caption" hidden aria-hidden="true"></div>
+        <footer class="title-footer"><span class="title-footer-studio">SOLUYRA <span>/</span> RECLAIM PROJECT</span><div id="title-footer-info"><span class="title-version">PRE-ALPHA / 0.1</span></div></footer>
       </section>
       <section id="home-screen" class="home-screen" aria-label="ホーム" hidden>
-        <div class="home-location"><span class="overline">HOKKAIDO / SHIRETOKO</span><h2>HOME<span>出撃準備</span></h2></div>
+        <div class="home-location"><span class="overline">JAPAN CAMPAIGN</span><h2>HOME<span>出撃準備</span></h2></div>
         <button id="menu-toggle" type="button" class="menu-toggle" aria-expanded="false" aria-controls="home-nav"><span>☰</span> メニュー</button>
         <nav id="home-nav" class="side-nav" aria-label="ホームメニュー">
-          <div class="nav-caption"><span class="overline">FIELD MENU</span><button id="menu-dismiss" type="button" aria-label="メニューを閉じる">×</button></div>
+          <div class="nav-caption"><button id="menu-dismiss" type="button" aria-label="メニューを閉じる">×</button></div>
+          <button id="home-lobby-tab" class="lobby-tab" type="button" aria-current="page">ロビー</button>
           <div id="nav-items"></div>
-          <button id="back-title" class="back-title" type="button">← タイトルへ</button>
         </nav>
-        <div class="lobby-heading"><p class="eyebrow">THE JOURNEY STARTS HERE</p><h3>知床から、始めよう。</h3></div>
-        <div class="squad-tools"><span class="overline">FORMATION PREVIEW</span><div class="segmented"><button id="solo-button" aria-pressed="true" type="button">SOLO</button><button id="squad-button" aria-pressed="false" type="button">4人編成</button></div><small id="squad-note">SOLO · この端末のローカルプレビュー</small></div>
+        <aside class="lobby-sidebar" aria-label="探索情報とオペレーター">
+          <div class="lobby-campaign-card"><span class="lobby-card-kicker">JAPAN / CHAPTER 01</span><div class="lobby-location-title"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 4l16 7v16L24 44 8 27V11zM24 12v22M15 21l9-9 9 9"/></svg><div><small>現在地</small><strong id="lobby-region-name">知床</strong><span id="lobby-region-code">HOKKAIDO / SHIRETOKO</span></div></div><div class="lobby-route-progress"><span>探索済みエリア</span><strong id="lobby-completed-count">0</strong></div><button id="reference-destination" class="lobby-text-button" type="button">旅のマップを見る <span>↗</span></button></div>
+          <div class="lobby-objective-card"><h3><span>◇</span> 探索ログ</h3><ul id="lobby-objectives"></ul></div>
+          <div class="lobby-operator-card"><label for="home-character-select">オペレーター <span>OPERATOR</span></label><select id="home-character-select"><option value="jonesy">JONESY / ジョンジー</option><option value="ramirez">RAMIREZ / ラミレス</option></select><button id="reference-equipment" class="lobby-text-button" type="button">装備を確認 <span>↗</span></button></div>
+        </aside>
+        <div class="lobby-heading"><span class="lobby-heading-line"></span><p id="lobby-region-caption">HOKKAIDO / SHIRETOKO</p></div>
+        <div class="squad-tools"><span class="overline">PARTY</span><div class="segmented"><button id="solo-button" aria-pressed="true" type="button">ソロ</button><button id="squad-button" aria-pressed="false" type="button">4人編成</button></div><small id="squad-note">この端末の編成プレビュー</small></div>
         <div id="lobby-stage" aria-hidden="true"></div>
-        <div id="operator-labels"><div class="survivor-label you-label"><span>YOU / 01</span><strong id="survivor-name">SURVIVOR</strong></div><div class="survivor-label sample-label" hidden>見本 / 02</div><div class="survivor-label sample-label" hidden>見本 / 03</div><div class="survivor-label sample-label" hidden>見本 / 04</div></div>
+        <div id="operator-labels"><div class="survivor-label you-label"><span>♛ YOU</span><strong id="survivor-name">SURVIVOR</strong><small>準備中</small></div><div class="survivor-label sample-label" hidden><span>ローカル見本 / 02</span><strong>RAMIREZ</strong></div><div class="survivor-label sample-label" hidden><span>ローカル見本 / 03</span><strong>JONESY</strong></div><div class="survivor-label sample-label" hidden><span>ローカル見本 / 04</span><strong>RAMIREZ</strong></div></div>
+        <div id="party-slot-controls" aria-label="編成プレビューにキャラクターを追加"><button id="party-add-1" type="button" aria-label="2人編成をプレビュー">+</button><button id="party-add-2" type="button" aria-label="3人編成をプレビュー">+</button><button id="party-add-3" type="button" aria-label="4人編成をプレビュー">+</button></div>
+        <p id="lobby-loading" class="lobby-loading" role="status">オペレーターを準備中…</p>
         <div id="panel-backdrop" class="panel-backdrop" aria-hidden="true" hidden></div>
         <aside id="home-panel" class="home-panel" role="dialog" aria-modal="false" aria-labelledby="panel-title" hidden><div class="panel-header"><div><span id="panel-category" class="overline"></span><h2 id="panel-title" tabindex="-1"></h2></div><button id="panel-close" type="button" class="close-button" aria-label="パネルを閉じる">×</button></div><div id="panel-content" class="panel-content"></div><div id="panel-footer" class="panel-footer" hidden></div></aside>
-        <div class="lobby-footer"><div class="home-footnote"><span id="held-weapon">アサルト / 日本刀</span><small id="local-save-status">この端末の外観・装備プレビュー</small><small>知床はローカル探索・射撃 / オンライン未接続</small></div><div class="launch-area"><div><span class="overline">NEXT DESTINATION</span><strong>知床<span>01 / JAPAN</span></strong></div><button id="start-button" class="home-button" type="button"><span class="button-index">出撃前確認</span><span>START</span><svg viewBox="0 0 28 16" aria-hidden="true"><path d="M0 8h25M18 1l7 7-7 7"/></svg></button></div></div>
+        <div class="lobby-footer"><div class="home-footnote"><span class="lobby-card-kicker">LOADOUT</span><span id="held-weapon">アサルト / サバイバルナイフ</span><small id="local-save-status">この端末の外観・装備プレビュー</small></div><article class="lobby-news"><div><span>FIELD REPORT</span><small id="lobby-news-region">知床 / 北の仮拠点</small></div><h3 id="lobby-next-objective">木造の家で、目を覚ます。</h3><p>装備を整えて、奪還の旅へ。</p></article><div class="launch-area"><div class="lobby-mode-banner">JAPAN CAMPAIGN <span id="lobby-party-count">4人編成</span></div><div class="lobby-destination"><span class="overline">NEXT DESTINATION</span><strong id="lobby-launch-region">知床</strong></div><button id="start-button" class="home-button" type="button"><span>プレイ</span><svg viewBox="0 0 28 16" aria-hidden="true"><path d="M0 8h25M18 1l7 7-7 7"/></svg></button><small>出撃前に内容を確認</small></div></div>
+        <div class="lobby-bottom-bar"><button id="back-title" class="back-title" type="button">← タイトル</button><span>LOCAL PARTY PREVIEW <i>·</i> オンライン未接続</span><button id="reference-mail" type="button" aria-label="通信のお知らせ">通信 <span>0</span></button></div>
       </section>
       <section id="mission-screen" class="mission-screen" aria-label="徒歩探索ミッション" hidden>
         <div class="mission-top"><span class="mission-meta">HOKKAIDO / ON FOOT</span><h2 id="mission-area">知床</h2><small id="mission-prototype">導入プレイ / 仮バランス</small><p id="mission-objective"></p></div>
-        <div id="mission-crosshair" class="mission-crosshair" aria-hidden="true"></div><div id="mission-damage" class="mission-damage" aria-hidden="true" hidden></div>
-        <div class="mission-status"><strong id="mission-health"></strong><div id="mission-enemy"></div><div id="mission-distance"></div><small id="mission-save"></small></div>
-        <div class="mission-controls"><p>WASD 移動　マウス 視点　Shift ダッシュ　Space ジャンプ<br>左クリック 射撃　E 調べる　Esc 一時停止 / マウス解除</p><button id="mission-interact" type="button" hidden>ラジオを調べる / E</button><button id="mission-pause-button" type="button">一時停止 / Esc</button></div>
+        <div id="mission-scope" aria-hidden="true" hidden></div><div id="mission-crosshair" class="mission-crosshair" aria-hidden="true"></div><div id="mission-damage" class="mission-damage" aria-hidden="true" hidden></div>
+        <div class="mission-status"><div id="mission-enemy"></div><strong id="mission-weapon"></strong><small id="mission-view"></small><div id="mission-distance"></div><small id="mission-save"></small></div>
+        <div class="player-vitals" aria-label="プレイヤーの体力とシールド">
+          <div class="player-vital-label"><span>◇ シールド <small>未装備</small></span><span>0 / 100</span></div>
+          <div id="player-shield-bar" class="player-vital-track shield" role="progressbar" aria-label="シールド" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="player-shield-fill" class="player-vital-fill" style="width:0%"></div></div>
+          <div class="player-vital-label health"><span>＋ 体力</span><strong id="mission-health">100 / 100</strong></div>
+          <div id="player-health-bar" class="player-vital-track health" role="progressbar" aria-label="体力" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="player-health-fill" class="player-vital-fill"></div></div>
+        </div>
+        <div class="mission-controls"><p>WASD 移動　マウス 視点　Shift ダッシュ　Space ジャンプ<br>左クリック 射撃 / 近接　右クリック 構え　R 装填<br>1 / 2 / 3 武器切替　V 視点切替　E 調べる　Esc 一時停止</p><button id="mission-interact" type="button" hidden>ラジオを調べる / E</button><button id="mission-pause-button" type="button">一時停止 / Esc</button></div>
         <div id="mission-overlay" class="mission-overlay" hidden>
           <div id="mission-story" class="mission-card" hidden><span id="mission-story-kicker" class="mission-meta"></span><h3 id="mission-story-title"></h3><p id="mission-story-text"></p><div class="mission-actions"><button id="mission-continue" class="primary-action" type="button">起き上がる</button><button id="mission-skip" class="secondary-action" type="button">導入をスキップ</button></div><small>PROVISIONAL：文章・通信方法・固有名詞は仮設定です。音は右上でオンにした場合だけ。</small></div>
           <div id="mission-pause" class="mission-card" hidden><span class="mission-meta">PAUSED / PC EXPLORATION</span><h3>森を歩き、道を確かめる。</h3><p id="mission-pause-message">「探索を開始」でマウス視点を有効にします。Escで解除して停止。HOMEへ戻っても到達済みの進行と安全な再開位置を保存します。</p><div class="mission-actions"><button id="mission-lock" class="primary-action" type="button">探索を開始</button><button id="mission-home" class="secondary-action" type="button">保存してHOMEへ</button></div><small>PCキーボード＋マウス用。矢印キーでも視点を少し調整できます。オンライン未接続。</small></div>

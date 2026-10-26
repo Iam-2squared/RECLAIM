@@ -8,7 +8,7 @@ import type { SegmentWorld, Solid, DroneTarget, ImpactMaterial } from './traject
 export type CollisionProxy =
   | Readonly<{ type:'cylinder';x:number;z:number;radius:number;minY:number;maxY:number;tag:string }>
   | Readonly<{ type:'aabb';minX:number;maxX:number;minY:number;maxY:number;minZ:number;maxZ:number;tag:string }>;
-export type MaterialChooser = (collider:CollisionProxy)=>Exclude<ImpactMaterial,'terrain'|'drone'>;
+export type MaterialChooser = (collider:CollisionProxy)=>Exclude<ImpactMaterial,'terrain'|'drone'|'humanoid'>;
 const defaultMaterial:MaterialChooser=c=>{
   const tag=c.tag.toLowerCase();
   if(/wood|cabin|trunk|tree|timber/.test(tag))return 'wood';

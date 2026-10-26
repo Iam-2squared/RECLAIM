@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "weapons": [
+    {
+      "id": "assault",
+      "file": "assault.glb",
+      "sha256": "b1ef76de4eeae973a473f0ef63c4362364241e3c5e496d765f41a46b8cd49d57",
+      "bytes": 3808076,
+      "source": "weapon/アサルト/アサルト.glb"
+    },
+    {
+      "id": "sniper",
+      "file": "sniper.glb",
+      "sha256": "cca0246d756f41f2531b31ef8b972fed87e35b552b4e2f58984902c791a8da43",
+      "bytes": 4196800,
+      "source": "weapon/スナイパー/スナイパー.glb"
+    },
+    {
+      "id": "knife",
+      "file": "knife.glb",
+      "sha256": "282b64ec95a8c0b29ec38ec937e351060950a0dfac88f71902d0de1e5886f76c",
+      "bytes": 2824644,
+      "source": "weapon/サバイバルナイフ/サバイバルナイフ.glb"
+    }
+  ]
+}

@@ -20,6 +20,8 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "test:e2e": "playwright test",
     "package:preview": "node scripts/standalone.mjs",
+    "package:motion": "node scripts/build-motion-preview.mjs",
+    "test:motion": "playwright test --config=playwright.motion.config.mjs",
     "test:blender": "python3 tests/blender-tools.test.py"
   },
   "engines": {

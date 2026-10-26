@@ -1,0 +1,129 @@
+{
+  "method": "Actual Three.js GLTFLoader/AnimationMixer and skinned-vertex bounds; geometry-only texture stub; no GPU claim",
+  "models": [
+    {
+      "id": "jonesy",
+      "sha256": "1a6d6443b9607ac9ea7b1949d9fcf65e689f21eca0200386bad0728ea8966280",
+      "clips": [
+        {
+          "name": "Aim",
+          "duration": 1.2333333492279053,
+          "tracks": 372
+        },
+        {
+          "name": "Death",
+          "duration": 1.4333332777023315,
+          "tracks": 372
+        },
+        {
+          "name": "Hit",
+          "duration": 0.46666666865348816,
+          "tracks": 372
+        },
+        {
+          "name": "Idle",
+          "duration": 2.0333333015441895,
+          "tracks": 372
+        },
+        {
+          "name": "Jump",
+          "duration": 1,
+          "tracks": 372
+        },
+        {
+          "name": "Melee",
+          "duration": 0.6333333253860474,
+          "tracks": 372
+        },
+        {
+          "name": "Reload",
+          "duration": 1.8333333730697632,
+          "tracks": 372
+        },
+        {
+          "name": "Run",
+          "duration": 0.7666666507720947,
+          "tracks": 372
+        },
+        {
+          "name": "Shoot",
+          "duration": 0.30000001192092896,
+          "tracks": 372
+        },
+        {
+          "name": "Walk",
+          "duration": 1.100000023841858,
+          "tracks": 372
+        }
+      ],
+      "lobbyClip": "Idle",
+      "sampledIdlePoses": 17,
+      "maxFootDeviationMetres": 2.3594537511898494e-16,
+      "maxHorizontalRootDriftMetres": 0,
+      "maxBoneQuaternionChange": 0.005967131117358804,
+      "passed": true
+    },
+    {
+      "id": "ramirez",
+      "sha256": "49f9b1b38d157545a97694a594fa033c2eae69f478fd107e37a5b32176ed6ca8",
+      "clips": [
+        {
+          "name": "Aim",
+          "duration": 1.2333333492279053,
+          "tracks": 552
+        },
+        {
+          "name": "Death",
+          "duration": 1.4333332777023315,
+          "tracks": 552
+        },
+        {
+          "name": "Hit",
+          "duration": 0.46666666865348816,
+          "tracks": 552
+        },
+        {
+          "name": "Idle",
+          "duration": 2.0333333015441895,
+          "tracks": 552
+        },
+        {
+          "name": "Jump",
+          "duration": 1,
+          "tracks": 552
+        },
+        {
+          "name": "Melee",
+          "duration": 0.6333333253860474,
+          "tracks": 552
+        },
+        {
+          "name": "Reload",
+          "duration": 1.8333333730697632,
+          "tracks": 552
+        },
+        {
+          "name": "Run",
+          "duration": 0.7666666507720947,
+          "tracks": 552
+        },
+        {
+          "name": "Shoot",
+          "duration": 0.30000001192092896,
+          "tracks": 552
+        },
+        {
+          "name": "Walk",
+          "duration": 1.100000023841858,
+          "tracks": 552
+        }
+      ],
+      "lobbyClip": "Idle",
+      "sampledIdlePoses": 17,
+      "maxFootDeviationMetres": 4.0484846303970643e-16,
+      "maxHorizontalRootDriftMetres": 0,
+      "maxBoneQuaternionChange": 0.005967128905467689,
+      "passed": true
+    }
+  ]
+}

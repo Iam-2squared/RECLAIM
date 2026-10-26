@@ -37,12 +37,12 @@ export class MissionProjectilePipeline {
   private readonly payload=new Map<number,ShotPayload>();
   get active():number {return this.pool.size;}
   get visibleTracers():readonly TracerSpan[] {return this.trails.visible;}
-  fire(position:Vector3,direction:Vector3,payload:ShotPayload):number|null {
+  fire(position:Vector3,direction:Vector3,payload:ShotPayload,speed:number=PROJECTILE_RULES.speed,range:number=PROJECTILE_RULES.maxDistance):number|null {
     if(!finiteVec(position)||!finiteVec(direction)||payload.owner!=='player'||
        !['assault','sniper','rifle'].includes(payload.weapon)||
        !Number.isFinite(payload.damage)||payload.damage<=0||payload.damage>100)
       throw new RangeError('invalid fictional shot');
-    const id=this.pool.spawn(position,direction);
+    const id=this.pool.spawn(position,direction,speed,range);
     if(id!==null)this.payload.set(id,{...payload});
     return id;
   }

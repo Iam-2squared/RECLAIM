@@ -1,0 +1,334 @@
+{
+  "version": 1,
+  "description": "Runtime copies of the supplied authored weapons. GLBs are byte-identical; catalogue previews are resized WebP conversions of the supplied renders.",
+  "preparationScript": "tools/home-lobby/prepare_weapons.py",
+  "weapons": [
+    {
+      "id": "assault",
+      "displayName": "アサルト",
+      "sourceVersion": "v01",
+      "modelUrl": "/home-weapons/assault.glb",
+      "previewUrl": "/home-weapons/assault.webp",
+      "sourceModel": {
+        "path": "weapon/アサルト/アサルト.glb",
+        "bytes": 3808076,
+        "sha256": "b1ef76de4eeae973a473f0ef63c4362364241e3c5e496d765f41a46b8cd49d57"
+      },
+      "sourcePreview": {
+        "path": "weapon/アサルト/preview.png",
+        "bytes": 1363091,
+        "sha256": "74e4bb4bc1a55453b313675a3a5846fe44ced156c252dc42d2db2dd859a114cb",
+        "dimensions": [
+          1600,
+          800
+        ]
+      },
+      "sourceMetadata": {
+        "path": "weapon/アサルト/weapon.json",
+        "bytes": 2237,
+        "sha256": "b0ca3586505fd87828e6e133d31b7114ee0c0b0092bfb36ef84fac99e0070593"
+      },
+      "sourceVerification": {
+        "path": "weapon/アサルト/verification.json",
+        "bytes": 1606,
+        "sha256": "2d23b9744525920502684c621e0534e6ebb92fab5fef4f6819eddc11bf674f31"
+      },
+      "runtimeModel": {
+        "path": "home-weapons/assault.glb",
+        "bytes": 3808076,
+        "sha256": "b1ef76de4eeae973a473f0ef63c4362364241e3c5e496d765f41a46b8cd49d57"
+      },
+      "runtimePreview": {
+        "path": "home-weapons/assault.webp",
+        "bytes": 19680,
+        "sha256": "2951507f500c4126a73bae43834dc0204a0cfc2c98afc58f6cfa16c9a0fb52cc",
+        "dimensions": [
+          1200,
+          600
+        ],
+        "quality": 90
+      },
+      "modelUnmodified": true,
+      "forwardAxis": "+X",
+      "upAxis": "+Y",
+      "units": "metres",
+      "meshParts": 44,
+      "triangles": 7152,
+      "vertices": 13372,
+      "bounds": {
+        "min": [
+          -0.47999998927116394,
+          -0.14970839023590088,
+          -0.05122999846935272
+        ],
+        "max": [
+          0.656000018119812,
+          0.30453142523765564,
+          0.052149999886751175
+        ],
+        "dimensions": [
+          1.136000007390976,
+          0.4542398154735565,
+          0.1033799983561039
+        ]
+      },
+      "attachments": {
+        "Grip_R": [
+          -0.03999999910593033,
+          0.0,
+          0.0
+        ],
+        "Support_Grip": [
+          0.32499998807907104,
+          0.10999999940395355,
+          0.0
+        ],
+        "Tip_Visual": [
+          0.656000018119812,
+          0.18400000035762787,
+          0.0
+        ]
+      },
+      "embeddedImages": [
+        {
+          "name": "Weapon_BaseColor",
+          "mimeType": "image/png",
+          "bytes": 1615019,
+          "sha256": "4c944a4cceab8ab71fb6384dec000db138a8c9fc33af4750781b634b6a747b28"
+        },
+        {
+          "name": "Weapon_ORM",
+          "mimeType": "image/png",
+          "bytes": 1639175,
+          "sha256": "4dbef1f63270022107bc1e73cca6b4e6cea64f9d256c5ad3532d84d003c1d052"
+        }
+      ],
+      "materialNames": [
+        "WEAPON | packed weathered PBR",
+        "inset",
+        "WEAPON | packed weathered PBR",
+        "marking"
+      ],
+      "externalDependencies": 0,
+      "finiteGeometry": true
+    },
+    {
+      "id": "sniper",
+      "displayName": "スナイパー",
+      "sourceVersion": "v01",
+      "modelUrl": "/home-weapons/sniper.glb",
+      "previewUrl": "/home-weapons/sniper.webp",
+      "sourceModel": {
+        "path": "weapon/スナイパー/スナイパー.glb",
+        "bytes": 4196800,
+        "sha256": "cca0246d756f41f2531b31ef8b972fed87e35b552b4e2f58984902c791a8da43"
+      },
+      "sourcePreview": {
+        "path": "weapon/スナイパー/preview.png",
+        "bytes": 1365897,
+        "sha256": "471b2b3ffa809aa15169eeffc8419ace8bf9d58e2a44f5311134f0bc714e1171",
+        "dimensions": [
+          1600,
+          800
+        ]
+      },
+      "sourceMetadata": {
+        "path": "weapon/スナイパー/weapon.json",
+        "bytes": 2256,
+        "sha256": "d91e32f97a99ee707dbcc98a5642a2cb04b68d5859027868ece2ab9978afedd9"
+      },
+      "sourceVerification": {
+        "path": "weapon/スナイパー/verification.json",
+        "bytes": 1629,
+        "sha256": "f7fbda249ad490b4a804e3f843aec7f6af8dfee2876ef19001e020c1ed11a65f"
+      },
+      "runtimeModel": {
+        "path": "home-weapons/sniper.glb",
+        "bytes": 4196800,
+        "sha256": "cca0246d756f41f2531b31ef8b972fed87e35b552b4e2f58984902c791a8da43"
+      },
+      "runtimePreview": {
+        "path": "home-weapons/sniper.webp",
+        "bytes": 20902,
+        "sha256": "9a287057307eb7ef9868073772892ab3408f79782529390e09e7ea8000990339",
+        "dimensions": [
+          1200,
+          600
+        ],
+        "quality": 90
+      },
+      "modelUnmodified": true,
+      "forwardAxis": "+X",
+      "upAxis": "+Y",
+      "units": "metres",
+      "meshParts": 40,
+      "triangles": 9140,
+      "vertices": 16723,
+      "bounds": {
+        "min": [
+          -0.5694999694824219,
+          -0.08468182384967804,
+          -0.06300000101327896
+        ],
+        "max": [
+          0.9279999732971191,
+          0.453000009059906,
+          0.10499998927116394
+        ],
+        "dimensions": [
+          1.497499942779541,
+          0.537681832909584,
+          0.1679999902844429
+        ]
+      },
+      "attachments": {
+        "Grip_R": [
+          -0.08299999684095383,
+          0.014999999664723873,
+          0.0
+        ],
+        "Support_Grip": [
+          0.2800000011920929,
+          0.12999999523162842,
+          0.0
+        ],
+        "Tip_Visual": [
+          0.9279999732971191,
+          0.22599999606609344,
+          0.0
+        ]
+      },
+      "embeddedImages": [
+        {
+          "name": "Weapon_BaseColor",
+          "mimeType": "image/png",
+          "bytes": 1797910,
+          "sha256": "01cea7cf75df1dbcc772f7816541cca882ec8d9e1c298b75433a669fbad0ad0b"
+        },
+        {
+          "name": "Weapon_ORM",
+          "mimeType": "image/png",
+          "bytes": 1679741,
+          "sha256": "5c31e2040fd9618f51045aba494b3a6af0aa619b23a067ba68d5adfcd3499b86"
+        }
+      ],
+      "materialNames": [
+        "WEAPON | packed weathered PBR",
+        "inset",
+        "WEAPON | packed weathered PBR",
+        "marking",
+        "WEAPON | packed weathered PBR",
+        "glass"
+      ],
+      "externalDependencies": 0,
+      "finiteGeometry": true
+    },
+    {
+      "id": "knife",
+      "displayName": "サバイバルナイフ",
+      "sourceVersion": "v01",
+      "modelUrl": "/home-weapons/knife.glb",
+      "previewUrl": "/home-weapons/knife.webp",
+      "sourceModel": {
+        "path": "weapon/サバイバルナイフ/サバイバルナイフ.glb",
+        "bytes": 2824644,
+        "sha256": "282b64ec95a8c0b29ec38ec937e351060950a0dfac88f71902d0de1e5886f76c"
+      },
+      "sourcePreview": {
+        "path": "weapon/サバイバルナイフ/preview.png",
+        "bytes": 923633,
+        "sha256": "9b664f4b8f719d9c025f08aba6543a95c4e39ae78187f50d3fa95c3dbc28e778",
+        "dimensions": [
+          1200,
+          760
+        ]
+      },
+      "sourceMetadata": {
+        "path": "weapon/サバイバルナイフ/weapon.json",
+        "bytes": 2455,
+        "sha256": "f94d578d528edc05706503244d2e1b4bbe268c311a0b8503229ee889a8875d8d"
+      },
+      "sourceVerification": {
+        "path": "weapon/サバイバルナイフ/verification.json",
+        "bytes": 1647,
+        "sha256": "7055754387a25648ae0ab26eec23595d047942fd4565031417fe85fb418df8b1"
+      },
+      "runtimeModel": {
+        "path": "home-weapons/knife.glb",
+        "bytes": 2824644,
+        "sha256": "282b64ec95a8c0b29ec38ec937e351060950a0dfac88f71902d0de1e5886f76c"
+      },
+      "runtimePreview": {
+        "path": "home-weapons/knife.webp",
+        "bytes": 14452,
+        "sha256": "8e6fc5de1196c2f828d1a5b8f52f4fe712061575512705f962519f94007eb486",
+        "dimensions": [
+          947,
+          600
+        ],
+        "quality": 90
+      },
+      "modelUnmodified": true,
+      "forwardAxis": "+X",
+      "upAxis": "+Y",
+      "units": "metres",
+      "meshParts": 22,
+      "triangles": 5508,
+      "vertices": 10367,
+      "bounds": {
+        "min": [
+          -0.0989999994635582,
+          -0.05299999937415123,
+          -0.02850000001490116
+        ],
+        "max": [
+          0.27771303057670593,
+          0.040463343262672424,
+          0.029999999329447746
+        ],
+        "dimensions": [
+          0.37671303004026413,
+          0.09346334263682365,
+          0.05849999934434891
+        ]
+      },
+      "attachments": {
+        "Grip_R": [
+          0.0,
+          0.0020000000949949026,
+          0.0
+        ],
+        "Support_Grip": [
+          -0.03200000151991844,
+          0.0020000000949949026,
+          0.0
+        ],
+        "Tip_Visual": [
+          0.27799999713897705,
+          0.006000000052154064,
+          0.0
+        ]
+      },
+      "embeddedImages": [
+        {
+          "name": "Weapon_BaseColor",
+          "mimeType": "image/png",
+          "bytes": 1303255,
+          "sha256": "d85502e54e8b886bd2c657261f04514287fb8439e3ec886abe32222202b9a967"
+        },
+        {
+          "name": "Weapon_ORM",
+          "mimeType": "image/png",
+          "bytes": 1115552,
+          "sha256": "77f7dc6f6cc9802b1a9bba3fb30c1606ab91b4ec8285902d8df2ea8b04ec2a7e"
+        }
+      ],
+      "materialNames": [
+        "WEAPON | packed weathered PBR",
+        "WEAPON | packed weathered PBR"
+      ],
+      "externalDependencies": 0,
+      "finiteGeometry": true
+    }
+  ]
+}

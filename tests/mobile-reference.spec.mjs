@@ -75,13 +75,15 @@ for (const view of views) {
     await ready(page);
     const input = await presentation(page);
     expect(input.touchOnly, 'all 14 device-emulation viewports exercise coarse-only touch targets').toBe(true);
-    expect((await snapshot(page)).menus.mode).toBe(input.mobile ? 'mobile-reference-2d' : 'reference-2d');
+    expect((await snapshot(page)).menus.mode).toBe('atmospheric-title-2d');
+    await page.locator('.title-atmosphere img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
     await expect(page.locator('#continue-button')).toBeDisabled();
     await noOverflow(page);
-    await targets(page, ['#home-button', '#continue-button', '#settings-button', '#mobile-settings', '#reference-extras', '#sound-button']);
+    await targets(page, ['#home-button', '#continue-button', '#title-settings', '#reference-extras', '#sound-button', '#reference-motion']);
     await capture(page, info, 'title');
     await tap(page, '#home-button');
     await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
+    expect((await snapshot(page)).menus.mode).toBe(input.mobile ? 'mobile-reference-2d' : 'reference-2d');
     await noOverflow(page);
     await targets(page, ['#menu-toggle', '#solo-button', '#squad-button', '#start-button', '#reference-destination', '#reference-equipment', '#reference-mail']);
     await capture(page, info, 'home');
@@ -140,7 +142,7 @@ test('touch START, settings, extras, mail and local formation have real state ch
   page.on('websocket', s => sockets.push(s.url()));
   await ready(page);
   await expect(page.locator('#sound-button')).toHaveAttribute('aria-pressed', 'false');
-  await tap(page, '#settings-button');
+  await tap(page, '#title-settings');
   await page.locator('#quality-select').selectOption('low');
   await page.locator('#motion-toggle').check();
   await capture(page, info, 'settings');
@@ -235,6 +237,9 @@ test('CONTINUE only accepts an actual consistent checkpoint and never starts or 
 test('ten touch TITLE-HOME roundtrips preserve resources, campaign and idle renderer counter', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await ready(page);
+  await tap(page, '#home-button');
+  await tap(page, '#menu-toggle');
+  await tap(page, '#back-title');
   const initial = await snapshot(page);
   for (let i = 0; i < 10; i++) {
     await tap(page, '#home-button');
@@ -328,7 +333,7 @@ test('corrupt Storage and rejected Audio promise do not kill START or settings',
   await ready(page);
   await tap(page, '#sound-button');
   await expect(page.locator('#sound-button')).toHaveAttribute('aria-pressed', 'false');
-  await tap(page, '#settings-button');
+  await tap(page, '#title-settings');
   await expect(page.locator('#settings-dialog')).toBeVisible();
   await capture(page, info, 'corrupt-storage-audio-blocked');
   await tap(page, '#settings-dialog .close-button');
@@ -344,7 +349,8 @@ test('missing background image does not create an invisible tap shield or remove
     Object.defineProperty(HTMLImageElement.prototype, 'src', { ...descriptor, set(value) { descriptor.set.call(this, String(value).startsWith('data:image') ? 'data:image/jpeg;base64,broken' : value); } });
   });
   await ready(page);
-  await expect(page.locator('#title-screen')).toHaveAttribute('data-art-error', 'true');
+  await expect(page.locator('#title-screen .title-atmosphere')).toHaveAttribute('data-art-error', 'true');
+  expect((await snapshot(page)).menus.atmosphere.images.every(image => !image.loaded)).toBe(true);
   expect((await snapshot(page)).menus.images.every(image => !image.loaded)).toBe(true);
   await expect(page.locator('#live-region')).toContainText('背景画像を読み込めませんでした');
   await capture(page, info, 'missing-title-art');

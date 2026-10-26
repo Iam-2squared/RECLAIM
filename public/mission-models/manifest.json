@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "jonesy",
+      "file": "jonesy.glb",
+      "sha256": "bd397482115db642211cb1d8bb4944c2ab9738a16943fe3c77da8dd77cc88881",
+      "bytes": 10995036,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Jump",
+        "Aim",
+        "Shoot",
+        "Reload",
+        "Hit",
+        "Death",
+        "Melee"
+      ],
+      "height_m": 1.8000000678274681,
+      "front": "+Z",
+      "up": "+Y",
+      "origin": "feet",
+      "verified": true
+    },
+    {
+      "id": "ramirez",
+      "file": "ramirez.glb",
+      "sha256": "41003247689442b7832e5ea31f5791814a4668416b0b4f4634dc804c40ffb6cf",
+      "bytes": 15587508,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Jump",
+        "Aim",
+        "Shoot",
+        "Reload",
+        "Hit",
+        "Death",
+        "Melee"
+      ],
+      "height_m": 1.799999952386356,
+      "front": "+Z",
+      "up": "+Y",
+      "origin": "feet",
+      "verified": true
+    },
+    {
+      "id": "humanoid-lv1",
+      "file": "humanoid-lv1.glb",
+      "sha256": "57f53622a377ce7ddf832b237002ddee709fd783b82135933d1dcff5c49b3ed4",
+      "bytes": 5452376,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "Hit",
+        "Death"
+      ],
+      "height_m": 1.6460000229999423,
+      "front": "+Z",
+      "up": "+Y",
+      "origin": "feet",
+      "verified": true
+    },
+    {
+      "id": "drone-lv1",
+      "file": "drone-lv1.glb",
+      "sha256": "3108b4443c9381124e1e8224ecfac1f732cee35a5a3cd95f24c6960602b8b113",
+      "bytes": 4830392,
+      "clips": [
+        "Hover",
+        "Patrol",
+        "Chase",
+        "Ram",
+        "Hit",
+        "Death"
+      ],
+      "height_m": 0.2451999932527542,
+      "front": "+Z",
+      "up": "+Y",
+      "origin": "body center",
+      "verified": true
+    },
+    {
+      "id": "humanoid-lv5",
+      "file": "humanoid-lv5.glb",
+      "sha256": "b299efeb705d4cdcac1733f7fa2f2a9a2c6ccc2ed89c4aceb4ce3454a0f8fe51",
+      "bytes": 7997476,
+      "clips": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Attack",
+        "Hit",
+        "Death"
+      ],
+      "height_m": 2.165276668034494,
+      "front": "+Z",
+      "up": "+Y",
+      "origin": "feet",
+      "verified": true
+    },
+    {
+      "id": "drone-lv5",
+      "file": "drone-lv5.glb",
+      "sha256": "c8fb7c809d38309f33036624c9f64bcc5dc0cfa30a794e6b173923e548430644",
+      "bytes": 6330992,
+      "clips": [
+        "Hover",
+        "Patrol",
+        "Chase",
+        "Ram",
+        "Hit",
+        "Death"
+      ],
+      "height_m": 0.6821796596050262,
+      "front": "+Z",
+      "up": "+Y",
+      "origin": "body center",
+      "verified": true
+    }
+  ]
+}

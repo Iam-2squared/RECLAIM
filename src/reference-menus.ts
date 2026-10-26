@@ -1,7 +1,8 @@
 import './reference-menus.css';
 import './mobile-reference-menus.css';
-import titleArt from './ui-reference/title.jpeg?inline';
-import homeArt from './ui-reference/home.jpeg?inline';
+import { TitleAtmosphere } from './title-atmosphere';
+import './title-screen.css';
+import { HomeLobby } from './home-lobby';
 import { REFERENCE_QUERY, referencePercent, type ReferenceRect } from './reference-layout';
 import type { ScreenState, Preferences } from './state';
 import type { Home } from './home';
@@ -14,6 +15,8 @@ export class ReferenceMenus {
   readonly coarse = matchMedia('(any-pointer: coarse)');
   readonly fine = matchMedia('(any-pointer: fine)');
   readonly images: HTMLImageElement[] = [];
+  readonly atmosphere: TitleAtmosphere;
+  readonly lobby: HomeLobby;
   readonly observer: MutationObserver;
   readonly changed = () => this.refresh();
   readonly keydown = (event: KeyboardEvent) => {
@@ -24,7 +27,7 @@ export class ReferenceMenus {
       return;
     }
     if (this.state.screen !== 'title') return;
-    const buttons = ['home-button','continue-button','settings-button','reference-extras']
+    const buttons = ['home-button','continue-button','title-settings','reference-extras']
       .map(id => el<HTMLButtonElement>(id)).filter(button => !button.disabled);
     const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -39,28 +42,23 @@ export class ReferenceMenus {
   constructor(readonly state: ScreenState, readonly home: Home, readonly campaign: CampaignStore,
     readonly preferences: () => Preferences, readonly soundEnabled: () => boolean,
     readonly go: (screen: 'title'|'home') => void, readonly announce: (text: string) => void) {
-    for (const [id,source] of [['title-screen',titleArt],['home-screen',homeArt]]) {
-      const image = new Image(); image.className = 'reference-backplate'; image.src = source;
-      image.alt = ''; image.draggable = false; image.setAttribute('aria-hidden','true');
-      image.addEventListener('error',() => { el(id).dataset.artError='true'; this.announce('背景画像を読み込めませんでした。メニューは引き続き操作できます。'); });
-      el(id).prepend(image); this.images.push(image);
-    }
-    const add = (host: HTMLElement, id: string, name: string, rect: ReferenceRect, action: () => void) => {
+    this.atmosphere = new TitleAtmosphere(el('title-screen'));
+    this.lobby = new HomeLobby(home,campaign,preferences,announce);
+    home.onPresentationChange=this.changed;
+    const add = (host: HTMLElement, id: string, name: string, rect: ReferenceRect, action: () => void, reference = true) => {
       const button = document.createElement('button'); button.id = id; button.type = 'button';
       button.className = 'reference-only'; button.textContent = name; button.setAttribute('aria-label',name);
-      button.addEventListener('click',action); host.append(button); this.place(button,rect); return button;
+      button.addEventListener('click',action); host.append(button);
+      if (reference) this.place(button,rect); else button.className = 'title-menu-button';
+      return button;
     };
-    this.place(el('title-button'),'titleLogo'); this.place(el('home-button'),'titleStart');
-    const continuation = add(el('title-screen'),'continue-button','CONTINUE — 保存位置の出撃確認',
-      'titleContinue',() => { this.go('home'); this.home.open('briefing',el('start-button')); });
+    const continuation = add(el('title-menu'),'continue-button','CONTINUE',
+      'titleContinue',() => { this.go('home'); this.home.open('briefing',el('start-button')); },false);
+    continuation.setAttribute('aria-label','CONTINUE — 保存位置の出撃確認');
     continuation.disabled = true;
-    add(el('title-screen'),'reference-extras','EXTRAS — このプレビューについて','titleExtras',() => this.notice(false));
-    const mobileSettings=document.createElement('button');
-    mobileSettings.id='mobile-settings'; mobileSettings.type='button'; mobileSettings.className='mobile-only';
-    mobileSettings.textContent='SETTINGS'; mobileSettings.setAttribute('aria-label','設定を開く');
-    mobileSettings.addEventListener('click',() => el('settings-button').click()); el('title-screen').append(mobileSettings);
-    const artNote=document.createElement('p'); artNote.className='mobile-only mobile-art-note';
-    artNote.textContent='背景の人物・銃は固定イラストです。外観・装備の値のみ保存されます。'; el('home-screen').append(artNote);
+    el('title-settings').addEventListener('click',() => el('settings-button').click());
+    el('title-menu').append(el('title-settings'));
+    add(el('title-footer-info'),'reference-extras','INFORMATION','titleExtras',() => this.notice(false),false);
     const missionNotice=document.createElement('p'); missionNotice.id='mobile-mission-notice';
     missionNotice.className='mobile-only'; missionNotice.setAttribute('role','status');
     missionNotice.textContent='本編の徒歩・射撃はPCのキーボードとマウスが必要です。このスマホ版は出撃前確認まで操作できます。';
@@ -73,21 +71,16 @@ export class ReferenceMenus {
       const motion = el<HTMLInputElement>('motion-toggle'); motion.checked = !motion.checked;
       motion.dispatchEvent(new Event('change',{bubbles:true})); this.refresh();
     });
-    add(el('home-screen'),'reference-mail','通信のお知らせ','homeMail',() => this.notice(true));
-    add(el('home-screen'),'reference-equipment','装備を確認する','homeEquipment',() => this.home.open('weapons',el('reference-equipment')));
-    add(el('home-screen'),'reference-destination','知床のマップを確認する','homeDestination',() => this.home.open('map',el('reference-destination')));
-    this.place(el('back-title'),'homeBack'); this.place(el('solo-button'),'homeSolo');
-    this.place(el('squad-button'),'homeSquad'); this.place(el('start-button'),'homeStart');
-    const nav: ReferenceRect[] = ['homeMap','homeCharacter','homeWeapons','homeBoss','homeRanking'];
-    document.querySelectorAll<HTMLElement>('#nav-items button').forEach((button,i) => this.place(button,nav[i]));
+    el('reference-mail').addEventListener('click',()=>this.notice(true));
     el('reference-dialog').addEventListener('close',() => this.refresh());
     this.observer = new MutationObserver(this.changed);
-    this.observer.observe(el('home-screen'),{subtree:true,childList:true,characterData:true});
+    this.observer.observe(el('local-save-status'),{subtree:true,childList:true,characterData:true});
     for (const media of [this.media,this.coarse,this.fine]) media.addEventListener('change',this.changed);
+    this.atmosphere.motionMedia.addEventListener('change',this.changed);
     document.addEventListener('keydown',this.keydown);
     this.refresh();
   }
-  // Both menu layouts use lightweight 2D art. The old narrow-screen 3D loop is retired.
+  // These menu components own their presentation; the game renderer stays idle.
   get active() { return true; }
   // A tablet must not inherit scaled-down PC hit rectangles merely because it is wide.
   // Fine-pointer/hybrid PCs keep the original query and pixel-exact PC presentation.
@@ -100,25 +93,29 @@ export class ReferenceMenus {
   }
   refresh() {
     const active = this.active && this.state.screen !== 'mission', title = this.state.screen === 'title';
-    document.body.dataset.menuPresentation = active ? (this.mobile?'mobile-reference-2d':'reference-2d') : 'mission-webgl';
+    document.body.dataset.menuPresentation = active ? (title?'atmospheric-title-2d':'home-3d-lobby') : 'mission-webgl';
+    this.atmosphere.setActive(active && title);
+    this.atmosphere.setReducedMotion(this.preferences().reducedMotion);
+    this.lobby.refresh(active&&!title);
     document.body.dataset.touchOnly=String(this.touchOnly);
     document.body.dataset.referenceSquad = String(this.state.squadPreview);
     document.body.dataset.referenceName = this.home.current.appearance.name === 'SURVIVOR' ? 'default' : 'custom';
     document.body.dataset.referenceWeapon = this.home.current[this.home.current.held] === 'assault' ? 'default' : 'custom';
     document.body.dataset.referenceSave = el('local-save-status').textContent?.includes('保存できません') ? 'error' : 'normal';
-    document.body.dataset.referenceMotion = this.preferences().reducedMotion ? 'off' : 'on';
+    const motionReduced = this.atmosphere.snapshot().reducedMotion;
+    document.body.dataset.referenceMotion = motionReduced ? 'off' : 'on';
     document.body.dataset.referenceSound = this.soundEnabled() ? 'on' : 'off';
     el<HTMLButtonElement>('title-button').tabIndex = active ? -1 : 0;
-    el('title-button').setAttribute('aria-label',active ? 'RECLAIM タイトルイラスト' : 'RECLAIM — 東京の大ボスの影を見る');
+    el('title-button').setAttribute('aria-label','RECLAIM');
     el('home-button').setAttribute('aria-label',active ? 'START — HOMEへ進む' : 'HOME');
-    this.place(el('sound-button'),'titleSound'); this.place(el('settings-button'),title?'titleSettings':'homeSettings');
+    for (const id of ['sound-button','settings-button','reference-motion']) el(id).classList.remove('reference-hit');
     el('sound-button').setAttribute('data-label',this.soundEnabled() ? 'SOUND ON' : 'SOUND OFF');
-    el('reference-motion').setAttribute('data-label',this.preferences().reducedMotion ? 'Ⅱ  MOTION OFF' : 'Ⅱ  MOTION ON');
-    el('reference-motion').setAttribute('aria-pressed',String(!this.preferences().reducedMotion));
+    el('reference-motion').setAttribute('data-label',motionReduced ? 'Ⅱ  MOTION OFF' : 'Ⅱ  MOTION ON');
+    el('reference-motion').setAttribute('aria-pressed',String(!motionReduced));
     const soundLabel=this.soundEnabled()?'環境音 ON — タップでOFF':'環境音 OFF — タップでON';
     if(el('mobile-settings-sound').textContent!==soundLabel)el('mobile-settings-sound').textContent=soundLabel;
     el('mobile-settings-sound').setAttribute('aria-pressed',String(this.soundEnabled()));
-    el('mobile-mission-notice').hidden=this.home.panel!=='briefing';
+    el('mobile-mission-notice').hidden=this.home.panel!=='briefing'||!this.touchOnly;
     const continuation = el<HTMLButtonElement>('continue-button');
     continuation.disabled = !this.campaign.value.checkpoint;
     continuation.dataset.available = String(!continuation.disabled);
@@ -131,13 +128,17 @@ export class ReferenceMenus {
     el('reference-dialog-title').textContent = mail ? '通信のお知らせ' : 'RECLAIM / MENU PREVIEW';
     el('reference-dialog-text').textContent = mail
       ? '受信メッセージはありません。実ネットワーク通信・オンライン機能は未接続です。'
-      : '承認済みの2枚を固定イラストとして使用しています。キャラ設定と装備の選択値はこの端末に保存します。背景の人物・銃の絵自体は差し替わりません。スマホ版は出撃前確認まで対応し、本編の徒歩・射撃にはPCのキーボードとマウスが必要です。';
+      : 'RECLAIM — 奪われた世界を、取り戻せ。AIの反逆で失われた日本を舞台にしたサバイバルゲームの開発版です。進行と設定はこの端末に保存されます。本編の探索・射撃にはPCのキーボードとマウスが必要です。';
     el<HTMLDialogElement>('reference-dialog').showModal();
   }
-  snapshot() { return { mode:this.state.screen==='mission'?'mission-webgl':this.mobile?'mobile-reference-2d':'reference-2d',width:1536,height:864,
+  snapshot() { return { mode:this.state.screen==='mission'?'mission-webgl':this.state.screen==='title'?'atmospheric-title-2d':'home-3d-lobby',width:innerWidth,height:innerHeight,
     images:this.images.map(image => ({loaded:image.complete&&image.naturalWidth===1536,naturalWidth:image.naturalWidth,naturalHeight:image.naturalHeight})),
-    fixedIllustration:true,formationSamples:this.state.squadPreview?3:0 }; }
+    fixedIllustration:false,atmosphere:this.atmosphere.snapshot(),formationSamples:this.home.partySize-1 }; }
   dispose() {
+    this.home.onPresentationChange=()=>{};
+    this.lobby.dispose();
+    this.atmosphere.dispose();
+    this.atmosphere.motionMedia.removeEventListener('change',this.changed);
     this.observer.disconnect();
     for (const media of [this.media,this.coarse,this.fine]) media.removeEventListener('change',this.changed);
     document.removeEventListener('keydown',this.keydown);

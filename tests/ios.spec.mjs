@@ -26,11 +26,12 @@ test('a file-viewer-like module block gives a visible Safari instruction instead
   await expect(page.locator('body')).not.toHaveAttribute('data-ready', 'true');
 });
 
-test('iPhone touch uses fixed 2D art without a GPU reveal and travels TITLE to HOME and back', async ({ page }) => {
+test('iPhone touch uses layered 2D title art without GPU draws and travels TITLE to HOME and back', async ({ page }) => {
   test.setTimeout(60000);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await ready(page);
-  await expect(page.locator('body')).toHaveAttribute('data-menu-presentation','mobile-reference-2d');
+  await expect(page.locator('body')).toHaveAttribute('data-menu-presentation','atmospheric-title-2d');
+  await page.locator('.title-atmosphere img').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
   await expect(page.locator('#title-button')).toHaveAttribute('tabindex','-1');
   const frames=(await snapshot(page)).renderClock.rendererFrames;
   await page.waitForTimeout(100);
@@ -47,7 +48,7 @@ test('iPhone touch uses fixed 2D art without a GPU reveal and travels TITLE to H
 });
 
 test('Safari display dialog, reduced motion and quality remain touch operable', async ({ page }) => {
-  await ready(page); await page.locator('#settings-button').tap();
+  await ready(page); await page.locator('#title-settings').tap();
   await expect(page.locator('#settings-dialog')).toBeVisible();
   await page.locator('#motion-toggle').check(); await page.locator('#quality-select').selectOption('low');
   await page.locator('#settings-dialog .close-button').tap();

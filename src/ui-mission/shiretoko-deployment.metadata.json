@@ -1,0 +1,37 @@
+{
+  "kind": "static photograph rendered from the authored Shiretoko world",
+  "source": "public/home-map/shiretoko.html",
+  "sourceDataSha256": "d83fee5592d9bebee08c766a95dce2bb23240860c440dac30f9a02afc86a1764",
+  "sourceModelSha256": "445125159695b8d4626c605303ff3cddaa7f677ea0faa8ab9ea2cc8b5a259bf3",
+  "camera": {
+    "id": "g",
+    "position": [
+      -196,
+      98,
+      654
+    ],
+    "target": [
+      -100,
+      105,
+      180
+    ],
+    "fov": 55
+  },
+  "resolution": [
+    1800,
+    1000
+  ],
+  "renderer": {
+    "quality": "balanced",
+    "toneMapping": "ACESFilmicToneMapping",
+    "exposure": 1.05,
+    "outputColorSpace": "SRGBColorSpace",
+    "pixelRatio": 1
+  },
+  "image": {
+    "path": "src/ui-mission/shiretoko-deployment.webp",
+    "bytes": 183816,
+    "sha256": "eb5a5b452c03c98ed8ebf2cbbafc32efd3478096da60f6ad73ec0cacda584cd7"
+  },
+  "runtime": "Inline static photo; no additional 3D scene is created for the loading dialog."
+}

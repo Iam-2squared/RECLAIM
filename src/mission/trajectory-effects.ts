@@ -5,17 +5,18 @@
  */
 import { boxSweep, sphereSweep, terrainSweep, type Vector3, type ProjectileEvent } from './ballistics.ts';
 
-export type ImpactMaterial = 'terrain' | 'wood' | 'stone' | 'metal' | 'drone';
+export type ImpactMaterial = 'terrain' | 'wood' | 'stone' | 'metal' | 'drone' | 'humanoid';
 export type BoxBounds = Readonly<{
   minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number;
 }>;
 export type Solid = Readonly<{
-  id: string; material: Exclude<ImpactMaterial, 'terrain' | 'drone'>; bounds: BoxBounds;
+  id: string; material: Exclude<ImpactMaterial, 'terrain' | 'drone' | 'humanoid'>; bounds: BoxBounds;
 }>;
 export type DroneTarget = Readonly<{ id: string; center: Vector3; radius: number }>;
 export type SegmentWorld = Readonly<{
   solids: readonly Solid[];
   drone: DroneTarget | null;
+  targets?: readonly Readonly<DroneTarget & { material:'drone'|'humanoid' }>[];
   heightAt: (x: number, z: number) => number;
 }>;
 export type TaggedImpact = Readonly<{
@@ -23,7 +24,7 @@ export type TaggedImpact = Readonly<{
 }>;
 const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9;
 const order: Readonly<Record<ImpactMaterial, number>> = {
-  terrain: 0, stone: 1, metal: 2, wood: 3, drone: 4,
+  terrain: 0, stone: 1, metal: 2, wood: 3, drone: 4, humanoid: 4,
 };
 const finiteVec = (v: Vector3) => Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
 const between = (from: Vector3, to: Vector3, fraction: number): Vector3 => ({
@@ -47,7 +48,20 @@ export function resolveSegmentImpact(from: Vector3, to: Vector3, world: SegmentW
   for (const c of world.solids) consider(boxSweep(from, to, c.bounds)?.fraction, c.material, c.id);
   consider(terrainSweep(from, to, world.heightAt)?.fraction, 'terrain', null);
   if (world.drone) consider(sphereSweep(from, to, world.drone.center, world.drone.radius)?.fraction, 'drone', world.drone.id);
+  for(const target of world.targets??[]) consider(sphereSweep(from,to,target.center,target.radius)?.fraction,target.material,target.id);
   return selected;
+}
+/** Long aim rays are composed of the same bounded, nearest-first collision segments. */
+export function resolveAimImpact(from:Vector3,to:Vector3,world:SegmentWorld):TaggedImpact|null {
+  if(!finiteVec(from)||!finiteVec(to))throw new RangeError('invalid aim ray');
+  const length=Math.hypot(to.x-from.x,to.y-from.y,to.z-from.z);
+  if(length>200)throw new RangeError('aim ray exceeds range budget');
+  const pieces=Math.max(1,Math.ceil(length/8));
+  for(let i=0;i<pieces;i++){
+    const hit=resolveSegmentImpact(between(from,to,i/pieces),between(from,to,(i+1)/pieces),world);
+    if(hit)return {...hit,fraction:(i+hit.fraction)/pieces};
+  }
+  return null;
 }
 export type TracerSpan = Readonly<{
   projectileId: number; from: Vector3; to: Vector3; age: number;

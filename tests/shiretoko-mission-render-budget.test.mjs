@@ -61,7 +61,7 @@ test('submitting without checking available capacity fails rather than growing t
 
 test('actual Mission.update still advances fixed-step simulation before a deferred render',async()=>{
  const {readFile}=await import('node:fs/promises');
- const source=await readFile(new URL('../src/mission/runtime.ts',import.meta.url),'utf8');
+ const source=(await readFile(new URL('../src/mission/runtime.ts',import.meta.url),'utf8')).replace(/\r\n/g,'\n');
  const update=source.match(/ update\(dt:number\)\{([\s\S]*?)\n \}/)?.[1];
  assert(update,'test must execute the actual Mission update body');
  const actualUpdate=new Function('document','SIMULATION_TIMING','dt',update);

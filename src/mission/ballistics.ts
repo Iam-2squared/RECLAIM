@@ -91,19 +91,21 @@ export function nearestSweep(from: Vector3,to: Vector3,id:number,sweeps:readonly
 export class ProjectilePool {
   private nextId=1;
   private active:ProjectileState[]=[];
+  private ranges=new Map<number,number>();
   // External impact callbacks can close a session or trigger another tick.
   // Never resurrect cleared shots or count a nested hit twice.
   private inStep=false;
   private revision=0;
   get size():number{return this.active.length;}
   get states():readonly ProjectileState[]{return this.active;}
-  spawn(position:Vector3,direction:Vector3,speed=PROJECTILE_RULES.speed):number|null {
+  spawn(position:Vector3,direction:Vector3,speed:number=PROJECTILE_RULES.speed,range:number=PROJECTILE_RULES.maxDistance):number|null {
     // Follow-up shots must be queued by the host for a later fixed tick.
     if(this.inStep)throw new Error('cannot spawn during projectile step');
-    if(!fvec(position)||!finite(speed)||speed<=0||speed>300)throw new RangeError('invalid projectile launch');
+    if(!fvec(position)||!finite(speed)||speed<=0||speed>300||!finite(range)||range<=0||range>PROJECTILE_RULES.maxDistance)throw new RangeError('invalid projectile launch');
     if(this.active.length>=PROJECTILE_RULES.maxActive)return null;
     const u=unitDirection(direction),id=this.nextId++;
     this.active.push({id,position:{...position},velocity:{x:u.x*speed,y:u.y*speed,z:u.z*speed},age:0,distance:0});
+    this.ranges.set(id,range);
     return id;
   }
   step(dt:number,sweep:Sweep):readonly ProjectileEvent[] {
@@ -121,7 +123,8 @@ export class ProjectilePool {
       const newVelocity={...s.velocity,y:s.velocity.y-PROJECTILE_RULES.gravity*travelDt};
       const target={x:s.position.x+s.velocity.x*travelDt,y:s.position.y+s.velocity.y*travelDt-PROJECTILE_RULES.gravity*travelDt*travelDt/2,z:s.position.z+s.velocity.z*travelDt};
       const length=dist(s.position,target);
-      const allowed=Math.min(1,(PROJECTILE_RULES.maxDistance-s.distance)/Math.max(length,1e-12));
+      const range=this.ranges.get(s.id)??PROJECTILE_RULES.maxDistance;
+      const allowed=Math.min(1,Math.max(0,range-s.distance)/Math.max(length,1e-12));
       const endpoint=add(s.position,{x:target.x-s.position.x,y:target.y-s.position.y,z:target.z-s.position.z},allowed);
       const contact=sweep(s.position,endpoint,s.id);
       if(revision!==this.revision)return []; // session cleared during callback
@@ -130,13 +133,15 @@ export class ProjectilePool {
       const hit=valid!==null;
       const end=hit?add(s.position,{x:endpoint.x-s.position.x,y:endpoint.y-s.position.y,z:endpoint.z-s.position.z},valid):endpoint;
       const travelled=dist(s.position,end);
-      const expired=!hit&&(age>=PROJECTILE_RULES.maxAge-1e-8||s.distance+travelled>=PROJECTILE_RULES.maxDistance-1e-8);
+      const expired=!hit&&(age>=PROJECTILE_RULES.maxAge-1e-8||s.distance+travelled>=range-1e-8);
       events.push({id:s.id,from:s.position,to:end,hit,expired});
       if(!hit&&!expired)next.push({id:s.id,position:end,velocity:newVelocity,age,distance:s.distance+travelled});
     }
     this.active=next;
+    const alive=new Set(next.map(s=>s.id));
+    for(const id of this.ranges.keys())if(!alive.has(id))this.ranges.delete(id);
     return events;
     } finally {this.inStep=false;}
   }
-  clear():void{this.revision++;this.active=[];}
+  clear():void{this.revision++;this.active=[];this.ranges.clear();}
 }

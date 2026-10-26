@@ -1,0 +1,23 @@
+.authored-map-card{margin:0 0 24px;padding:16px;border:1px solid #667a7380;border-radius:8px;background:#17312980}
+.authored-map-heading{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.authored-map-heading>span{font-size:9px;letter-spacing:.16em;color:#b9c8bc}
+.authored-map-heading>strong{font-size:19px;font-weight:600;color:#f0f2e9}
+.authored-map-preview{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:4px}
+.authored-map-card>p{font-size:12px;line-height:1.8;margin:12px 0}
+.authored-map-card>button{width:100%}
+.authored-map-deploy{margin-bottom:14px}
+.authored-map-card>small{display:block;font-size:10px;line-height:1.8;color:#b9c8bc;margin-top:10px}
+.authored-map-dialog{position:fixed;inset:12px;width:calc(100vw - 24px);height:calc(100dvh - 24px);max-width:none;max-height:none;padding:0;border:1px solid #81998b;border-radius:10px;background:#b6dbec;color:#e8eee7;overflow:hidden}
+.authored-map-dialog::backdrop{background:#07120fe8;backdrop-filter:blur(5px)}
+.authored-map-toolbar{height:74px;display:flex;align-items:center;gap:24px;padding:12px 20px;background:#15352c}
+.authored-map-toolbar>div{display:flex;flex-direction:column;gap:4px}
+.authored-map-toolbar span{font-size:8px;letter-spacing:.2em;color:#b1c5b8}
+.authored-map-toolbar h2{font-size:22px;line-height:1;margin:0;font-weight:600}
+.authored-map-toolbar p{font-size:11px;color:#c1d1c4}
+.authored-map-toolbar button{margin-left:auto;flex-shrink:0}
+.authored-map-toolbar #authored-map-close{margin-left:0}
+.authored-map-toolbar #authored-map-deploy{margin-bottom:0;flex:0 0 auto}
+.authored-map-frame{display:block;border:0;width:100%;height:calc(100% - 74px);background:#b6dbec}
+.authored-map-load{position:absolute;z-index:1;top:86px;left:50%;transform:translateX(-50%);margin:0;padding:10px 16px;max-width:calc(100% - 32px);border-radius:8px;background:#173b2fef;color:#f0f4ee;font-size:12px;text-align:center;pointer-events:none}
+.authored-map-load[hidden]{display:none}
+@media(max-width:600px){.authored-map-dialog{inset:0;width:100vw;height:100dvh;border-radius:0;border:0}.authored-map-toolbar{height:68px;padding:10px 12px;gap:10px}.authored-map-toolbar p{display:none}.authored-map-toolbar h2{font-size:20px}.authored-map-frame{height:calc(100% - 68px)}.authored-map-toolbar button{font-size:11px;padding:9px 12px}}

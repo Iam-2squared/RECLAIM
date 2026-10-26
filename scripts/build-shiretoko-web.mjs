@@ -64,7 +64,8 @@ export async function appendShiretokoReview({ root = ROOT, build, stageParent = 
         throw Error('Unsafe review asset path: ' + src);
       }
       const local = plain.replace(/^\.\//, '');
-      if (files.includes(local)) continue;
+      // HTML uses URL separators; scanFiles uses native filesystem separators.
+      if (files.includes(local.split('/').join(sep))) continue;
       try { await stat(resolve(dist, local)); }
       catch (error) {
         if (error?.code === 'ENOENT') throw Error('Missing review asset: ' + src);

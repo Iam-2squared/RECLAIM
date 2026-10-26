@@ -1,0 +1,147 @@
+.title-atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  isolation: isolate;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  background: #111b21;
+  contain: paint;
+}
+
+.title-atmosphere > * { position: absolute; pointer-events: none; }
+.title-atmosphere[data-active="false"] { visibility: hidden; }
+.title-atmosphere__background {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 58% 50%;
+}
+.title-atmosphere__distance-haze {
+  inset: 0;
+  /* A cloud-coloured veil softens the distant AI above the skyline. */
+  background: radial-gradient(ellipse at 72% 12%, #9fabb565 0%, #96a5b040 19%, transparent 47%),
+    radial-gradient(ellipse at 73% 43%, #adc3c60e 0%, transparent 39%);
+}
+.title-atmosphere__enemy-art { display: block; width: 100%; height: 100%; object-fit: contain; }
+.title-atmosphere__drone {
+  z-index: 2;
+  width: clamp(34px, 5vw, 100px);
+  aspect-ratio: 1.6;
+  opacity: 0;
+  animation: title-drone-near 29s linear infinite;
+}
+.title-atmosphere__drone--far {
+  left: 63%;
+  top: 43%;
+  width: clamp(20px, 2.5vw, 50px);
+  opacity: 0;
+  animation-name: title-drone-far;
+  animation-duration: 37s;
+  animation-delay: -14s;
+}
+.title-atmosphere__drone--near { left: 78%; top: 56%; animation-delay: -4s; }
+.title-atmosphere__sentinel {
+  z-index: 2;
+  left: 68%;
+  bottom: 18%;
+  width: clamp(28px, 3.8vw, 74px);
+  height: clamp(62px, 8.5vw, 165px);
+  opacity: 0;
+  transform-origin: 50% 100%;
+  animation: title-sentinel-patrol 42s linear infinite;
+  animation-delay: -11s;
+}
+.title-atmosphere__fog {
+  left: -18%;
+  width: 136%;
+  opacity: .35;
+  background-repeat: no-repeat;
+  animation: title-fog-drift 46s ease-in-out infinite alternate;
+}
+.title-atmosphere__fog--high {
+  z-index: 3;
+  top: 31%;
+  height: 38%;
+  background-image: radial-gradient(ellipse at 68% 57%, #99aeb94d 0%, #8fa3ad1a 28%, transparent 63%),
+    radial-gradient(ellipse at 22% 72%, #8ba0ab21 0%, transparent 49%);
+  animation-duration: 53s;
+  animation-delay: -17s;
+}
+.title-atmosphere__fog--street {
+  z-index: 4;
+  top: 50%;
+  height: 44%;
+  background-image: radial-gradient(ellipse at 62% 48%, #acc1c758 0%, #9bb5bf24 30%, transparent 65%),
+    radial-gradient(ellipse at 92% 61%, #a2b6bd45 0%, transparent 48%);
+  animation-duration: 39s;
+  animation-delay: -21s;
+}
+.title-atmosphere__fog--foreground {
+  z-index: 5;
+  bottom: -14%;
+  height: 45%;
+  background-image: radial-gradient(ellipse at 36% 63%, #b3c6cb4d 0%, #9bb1ba1a 37%, transparent 65%);
+  animation-duration: 63s;
+  animation-direction: alternate-reverse;
+  animation-delay: -7s;
+}
+.title-atmosphere__shade {
+  z-index: 6;
+  inset: 0;
+  background: linear-gradient(90deg, #050c1330, #050c1308 43%, transparent 72%),
+    linear-gradient(0deg, #04090edb, transparent 24%, transparent 78%, #03090e4d);
+}
+
+@keyframes title-fog-drift {
+  0% { transform: translate3d(-5%, 1%, 0); opacity: .22; }
+  48% { opacity: .5; }
+  100% { transform: translate3d(7%, -2%, 0); opacity: .3; }
+}
+@keyframes title-drone-near {
+  0%, 11% { opacity: 0; transform: translate3d(15px, 7px, 0); }
+  19% { opacity: .52; }
+  35% { opacity: .72; transform: translate3d(-11px, -2px, 0); }
+  47% { opacity: .2; }
+  57%, 100% { opacity: 0; transform: translate3d(-76px, 6px, 0); }
+}
+@keyframes title-drone-far {
+  0%, 24% { opacity: 0; transform: translate3d(-12px, 0, 0); }
+  35% { opacity: .4; }
+  51% { opacity: .5; transform: translate3d(22px, -4px, 0); }
+  68%, 100% { opacity: 0; transform: translate3d(62px, 1px, 0); }
+}
+@keyframes title-sentinel-patrol {
+  0%, 12% { opacity: 0; transform: translate3d(-8px, 0, 0); }
+  27% { opacity: .22; }
+  38% { opacity: .42; transform: translate3d(0, 0, 0); }
+  48% { opacity: .19; }
+  64%, 100% { opacity: 0; transform: translate3d(13px, 0, 0); }
+}
+
+.title-atmosphere[data-running="false"] > * { animation-play-state: paused; }
+.title-atmosphere[data-reduced-motion="true"] > * { animation: none; }
+.title-atmosphere[data-reduced-motion="true"] .title-atmosphere__drone--far { opacity: .2; }
+.title-atmosphere[data-reduced-motion="true"] .title-atmosphere__drone--near { opacity: .3; }
+.title-atmosphere[data-reduced-motion="true"] .title-atmosphere__sentinel { opacity: .14; }
+.title-atmosphere[data-art-error="true"] {
+  background: radial-gradient(ellipse at 72% 38%, #374651, #1b2934 34%, #0c151c 80%);
+}
+@media (max-width: 700px) {
+  .title-atmosphere__background { object-position: 64% 50%; }
+  .title-atmosphere__drone--near { left: 76%; top: 48%; width: 54px; }
+  .title-atmosphere__drone--far { left: 43%; top: 34%; }
+  .title-atmosphere__sentinel { left: 80%; bottom: 25%; width: 36px; height: 80px; }
+  .title-atmosphere__shade {
+    background: linear-gradient(0deg, #04090ef2, #050c1373 49%, transparent 76%),
+      linear-gradient(90deg, #050c134d, transparent 75%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .title-atmosphere > * { animation: none; }
+  .title-atmosphere__drone--far { opacity: .2; }
+  .title-atmosphere__drone--near { opacity: .3; }
+  .title-atmosphere__sentinel { opacity: .14; }
+}

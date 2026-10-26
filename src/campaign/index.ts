@@ -21,6 +21,7 @@ export type AreaCampaignRule = Readonly<{
   checkpoints?: ReadonlyArray<Readonly<{ id: string; x: number; z: number; radius: number }>>;
   minimumTravel: number;
   minY?: number; maxY?: number;
+  opening?: Readonly<{ cabin: Readonly<{minX:number;maxX:number;minZ:number;maxZ:number}>; radio: Readonly<{x:number;z:number}>; door: Readonly<{x:number;z:number}>; leaveRadius:number }>;
 }>;
 export type CampaignRules = Readonly<Record<AreaId, AreaCampaignRule>>;
 
@@ -82,8 +83,9 @@ function position(value: unknown, rule: AreaCampaignRule): Position | null {
   if (value.x < b.minX || value.x > b.maxX || value.z < b.minZ || value.z > b.maxZ || value.y < (rule.minY ?? -200) || value.y > (rule.maxY ?? 1400)) return null;
   return { x: value.x, y: value.y, z: value.z };
 }
-function inCabin(p: Position): boolean {
-  return p.x >= CABIN.minX && p.x <= CABIN.maxX && p.z >= CABIN.minZ && p.z <= CABIN.maxZ;
+function inCabin(p: Position, rule:AreaCampaignRule): boolean {
+  const cabin=rule.opening?.cabin??CABIN;
+  return p.x >= cabin.minX && p.x <= cabin.maxX && p.z >= cabin.minZ && p.z <= cabin.maxZ;
 }
 function checkpointIds(value: unknown, rule: AreaCampaignRule): string[] {
   if (!Array.isArray(value)) return [];
@@ -232,13 +234,13 @@ export class CampaignStore {
     if (event.type === 'position') return this.recordPosition(event);
     if (event.type === 'opening') {
       if (event.areaId !== 'shiretoko' || event.grounded !== true) return false;
-      const p = position(event.position, this.rules.shiretoko), index = OPENING.findIndex(s => s.id === event.step);
+      const rule=this.rules.shiretoko,p = position(event.position, rule), index = OPENING.findIndex(s => s.id === event.step);
       if (!p || index !== this.current.introStep) return false;
-      if (event.step !== 'leave-cabin' && !inCabin(p)) return false;
-      if (event.step === 'radio' && event.skipped !== true && horizontal(p, { x: -3, z: -3 }) > 2.4) return false;
+      if (event.step !== 'leave-cabin' && !inCabin(p,rule)) return false;
+      if (event.step === 'radio' && event.skipped !== true && horizontal(p,rule.opening?.radio??{ x: -3, z: -3 }) > 2.4) return false;
       if (event.step === 'leave-cabin') {
         const t = this.current.traversal;
-        if (inCabin(p) || horizontal(p, { x: 0, z: 5 }) > 9 || t?.areaId !== 'shiretoko' || t.distance < 2 || horizontal(p, t.lastPosition) > MAX_POSITION_STEP) return false;
+        if (inCabin(p,rule) || horizontal(p,rule.opening?.door??{ x: 0, z: 5 }) > (rule.opening?.leaveRadius??9) || t?.areaId !== 'shiretoko' || t.distance < 2 || horizontal(p, t.lastPosition) > MAX_POSITION_STEP) return false;
       }
       this.update({ ...this.current, introStep: (index + 1) as IntroStep }); return true;
     }

@@ -1,4 +1,5 @@
 import './style.css';
+import deploymentPhoto from './ui-mission/shiretoko-deployment.webp?inline';
 import { ScreenState, parsePreferences, REVEAL_MS, type Preferences } from './state';
 import { WorldView } from './scene';
 import { makeFallback } from './fallback';
@@ -8,6 +9,10 @@ import { ReferenceMenus } from './reference-menus';
 import { CampaignStore, isAreaUnlocked, type MissionCheckpoint } from './campaign/index';
 import { AREA_DEFINITIONS, AREA_IDS, type AreaId } from './world/index';
 import { Mission } from './mission/runtime';
+import { authoredCampaignStore } from './campaign/authored-world';
+import { loadAuthoredMapData } from './world/authored-map-data';
+import { createAuthoredMapWorld } from './world/authored-map-world';
+import type { MissionWorld } from './mission/world';
 
 function element<T extends HTMLElement>(id:string){const el=document.getElementById(id);if(!el)throw new Error(`Missing UI element: ${id}`);return el as T;}
 const state=new ScreenState(),atmosphere=new Atmosphere();
@@ -21,29 +26,51 @@ const media=matchMedia('(prefers-reduced-motion: reduce)');
 let prefs:Preferences;
 try{prefs=parsePreferences(localStorage.getItem('reclaim.display.v1'),media.matches);}catch{prefs=parsePreferences(null,media.matches);}
 let world:WorldView|null=null,fallback:ReturnType<typeof makeFallback>|null=null,mission:Mission|null=null,referenceMenus:ReferenceMenus|null=null;
-let campaign:CampaignStore;try{campaign=new CampaignStore(localStorage);}catch{campaign=new CampaignStore(null);}
+let worldInitialized=false;
+const legacyWorld=import.meta.env.DEV&&(new URLSearchParams(location.search).get('legacy-world')==='1'||new URLSearchParams(location.search).get('combat-preview')==='1');
+let campaign:CampaignStore;try{campaign=legacyWorld?new CampaignStore(localStorage):authoredCampaignStore(localStorage);}catch{campaign=legacyWorld?new CampaignStore(null):authoredCampaignStore(null);}
+let deploymentId=0,deploymentActive=false;
+function deploymentStatus(message:string|null){
+ document.getElementById('deployment-loading')?.remove();
+ if(message===null)return;
+ const panel=document.createElement('dialog');panel.id='deployment-loading';panel.className='deployment-loading';panel.setAttribute('aria-labelledby','deployment-title');panel.setAttribute('aria-describedby','deployment-message');
+ panel.style.setProperty('--deployment-image',`url("${deploymentPhoto}")`);
+ panel.innerHTML='<section><span>DEPLOY / SHIRETOKO</span><h2 id="deployment-title">知床へ出撃</h2><p id="deployment-message" role="status"></p><small class="deployment-note">準備が整うと、始まりの家から探索が始まります。</small><button type="button">HOMEに戻る</button></section>';
+ panel.querySelector('p')!.textContent=message;panel.querySelector('button')!.addEventListener('click',()=>switchScreen('home'));
+ panel.addEventListener('cancel',event=>{event.preventDefault();switchScreen('home');});document.body.append(panel);panel.showModal();
+}
 function enableFallback(){
   if(mission){mission.dispose();mission=null;switchScreen('home');}
   element('renderer-notice').hidden=false;document.body.dataset.renderer='fallback';
-  fallback=makeFallback(sceneHost);
+  if(!fallback)fallback=makeFallback(sceneHost);
 }
-try{
- world=new WorldView(sceneHost,enableFallback);world.preferences(prefs);
- // TITLE/HOME are 2D on every viewport; never precompile the retired mobile boss reveal.
- document.body.dataset.renderer='webgl';
-}catch{enableFallback();}
+// The image-based title does not allocate a renderer or build the retired 3D title.
+// Initialize once on the first HOME visit, before its existing mission availability checks.
+document.body.dataset.renderer='deferred';
+function ensureWorld(){
+ if(worldInitialized)return;
+ worldInitialized=true;
+ try{
+  world=new WorldView(sceneHost,enableFallback);world.preferences(prefs);
+  document.body.dataset.renderer='webgl';
+ }catch{enableFallback();}
+ home.world=world;
+}
 // Entry always starts at the title. No previous session is ever resumed straight into a mission.
 document.body.dataset.screen='title';document.body.dataset.reveal='false';
 let frameId=0,lastFrame=0,frameCount=0,lastRafTime=0,fallbackFrames=0,frameTicket=0,watchdogTimer=0,frameDirty=true,wasVisible=false,disposed=false;
-function invalidateRender(){frameDirty=true;}
+function needsFrame(){return !disposed&&!document.hidden&&state.screen==='mission'&&mission!==null;}
+function invalidateRender(){frameDirty=true;if(needsFrame())scheduleFrame();}
+function stopFrameLoop(){frameTicket++;cancelAnimationFrame(frameId);frameId=0;clearTimeout(watchdogTimer);watchdogTimer=0;}
 function scheduleFrame(){
+ if(!needsFrame()||frameId!==0)return;
  const ticket=++frameTicket;
- frameId=requestAnimationFrame(time=>{if(ticket===frameTicket)frame(time);});
+ frameId=requestAnimationFrame(time=>{if(ticket===frameTicket){frameId=0;frame(time);}});
  const check=()=>{
-  if(ticket!==frameTicket||disposed||document.hidden)return;
+  if(ticket!==frameTicket||!needsFrame())return;
   // A compositor can delay RAF while input/timers still work. Submit one
   // pending UI change, never an idle animation stream, after that delay.
-  if(frameDirty){cancelAnimationFrame(frameId);frame(performance.now(),true);}
+  if(frameDirty){cancelAnimationFrame(frameId);frameId=0;frame(performance.now(),true);}
   else watchdogTimer=window.setTimeout(check,100);
  };
  watchdogTimer=window.setTimeout(check,100);
@@ -59,7 +86,8 @@ function endReveal(){
 }
 function frame(time:number,fromWatchdog=false){
  clearTimeout(watchdogTimer);
-  if(disposed||document.hidden)return;
+  watchdogTimer=0;
+  if(!needsFrame())return;
   scheduleFrame();
   if(!fromWatchdog)lastRafTime=time;
   // A delayed compositor timestamp must not gate new UI/camera work. Use the
@@ -74,9 +102,8 @@ function frame(time:number,fromWatchdog=false){
   if(state.screen==='mission'&&mission&&!world?.lost)mission.update(delta);
   else if(!referenceMenus?.active){if(world&&!world.lost)world.render(now,state,opacity);else fallback?.bossOpacity(opacity);}
 }
-scheduleFrame();
 function announce(message:string){live.textContent=message;}
-const home=new Home(state,world,announce,invalidateRender,campaign,startMission);
+const home=new Home(state,world,announce,invalidateRender,campaign,startMission,ensureWorld);
 referenceMenus=new ReferenceMenus(state,home,campaign,()=>prefs,()=>atmosphere.enabled,switchScreen,announce);
 titleButton.addEventListener('click',()=>{
  if(referenceMenus?.active){announce('RECLAIM。STARTからHOMEへ進めます。');return;}
@@ -87,9 +114,11 @@ titleButton.addEventListener('click',()=>{
  atmosphere.hint();announce('東京の廃墟の向こうに、巨大な機械の影が一瞬現れます。');
 });
 function switchScreen(target:'title'|'home'){
+ deploymentId++;deploymentActive=false;deploymentStatus(null);
  mission?.dispose();mission=null;element('mission-screen').hidden=true;
  endReveal();
  if(target==='home')state.goHome();else state.goTitle();
+ stopFrameLoop();
  titleScreen.hidden=target!=='title';homeScreen.hidden=target!=='home';document.body.dataset.screen=target;document.body.dataset.reveal='false';wasVisible=false;
  home.screenChanged();
  referenceMenus?.refresh();
@@ -99,24 +128,43 @@ function switchScreen(target:'title'|'home'){
  else{homeButton.focus({preventScroll:true});announce('タイトル画面に戻りました。');}
 }
 
-function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,debug=false){
- if(!debug&&referenceMenus&&(referenceMenus.mobile||referenceMenus.touchOnly)){
+async function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,debug=false){
+ if(deploymentActive)return;
+ if(!debug&&referenceMenus?.touchOnly){
   const message='本編の徒歩・射撃はPCのキーボードとマウスが必要です。スマホでは出撃を開始しません。保存位置・進行は変更していません。';
   element('mobile-mission-notice').textContent=message;element('mobile-mission-notice').hidden=false;
   announce(message);return;
  }
+ ensureWorld();
  if(!world||world.lost){announce('3Dを表示できないため出撃できません。HOMEは操作できます。');return;}
  if(!debug&&!isAreaUnlocked(campaign.value,areaId))return;
+ const ticket=++deploymentId;deploymentActive=true;let loadedWorld:MissionWorld|undefined;
+ try {
+  if(areaId==='shiretoko'&&!legacyWorld){
+   deploymentStatus('新しい地形・家・山道を読み込んでいます…');
+   const data=await loadAuthoredMapData();
+   if(ticket!==deploymentId||disposed)return;
+   loadedWorld=await createAuthoredMapWorld(data,prefs.quality);
+   if(ticket!==deploymentId||disposed){loadedWorld.dispose();return;}
+  }
+ }catch(error){
+  loadedWorld?.dispose();if(ticket!==deploymentId||disposed)return;deploymentActive=false;deploymentStatus(null);
+  const message=`出撃用マップを読み込めませんでした。${error instanceof Error?error.message:''}`;
+  announce(message);const notice=element('mission-unavailable');notice.textContent=message;notice.hidden=false;return;
+ }
+ if(ticket!==deploymentId||disposed){loadedWorld?.dispose();return;}
+ deploymentActive=false;deploymentStatus(null);
  endReveal();mission?.dispose();mission=null;home.close(false);home.drawer(false);state.goMission();
  titleScreen.hidden=true;homeScreen.hidden=true;element('mission-screen').hidden=false;document.body.dataset.screen='mission';lastFrame=performance.now();
  referenceMenus?.refresh();
- try{mission=new Mission(world.renderer,campaign,areaId,prefs.quality,home.saved,{returnHome:()=>switchScreen('home'),announce,invalidate:invalidateRender,effect:kind=>atmosphere.effect(kind),stopEffects:()=>atmosphere.stopEffects()},resume,debug);world.renderer.domElement.tabIndex=-1;invalidateRender();}
- catch(error){announce(`探索の読み込みに失敗しました。${error instanceof Error?error.message:''}`);switchScreen('home');}
+ try{mission=new Mission(world.renderer,campaign,areaId,prefs.quality,home.saved,{returnHome:()=>switchScreen('home'),announce,invalidate:invalidateRender,effect:kind=>atmosphere.effect(kind),stopEffects:()=>atmosphere.stopEffects()},resume,debug,referenceMenus?.lobby.character??'jonesy',loadedWorld);world.renderer.domElement.tabIndex=-1;invalidateRender();}
+ catch(error){loadedWorld?.dispose();announce(`探索の読み込みに失敗しました。${error instanceof Error?error.message:''}`);switchScreen('home');}
 }
 homeButton.addEventListener('click',()=>switchScreen('home'));
 element('back-title').addEventListener('click',()=>switchScreen('title'));
-element('settings-button').addEventListener('click',()=>{mission?.pause();settings.showModal();});
-settings.addEventListener('close',()=>{if(home.modal&&home.panel)element('panel-title').focus({preventScroll:true});});
+let settingsOpener: HTMLElement | null = null;
+element('settings-button').addEventListener('click',()=>{settingsOpener=document.activeElement instanceof HTMLElement?document.activeElement:null;mission?.pause();settings.showModal();});
+settings.addEventListener('close',()=>{if(home.modal&&home.panel)element('panel-title').focus({preventScroll:true});else settingsOpener?.focus({preventScroll:true});});
 const quality=element<HTMLSelectElement>('quality-select'),motion=element<HTMLInputElement>('motion-toggle');quality.value=prefs.quality;motion.checked=prefs.reducedMotion;
 function savePrefs(){world?.preferences(prefs);mission?.preferences(prefs.quality);referenceMenus?.refresh();invalidateRender();try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));element('settings-save-status').hidden=true;}catch{element('settings-save-status').hidden=false;announce('表示設定を保存できませんでした。この画面では変更を維持します。');}}
 quality.addEventListener('change',()=>{prefs.quality=quality.value==='low'?'low':'balanced';savePrefs();});
@@ -128,18 +176,19 @@ soundButton.addEventListener('click',async()=>{try{const enabled=await atmospher
 function syncMenuViewport(){const view=window.visualViewport;document.body.style.setProperty('--menu-height',`${view?.height??innerHeight}px`);document.body.style.setProperty('--menu-offset-top',`${view?.offsetTop??0}px`);}
 function resize(){syncMenuViewport();world?.resize();mission?.resize();referenceMenus?.refresh();home.layout();invalidateRender();}
 function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;if(state.screen==='title'&&!prefs.reducedMotion)invalidateRender();}}
-function visibility(){frameTicket++;cancelAnimationFrame(frameId);clearTimeout(watchdogTimer);if(document.hidden){endReveal();mission?.pause();}else{lastFrame=0;invalidateRender();scheduleFrame();}void atmosphere.visibility(document.hidden);}
+function visibility(){stopFrameLoop();if(document.hidden){endReveal();mission?.pause();}else{lastFrame=0;invalidateRender();}void atmosphere.visibility(document.hidden);}
 const viewportScroll=()=>{syncMenuViewport();home.layout();};
 addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
 const enforceMissionPointerLock=()=>{if(state.screen!=='mission'&&document.pointerLockElement)document.exitPointerLock();};
 document.addEventListener('pointerlockchange',enforceMissionPointerLock);
-function dispose(){if(disposed)return;disposed=true;endReveal();frameTicket++;cancelAnimationFrame(frameId);clearTimeout(watchdogTimer);mission?.dispose();mission=null;referenceMenus?.dispose();home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('pointerlockchange',enforceMissionPointerLock);}
+function dispose(){if(disposed)return;disposed=true;endReveal();stopFrameLoop();mission?.dispose();mission=null;referenceMenus?.dispose();home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('pointerlockchange',enforceMissionPointerLock);}
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.
-Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,menus:referenceMenus?.snapshot()??null,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount,fallbackFrames,rendererFrames:world?.renderer.info.render.frame??0},home:home.snapshot(),campaign:campaign.value,mission:mission?.snapshot()??null,render:world?.stats()??null})}),writable:false});
+Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({missionSnapshot:()=>mission?.snapshot(false)??null,snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,menus:referenceMenus?.snapshot()??null,lobby:referenceMenus?.lobby.snapshot()??null,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount,fallbackFrames,rendererFrames:world?.renderer.info.render.frame??0},home:home.snapshot(),campaign:campaign.value,mission:mission?.snapshot()??null,render:world?.stats()??null})}),writable:false});
 syncMenuViewport();document.body.dataset.ready='true';
 for(const button of [titleButton,homeButton,soundButton,element<HTMLButtonElement>('settings-button')])button.disabled=false;
 element('boot-notice').hidden=true;
 
 if(import.meta.env.DEV){const id=new URLSearchParams(location.search).get('dev-area');if(AREA_IDS.includes(id as AreaId)){switchScreen('home');startMission(id as AreaId,null,true);}}
+if(document.querySelector('meta[name="reclaim-initial-screen"][content="home"]'))switchScreen('home');
