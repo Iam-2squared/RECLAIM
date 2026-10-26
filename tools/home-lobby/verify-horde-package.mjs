@@ -11,7 +11,7 @@ try{
  await page.locator('#start-button').click();
  const waiting=await page.evaluate(()=>{document.getElementById('mission-launch').click();const dialog=document.getElementById('deployment-loading');return{open:dialog.open,photo:dialog.style.getPropertyValue('--deployment-photo'),background:getComputedStyle(dialog).backgroundImage};});
  assert.equal(waiting.open,true);assert.ok(waiting.background.includes('data:image/webp')||waiting.photo.includes('data:image/webp'));
- await page.waitForFunction(()=>window.__RECLAIM__.snapshot().screen==='mission'&&window.__RECLAIM__.missionSnapshot()?.world?.source==='authored-map',null,{timeout:120000});
+ await page.waitForFunction(()=>{const state=window.__RECLAIM__.snapshot();return state.screen==='mission'&&state.mission?.world?.source==='authored-map';},null,{timeout:120000});
  await page.waitForFunction(()=>window.__RECLAIM__.missionSnapshot()?.actors?.status==='ready',null,{timeout:90000});
  const snapshot=await page.evaluate(()=>window.__RECLAIM__.snapshot());
  assert.equal(snapshot.mission.world.source,'authored-map');assert.equal(snapshot.mission.horde.spawned,0);assert.equal(snapshot.mission.horde.units.length,0);assert.equal(snapshot.mission.encounter.enemyBars,0);assert.equal(snapshot.mission.encounter.deviceBars,4);assert.equal(snapshot.mission.encounter.markers,1);assert.equal(snapshot.mission.player.hp,100);assert.equal(snapshot.mission.shield,0);
