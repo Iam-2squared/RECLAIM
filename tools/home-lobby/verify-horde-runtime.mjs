@@ -21,6 +21,7 @@ try{
   await m.actors.load();m.updateVisuals(0);m.render();return m.snapshot();
  });
  assert.equal(initial.horde.spawned,2);assert.equal(initial.encounter.enemyBars,2);assert.equal(initial.encounter.deviceBars,2);assert.equal(initial.encounter.markers,1);assert.equal(initial.player.hp,100);assert.equal(initial.shield,0);
+ assert.ok(initial.horde.devices.every(device=>device.hp===500&&device.maxHp===500));assert.equal(initial.horde.target,50);assert.equal(initial.horde.nextSpawnIn,5);
  assert.equal(await page.locator('#player-health-bar').getAttribute('aria-valuenow'),'100');
  assert.equal(await page.locator('#player-shield-bar').getAttribute('aria-valuenow'),'0');
  const combat=await page.evaluate(()=>{
@@ -39,9 +40,17 @@ try{
   const device=m.horde.devices.find(d=>d.kind==='humanoid'),p={x:device.position.x,y:device.position.y,z:device.position.z-6};
   if(!m.controller.restore({...p,yaw:Math.PI,pitch:0}))throw Error('Warehouse shooting position blocked');
   m.controller.yaw=Math.PI;m.controller.pitch=-.07;m.updateCamera();m.updateVisuals(0);
-  for(let shot=0;shot<10;shot++){m.fireShot({id:200+shot,kind:'assault',damage:8,speed:250,range:85,spread:0});for(let i=0;i<6;i++)m.step(1/60);}
-  m.updateVisuals(.01);m.updateHUD(true);m.render();return {snapshot:m.snapshot(),messages:window.__hordeTest.messages};
+  let afterTen=0;const shotsToDestroy=Math.ceil(device.maxHp/8);
+  // Isolate projectile damage from enemy scheduling here. Production scheduling
+  // is independently tested at its real 5-second interval and 240-second cap.
+  for(let shot=0;shot<shotsToDestroy;shot++){
+   m.fireShot({id:200+shot,kind:'assault',damage:8,speed:250,range:85,spread:0});
+   for(let i=0;i<12;i++){const frame=m.projectiles.tick(m.shotWorld(),1/120);for(const receipt of frame.impacts){m.effects.impact(receipt.impact);m.acceptHit(receipt.impact.targetId,receipt.damage,receipt.impact);}m.effects.step(1/120,m.projectiles.visibleTracers);}
+   if(shot===9)afterTen=device.hp;
+  }
+  m.updateVisuals(.01);m.updateHUD(true);m.render();return {shotsToDestroy,afterTen,snapshot:m.snapshot(),messages:window.__hordeTest.messages};
  });
+ assert.equal(devices.shotsToDestroy,63);assert.equal(devices.afterTen,420);assert.equal(devices.snapshot.horde.devices.find(d=>d.kind==='drone').hp,500);
  assert.equal(devices.snapshot.horde.devices.find(d=>d.kind==='humanoid').hp,0,'Actual gunfire did not destroy device');assert.ok(devices.messages.some(s=>s.includes('製造装置を破壊')));
  await page.screenshot({path:'release/HORDE-warehouse-device.png'});
  const death=await page.evaluate(()=>{
@@ -54,7 +63,7 @@ try{
  const cap=await page.evaluate(visualOnly=>{
   const {m}=window.__hordeTest;
   // Advance the same production director, bypassing wall time only in this test.
-  if(!visualOnly)m.horde.step(716,m.controller.position,{combatEnabled:false});m.updateVisuals(0);m.render();const full=m.snapshot();m.dispose();return{full,disposed:m.encounter.snapshot(),actors:m.actors.snapshot()};
+  if(!visualOnly)m.horde.step(241,m.controller.position,{combatEnabled:false});m.updateVisuals(0);m.render();const full=m.snapshot();m.dispose();return{full,disposed:m.encounter.snapshot(),actors:m.actors.snapshot()};
  },process.argv.includes('--visual-only'));
  if(!process.argv.includes('--visual-only')){assert.equal(cap.full.horde.spawned,50);assert.equal(cap.full.actors.enemyUnits.length,50);assert.equal(cap.full.encounter.enemyBars,50);assert.ok(cap.full.actors.enemyUnits.every(u=>u.loaded&&!u.fallback));}assert.equal(cap.disposed.resources.textures,0);assert.deepEqual(errors,[]);
  await writeFile(process.argv.includes('--visual-only')?'release/HORDE-visual-check.json':'release/HORDE-runtime-check.json',JSON.stringify({errors,initial,combat,devices,death,cap},null,2));

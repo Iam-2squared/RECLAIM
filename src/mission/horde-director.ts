@@ -8,8 +8,8 @@ export type HordeTerrain={
   blockedAt?:(x:number,z:number,y:number,radius:number,height:number)=>boolean;
   slopeAt?:(x:number,z:number,referenceY?:number)=>number;
 };
-export type HordeConfig={cap:number;spawnInterval:number;deviceHp:number;level:number;roadHalfWidth:number;fixedStep:number;initialRoadDistances:readonly number[];waves:readonly {at:number;target:number}[]};
-export const HORDE_DEFAULTS:Readonly<HordeConfig>=Object.freeze({cap:50,spawnInterval:5,deviceHp:80,level:1,roadHalfWidth:1.45,fixedStep:1/30,initialRoadDistances:Object.freeze([28,44]),waves:Object.freeze([{at:120,target:10},{at:270,target:20},{at:570,target:30}])});
+export type HordeConfig={cap:number;spawnInterval:number;deviceHp:number;level:number;roadHalfWidth:number;fixedStep:number;initialRoadDistances:readonly number[]};
+export const HORDE_DEFAULTS:Readonly<HordeConfig>=Object.freeze({cap:50,spawnInterval:5,deviceHp:500,level:1,roadHalfWidth:1.45,fixedStep:1/30,initialRoadDistances:Object.freeze([28,44])});
 export type HordeEvent=
   |{type:'spawn';id:string;kind:HordeKind;position:EnemyPosition;initial:boolean;at:number}
   |{type:'skipped';kind:HordeKind;slot:number;at:number}
@@ -74,7 +74,7 @@ export class HordeDirector {
   readonly config:HordeConfig;readonly terrain:HordeTerrain;readonly units:HordeUnit[]=[];readonly devices:HordeDevice[];
   readonly road:Road;readonly warehouseRoad:Record<HordeKind,Road>;
   private readonly warehouseBounds:HordeOptions['warehouseBounds'];private readonly joins:Record<HordeKind,number>;
-  private accumulator=0;private pending:HordeEvent[]=[];private nextSpawnAt=Infinity;private activeTarget=2;private lastSlotAt=-Infinity;
+  private accumulator=0;private pending:HordeEvent[]=[];private nextSpawnAt=Infinity;
   elapsed=0;scheduled=0;spawned=0;killed=0;skipped=0;
   constructor(options:HordeOptions){
     this.config={...HORDE_DEFAULTS,...options.config};this.config.cap=Math.max(2,Math.min(50,Math.floor(this.config.cap)));this.config.spawnInterval=Math.max(.1,this.config.spawnInterval);this.config.fixedStep=clamp(this.config.fixedStep,1/120,.1);
@@ -92,16 +92,9 @@ export class HordeDirector {
     this.pending.push({type:'spawn',id,kind,position:{...unit.position},initial,at:this.elapsed});
   }
   reset():void {
-    this.units.length=0;this.pending=[];this.elapsed=0;this.accumulator=0;this.scheduled=0;this.spawned=0;this.killed=0;this.skipped=0;this.nextSpawnAt=Infinity;this.activeTarget=2;this.lastSlotAt=-Infinity;
+    this.units.length=0;this.pending=[];this.elapsed=0;this.accumulator=0;this.scheduled=0;this.spawned=0;this.killed=0;this.skipped=0;this.nextSpawnAt=this.config.spawnInterval;
     for(const device of this.devices){device.hp=device.maxHp;device.destroyed=false;}
     for(let i=0;i<Math.min(2,this.config.cap);i++){this.scheduled++;this.initialSpawn(i+1,this.config.initialRoadDistances[i]??28+i*16);}
-  }
-  private targetNow():{target:number;gate:number}{
-    let target=2,gate=0;
-    for(const wave of this.config.waves)if(this.elapsed+1e-7>=wave.at){target=wave.target;gate=wave.at;}
-    const final=this.config.waves.at(-1);
-    if(final&&this.elapsed+1e-7>=final.at&&this.scheduled>=Math.min(final.target,this.config.cap))target=this.config.cap;
-    return{target:Math.min(this.config.cap,Math.max(2,target)),gate};
   }
   get finished():boolean{return this.scheduled>=this.config.cap||this.devices.every(device=>device.destroyed);}
   get targets():readonly HordeUnit[]{return this.units.filter(unit=>unit.hp>0);}
@@ -119,12 +112,9 @@ export class HordeDirector {
     return true;
   }
   private schedule():void {
-    if(this.finished)return;
-    const {target,gate}=this.targetNow();
-    if(target!==this.activeTarget){this.activeTarget=target;this.nextSpawnAt=Math.max(gate,this.lastSlotAt+this.config.spawnInterval);}
-    if(this.scheduled>=target||this.elapsed+1e-7<this.nextSpawnAt)return;
+    if(this.finished||this.elapsed+1e-7<this.nextSpawnAt)return;
     const slot=++this.scheduled,kind:HordeKind=slot%2?'humanoid':'drone',device=this.devices.find(device=>device.kind===kind)!;
-    this.lastSlotAt=this.elapsed;this.nextSpawnAt=this.elapsed+this.config.spawnInterval;
+    this.nextSpawnAt+=this.config.spawnInterval;
     if(device.destroyed){this.skipped++;this.pending.push({type:'skipped',kind,slot,at:this.elapsed});return;}
     const point=this.warehouseRoad[kind].at(0),ground=this.terrain.heightAt(point.x,point.z,point.y);point.y=Number.isFinite(ground)?ground:point.y;
     this.addUnit(kind,point,slot,false,this.joins[kind]);
@@ -195,7 +185,7 @@ export class HordeDirector {
     return{damage,events:this.drainEvents()};
   }
   drainEvents():HordeEvent[]{const events=this.pending;this.pending=[];return events;}
-  snapshot(){return{elapsed:this.elapsed,target:this.targetNow().target,scheduled:this.scheduled,spawned:this.spawned,killed:this.killed,alive:this.units.filter(unit=>unit.hp>0).length,skipped:this.skipped,finished:this.finished,nextSpawnIn:Number.isFinite(this.nextSpawnAt)&&!this.finished&&this.scheduled<this.targetNow().target?Math.max(0,this.nextSpawnAt-this.elapsed):null,units:this.units.map(unit=>unit.snapshot()),devices:this.devices.map(device=>({...device,position:{...device.position}}))};}
+  snapshot(){return{elapsed:this.elapsed,target:this.config.cap,scheduled:this.scheduled,spawned:this.spawned,killed:this.killed,alive:this.units.filter(unit=>unit.hp>0).length,skipped:this.skipped,finished:this.finished,nextSpawnIn:!this.finished?Math.max(0,this.nextSpawnAt-this.elapsed):null,units:this.units.map(unit=>unit.snapshot()),devices:this.devices.map(device=>({...device,position:{...device.position}}))};}
 }
 
 type WarehouseMetadata={access?:{name:string;start_world:readonly number[];end_world:readonly number[]}[];footprint_local?:readonly number[]};

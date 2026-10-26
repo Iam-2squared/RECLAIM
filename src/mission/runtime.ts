@@ -38,7 +38,7 @@ export class Mission {
   this.enemyLevel=debug&&new URLSearchParams(location.search).get('enemy-level')==='5'?5:1;
   if(areaId==='shiretoko'&&this.loader.worldId&&this.loader.data){
    const accelerated=debug&&new URLSearchParams(location.search).has('horde-preview');
-   this.horde=createAuthoredHorde(this.loader.data,this.loader.terrain,{level:this.enemyLevel,...(accelerated?{spawnInterval:.2,waves:[{at:1,target:10},{at:3,target:20},{at:5,target:30}]}:{})});
+   this.horde=createAuthoredHorde(this.loader.data,this.loader.terrain,{level:this.enemyLevel,...(accelerated?{spawnInterval:.2}:{})});
    this.encounter=new EncounterPresentation(this.loader.scene,this.camera,{reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,viewDistance:quality==='low'?120:180});
    this.encounter.setSpawnDevices(this.horde.devices);
   }
