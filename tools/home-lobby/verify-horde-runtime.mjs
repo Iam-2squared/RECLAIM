@@ -7,7 +7,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.RE
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];
  page.on('pageerror',error=>errors.push(error.message));
- await page.goto('http://127.0.0.1:5173/',{waitUntil:'domcontentloaded',timeout:90000});
+ await page.goto(process.env.RECLAIM_TEST_URL??process.argv.find(arg=>/^https?:/.test(arg))??'http://127.0.0.1:5176/',{waitUntil:'domcontentloaded',timeout:90000});
  await page.locator('body[data-ready="true"]').waitFor({timeout:90000});
  const initial=await page.evaluate(async()=>{
   const [T,{Mission},{loadAuthoredMapData},{createAuthoredMapWorld},{authoredCampaignStore},{defaults}]=await Promise.all([import('/node_modules/.vite/deps/three.js'),import('/src/mission/runtime.ts'),import('/src/world/authored-map-data.ts'),import('/src/world/authored-map-world.ts'),import('/src/campaign/authored-world.ts'),import('/src/home-state.ts')]);

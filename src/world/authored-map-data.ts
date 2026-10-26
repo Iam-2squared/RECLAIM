@@ -23,20 +23,35 @@ export type AuthoredMapData = AuthoredMapPhysicsData & {
 
 let cached:Promise<AuthoredMapData>|null=null;
 
-async function gunzipBase64(encoded:string):Promise<string> {
+/** Native decode avoids a second, equally large binary string. The bounded
+ * fallback keeps older browsers from holding the entire atob result at once. */
+export function authoredBase64Bytes(encoded:string):Uint8Array<ArrayBuffer> {
+  const native=(Uint8Array as unknown as {fromBase64?:(value:string)=>Uint8Array<ArrayBuffer>}).fromBase64;
+  if(native)return native.call(Uint8Array,encoded);
+  const padding=encoded.endsWith('==')?2:encoded.endsWith('=')?1:0,bytes=new Uint8Array(encoded.length/4*3-padding);
+  let offset=0;
+  for(let start=0;start<encoded.length;start+=65536){const binary=atob(encoded.slice(start,start+65536));for(let index=0;index<binary.length;index++)bytes[offset++]=binary.charCodeAt(index);}
+  return bytes;
+}
+
+function inflateAuthoredBase64(encoded:string):Response {
   if(typeof DecompressionStream!=='function')throw Error('新しい知床マップにはChromeまたはEdgeの新しいバージョンが必要です。');
-  const binary=atob(encoded),bytes=new Uint8Array(binary.length);
-  for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-  return new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  const bytes=authoredBase64Bytes(encoded);
+  // A Blob copies its input. Feed the decoded buffer directly to decompression.
+  const stream=new ReadableStream<BufferSource>({start(controller){controller.enqueue(bytes);controller.close();}});
+  return new Response(stream.pipeThrough(new DecompressionStream('gzip')));
 }
 
 /** Decode the exact payload used by the supplied viewer; never execute its HTML. */
-export async function decodeAuthoredMapHtml(html:string):Promise<AuthoredMapData> {
+export function decodeAuthoredMapHtml(html:string):Promise<AuthoredMapData> {
   const encoded=html.match(/\bconst\s+terrainGzipBase64\s*=\s*["']([A-Za-z0-9+/=]+)["']/)?.[1];
-  if(!encoded)throw Error('新しい知床マップの地形データが見つかりません。');
-  const data=JSON.parse(await gunzipBase64(encoded)) as AuthoredMapData;
-  if(!Array.isArray(data.meshes)||!data.meshes.length||!Array.isArray(data.structures)||!data.structures.length||data.atmosphere?.preset!=='purple_storm')throw Error('最新の知床マップを読み込めませんでした。');
-  return data;
+  if(!encoded)return Promise.reject(Error('新しい知床マップの地形データが見つかりません。'));
+  // Return the response promise directly so the full viewer HTML is not retained
+  // in a suspended async frame while its large JSON payload is being decoded.
+  try{return inflateAuthoredBase64(encoded).json().then((data:AuthoredMapData)=>{
+    if(!Array.isArray(data.meshes)||!data.meshes.length||!Array.isArray(data.structures)||!data.structures.length||data.atmosphere?.preset!=='purple_storm')throw Error('最新の知床マップを読み込めませんでした。');
+    return data;
+  });}catch(error){return Promise.reject(error);}
 }
 
 /** Lazy, shared decode: the standalone file already embeds this viewer once. */
@@ -48,7 +63,7 @@ export function loadAuthoredMapData():Promise<AuthoredMapData> {
     if(node){
       const payload=JSON.parse(node.textContent??'{}') as {htmlGzipBase64?:unknown};
       if(typeof payload.htmlGzipBase64!=='string')throw Error('同梱された知床マップが破損しています。');
-      html=await gunzipBase64(payload.htmlGzipBase64);
+      html=await inflateAuthoredBase64(payload.htmlGzipBase64).text();
     }else{
       const response=await fetch(`${import.meta.env.BASE_URL}home-map/shiretoko.html`);
       if(!response.ok)throw Error(`知床マップを読み込めませんでした (${response.status})。`);

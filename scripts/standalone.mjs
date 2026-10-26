@@ -33,8 +33,8 @@ for(const id of ['jonesy','ramirez']){
 const modelData=`<script type="application/json" id="reclaim-home-models">${JSON.stringify(embeddedModels).replaceAll('<','\\u003c')}</script>`;
 html=html.replace('<script type="module">',()=>`${modelData}\n<script type="module">`);
 // Character motion and held weapons must also work when this HTML is opened
-// directly from Explorer. Only this artifact carries the six animated GLBs.
-const missionAssets=await collectMissionAssets(dist);
+// directly from Explorer. Only this artifact carries the four gameplay GLBs. Developer-only models stay separate.
+const missionAssets=await collectMissionAssets(dist,{includeDevModels:false});
 const missionData=`<script type="application/json" id="reclaim-mission-assets">${JSON.stringify(missionAssets.payload).replaceAll('<','\\u003c')}</script>`;
 html=html.replace('<script type="module">',()=>`${missionData}\n<script type="module">`);
 const authoredMap=await collectAuthoredMapAssets(dist);

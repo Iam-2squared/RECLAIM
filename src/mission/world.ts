@@ -12,6 +12,7 @@ export interface MissionWorld {
  readonly worldId?:string;
  readonly data?:AuthoredMapPhysicsData;
  combatColliders?(x:number,z:number):readonly Collider[];
+ sightColliders?(x:number,z:number):readonly Collider[];
  update(x:number,z:number):void;
  setQuality(quality:WorldQuality):void;
  stats():unknown;

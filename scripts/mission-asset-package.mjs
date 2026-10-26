@@ -49,7 +49,7 @@ export function validateEmbeddedGlb(bytes, id = 'model') {
 }
 
 /** Called only by standalone packaging, never by the normal Vite browser bundle. */
-export async function collectMissionAssets(directory) {
+export async function collectMissionAssets(directory, {includeDevModels=true}={}) {
   const payload = { models: {}, weapons: {} }, records = { models: [], weapons: [] };
   for (const [section, folder, ids] of [['models','mission-models',MISSION_MODEL_IDS], ['weapons','mission-weapons',MISSION_WEAPON_IDS]]) {
     const manifest = JSON.parse(await readFile(resolve(directory, folder, 'manifest.json'), 'utf8'));
@@ -57,6 +57,8 @@ export async function collectMissionAssets(directory) {
     if (!Array.isArray(entries) || entries.length !== ids.length || new Set(entries.map(entry => entry.id)).size !== ids.length ||
         entries.some(entry => !ids.includes(entry.id))) throw new Error(`Incomplete mission asset manifest: ${folder}`);
     for (const id of ids) {
+      // Lv5 is selectable only by the Vite development fixture, not the game.
+      if(section==='models'&&!includeDevModels&&id.endsWith('-lv5'))continue;
       const entry = entries.find(item => item.id === id);
       if (entry.file !== `${id}.glb`) throw new Error(`Unexpected mission asset filename: ${id}`);
       const bytes = await readFile(resolve(directory, folder, entry.file));

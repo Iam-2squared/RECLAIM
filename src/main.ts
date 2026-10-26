@@ -1,7 +1,7 @@
 import './style.css';
 import deploymentPhoto from './ui-mission/shiretoko-deployment.webp?inline';
 import { ScreenState, parsePreferences, REVEAL_MS, type Preferences } from './state';
-import { WorldView } from './scene';
+import { GameRenderer } from './game-renderer';
 import { makeFallback } from './fallback';
 import { Atmosphere } from './audio';
 import { Home } from './home';
@@ -25,7 +25,7 @@ const live=element('live-region');
 const media=matchMedia('(prefers-reduced-motion: reduce)');
 let prefs:Preferences;
 try{prefs=parsePreferences(localStorage.getItem('reclaim.display.v1'),media.matches);}catch{prefs=parsePreferences(null,media.matches);}
-let world:WorldView|null=null,fallback:ReturnType<typeof makeFallback>|null=null,mission:Mission|null=null,referenceMenus:ReferenceMenus|null=null;
+let world:GameRenderer|null=null,fallback:ReturnType<typeof makeFallback>|null=null,mission:Mission|null=null,referenceMenus:ReferenceMenus|null=null;
 let worldInitialized=false;
 const legacyWorld=import.meta.env.DEV&&(new URLSearchParams(location.search).get('legacy-world')==='1'||new URLSearchParams(location.search).get('combat-preview')==='1');
 let campaign:CampaignStore;try{campaign=legacyWorld?new CampaignStore(localStorage):authoredCampaignStore(localStorage);}catch{campaign=legacyWorld?new CampaignStore(null):authoredCampaignStore(null);}
@@ -51,7 +51,7 @@ function ensureWorld(){
  if(worldInitialized)return;
  worldInitialized=true;
  try{
-  world=new WorldView(sceneHost,enableFallback);world.preferences(prefs);
+  world=new GameRenderer(sceneHost,enableFallback);world.preferences(prefs);
   document.body.dataset.renderer='webgl';
  }catch{enableFallback();}
  home.world=world;
@@ -59,7 +59,7 @@ function ensureWorld(){
 // Entry always starts at the title. No previous session is ever resumed straight into a mission.
 document.body.dataset.screen='title';document.body.dataset.reveal='false';
 let frameId=0,lastFrame=0,frameCount=0,lastRafTime=0,fallbackFrames=0,frameTicket=0,watchdogTimer=0,frameDirty=true,wasVisible=false,disposed=false;
-function needsFrame(){return !disposed&&!document.hidden&&state.screen==='mission'&&mission!==null;}
+function needsFrame(){return !disposed&&!document.hidden&&state.screen==='mission'&&mission!==null&&(frameDirty||mission.needsFrame);}
 function invalidateRender(){frameDirty=true;if(needsFrame())scheduleFrame();}
 function stopFrameLoop(){frameTicket++;cancelAnimationFrame(frameId);frameId=0;clearTimeout(watchdogTimer);watchdogTimer=0;}
 function scheduleFrame(){
@@ -80,7 +80,6 @@ let revealTimer:ReturnType<typeof setTimeout>|null=null;
 function endReveal(){
  if(revealTimer!==null){clearTimeout(revealTimer);revealTimer=null;}
  state.revealStarted=null;document.body.dataset.reveal='false';wasVisible=false;
- if(world){world.title.boss.visible=false;world.title.bossMat.opacity=0;}
  fallback?.bossOpacity(0);
  invalidateRender();
 }
@@ -100,7 +99,6 @@ function frame(time:number,fromWatchdog=false){
   const visible=opacity>0;
   if(visible!==wasVisible){document.body.dataset.reveal=String(visible);wasVisible=visible;}
   if(state.screen==='mission'&&mission&&!world?.lost)mission.update(delta);
-  else if(!referenceMenus?.active){if(world&&!world.lost)world.render(now,state,opacity);else fallback?.bossOpacity(opacity);}
 }
 function announce(message:string){live.textContent=message;}
 const home=new Home(state,world,announce,invalidateRender,campaign,startMission,ensureWorld);
@@ -175,13 +173,12 @@ element('sound-icon').innerHTML=off;
 soundButton.addEventListener('click',async()=>{try{const enabled=await atmosphere.setEnabled(!atmosphere.enabled);soundButton.setAttribute('aria-pressed',String(enabled));soundButton.setAttribute('aria-label',enabled?'環境音をオフにする':'環境音をオンにする');element('sound-icon').innerHTML=enabled?on:off;referenceMenus?.refresh();announce(enabled?'環境音をオンにしました。':'環境音はオフです。');}catch{announce('環境音を開始できませんでした。音はオフのままメニューを操作できます。');}});
 function syncMenuViewport(){const view=window.visualViewport;document.body.style.setProperty('--menu-height',`${view?.height??innerHeight}px`);document.body.style.setProperty('--menu-offset-top',`${view?.offsetTop??0}px`);}
 function resize(){syncMenuViewport();world?.resize();mission?.resize();referenceMenus?.refresh();home.layout();invalidateRender();}
-function pointer(event:PointerEvent){if(world){world.pointer.x=(event.clientX/innerWidth-.5)*2;world.pointer.y=(event.clientY/innerHeight-.5)*2;if(state.screen==='title'&&!prefs.reducedMotion)invalidateRender();}}
 function visibility(){stopFrameLoop();if(document.hidden){endReveal();mission?.pause();}else{lastFrame=0;invalidateRender();}void atmosphere.visibility(document.hidden);}
 const viewportScroll=()=>{syncMenuViewport();home.layout();};
-addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);addEventListener('pointermove',pointer,{passive:true});document.addEventListener('visibilitychange',visibility);
+addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);document.addEventListener('visibilitychange',visibility);
 const enforceMissionPointerLock=()=>{if(state.screen!=='mission'&&document.pointerLockElement)document.exitPointerLock();};
 document.addEventListener('pointerlockchange',enforceMissionPointerLock);
-function dispose(){if(disposed)return;disposed=true;endReveal();stopFrameLoop();mission?.dispose();mission=null;referenceMenus?.dispose();home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);removeEventListener('pointermove',pointer);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('pointerlockchange',enforceMissionPointerLock);}
+function dispose(){if(disposed)return;disposed=true;endReveal();stopFrameLoop();mission?.dispose();mission=null;referenceMenus?.dispose();home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('pointerlockchange',enforceMissionPointerLock);}
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.

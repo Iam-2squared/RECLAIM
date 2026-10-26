@@ -3,7 +3,6 @@ import { HOME_KEY, MAX_NAME, PALETTES, GUNS, MELEE, RARITIES, ROUTE, defaults, p
 import { WEAPON_PREVIEWS } from './weapon-assets';
 import { mountAuthoredMap } from './authored-map';
 import type { ScreenState } from './state';
-import type { WorldView } from './scene';
 import { CampaignStore, visibleRoute, visibleAreas, type MissionCheckpoint } from './campaign/index';
 import type { AreaId } from './world/index';
 
@@ -34,7 +33,7 @@ export class Home {
   readonly compactChanged = () => this.layout();
   readonly blocked = new Map<HTMLElement, { aria: string | null; inert: boolean; tabs: [HTMLElement, string | null][] }>();
   readonly labels = Array.from(document.querySelectorAll<HTMLElement>('.survivor-label'));
-  constructor(readonly state: ScreenState, public world: WorldView | null, readonly announce: (s: string) => void, readonly invalidateRender: () => void, readonly campaign: CampaignStore, readonly startMission:(area:AreaId,resume?:MissionCheckpoint|null)=>void, readonly prepareMission:()=>void=()=>{}) {
+  constructor(readonly state: ScreenState, public world: {readonly lost:boolean} | null, readonly announce: (s: string) => void, readonly invalidateRender: () => void, readonly campaign: CampaignStore, readonly startMission:(area:AreaId,resume?:MissionCheckpoint|null)=>void, readonly prepareMission:()=>void=()=>{}) {
     try { this.saved = parseHome(localStorage.getItem(HOME_KEY)); } catch { this.saved = defaults(); }
     el('nav-items').innerHTML = features.map(([id, name, , icon], i) => `<button type="button" class="nav-button" data-panel="${id}" aria-controls="home-panel" aria-expanded="false">${svg(icon)}<span>${name}</span><small aria-hidden="true">0${i + 1}</small></button>`).join('');
     el('nav-items').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.addEventListener('click', () => this.open(b.dataset.panel as Panel, b)));

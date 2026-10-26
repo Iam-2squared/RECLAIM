@@ -27,6 +27,7 @@ export const authoredPoint=(point:readonly number[])=>({x:point[0],y:point[2],z:
 class TriangleIndex {
   readonly triangles:Triangle[]=[];
   private readonly cells=new Map<string,number[]>();
+  private cellX=NaN;private cellZ=NaN;private cellTriangles:readonly number[]=[];
   add(mesh:AuthoredMesh,kind:number):void {
     const positions=mesh.positions,indices=mesh.indices;
     for(let i=0;i<indices.length;i+=3){
@@ -46,13 +47,19 @@ class TriangleIndex {
       }
     }
   }
-  at(x:number,z:number):Surface[]{
-    const result:Surface[]=[];
-    for(const index of this.cells.get(cellKey(x,z))??[]){
-      const t=this.triangles[index],u=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/t.den,v=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/t.den,w=1-u-v;
-      if(u>=-1e-6&&v>=-1e-6&&w>=-1e-6)result.push({height:u*t.ay+v*t.by+w*t.cy,slope:t.slope,kind:t.kind});
+  private candidates(x:number,z:number):readonly number[]{
+    const cx=Math.floor(x/CELL),cz=Math.floor(z/CELL);
+    if(cx!==this.cellX||cz!==this.cellZ){this.cellX=cx;this.cellZ=cz;this.cellTriangles=this.cells.get(`${cx},${cz}`)??[];}
+    return this.cellTriangles;
+  }
+  top(x:number,z:number,out:Surface,ceiling=Infinity,upperFloors=true,minimum=-Infinity):boolean {
+    let best=minimum,chosen=-1;
+    for(const index of this.candidates(x,z)){
+      const t=this.triangles[index];if(!upperFloors&&t.kind>=3)continue;
+      const u=((t.bz-t.cz)*(x-t.cx)+(t.cx-t.bx)*(z-t.cz))/t.den,v=((t.cz-t.az)*(x-t.cx)+(t.ax-t.cx)*(z-t.cz))/t.den,w=1-u-v;
+      if(u>=-1e-6&&v>=-1e-6&&w>=-1e-6){const height=u*t.ay+v*t.by+w*t.cy;if(height<=ceiling&&height>best){best=height;chosen=index;}}
     }
-    return result;
+    if(chosen<0)return false;const triangle=this.triangles[chosen];out.height=best;out.slope=triangle.slope;out.kind=triangle.kind;return true;
   }
 }
 
@@ -68,6 +75,14 @@ export class AuthoredMapPhysics {
   private readonly water=new TriangleIndex();
   private readonly colliderCells=new Map<string,Collider[]>();
   private readonly nearbyCache=new Map<string,readonly Collider[]>();
+  private readonly sample:Surface={height:-Infinity,slope:Infinity,kind:-1};
+  private readonly waterSample:Surface={height:-Infinity,slope:Infinity,kind:-1};
+  private readonly sampleKey=new Float64Array(3);
+  private readonly sampleBits=new Uint32Array(this.sampleKey.buffer);
+  private readonly sampleValid=new Uint8Array(128);
+  private readonly sampleX=new Float64Array(128);private readonly sampleZ=new Float64Array(128);private readonly sampleY=new Float64Array(128);
+  private readonly sampleHasHeight=new Uint8Array(128);
+  private readonly samples:Array<Surface|null|undefined>=new Array(128);
 
   constructor(data:AuthoredMapPhysicsData){
     this.data=data;
@@ -86,32 +101,32 @@ export class AuthoredMapPhysics {
     }
     const collisions:Collider[]=[],dedup=new Set<string>();
     const addCollider=(collider:Collider)=>{
-      const key=collider.type==='aabb'?[collider.minX,collider.maxX,collider.minZ,collider.maxZ,collider.minY,collider.maxY].map(v=>Math.round(v*100)).join(','):`${collider.x},${collider.z},${collider.radius}`;
+      const key=collider.type==='aabb'?`${Math.round(collider.minX*100)},${Math.round(collider.maxX*100)},${Math.round(collider.minZ*100)},${Math.round(collider.maxZ*100)},${Math.round(collider.minY*100)},${Math.round(collider.maxY*100)}`:`${collider.x},${collider.z},${collider.radius}`;
       if(dedup.has(key))return;dedup.add(key);collisions.push(collider);
     };
     for(const mesh of data.structures??[]){
       // Route surfaces use their sampled top; tiny risers must remain step-able.
       if(/道標文字|小石|小岩|山道の岩混じり盛土|土と高山の小径|木道と登山階段|StartHouse_(roof|floor1|floor2)|Warehouse \/ (Broken_Roof|Floor_Markings)/.test(mesh.name))continue;
-      const p=mesh.positions,ix=mesh.indices;
+      const p=mesh.positions,ix=mesh.indices,tag=`authored/${/Warehouse|Ruins|Metal/.test(mesh.name)?'metal':'wood'}/${mesh.name}`;
       for(let i=0;i<ix.length;i+=3){
-        const points=[ix[i],ix[i+1],ix[i+2]].map(index=>authoredPoint(p.slice(index*3,index*3+3)));
-        const [a,b,c]=points,ux=b.x-a.x,uy=b.y-a.y,uz=b.z-a.z,vx=c.x-a.x,vy=c.y-a.y,vz=c.z-a.z;
+        const a=ix[i]*3,b=ix[i+1]*3,c=ix[i+2]*3,ax=p[a],ay=p[a+2],az=-p[a+1],bx=p[b],by=p[b+2],bz=-p[b+1],cx=p[c],cy=p[c+2],cz=-p[c+1];
+        const ux=bx-ax,uy=by-ay,uz=bz-az,vx=cx-ax,vy=cy-ay,vz=cz-az;
         const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,length=Math.hypot(nx,ny,nz);
         if(length<1e-8||Math.abs(ny)/length>.35)continue;
-        const xs=points.map(v=>v.x),ys=points.map(v=>v.y),zs=points.map(v=>v.z),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),minZ=Math.min(...zs),maxZ=Math.max(...zs);
+        const minX=Math.min(ax,bx,cx),maxX=Math.max(ax,bx,cx),minY=Math.min(ay,by,cy),maxY=Math.max(ay,by,cy),minZ=Math.min(az,bz,cz),maxZ=Math.max(az,bz,cz);
         // Timber siding is assembled from short horizontal boards; its narrow
         // vertical faces still form a solid wall around the authored openings.
         if(maxY-minY<.08)continue;
-        const tag=`authored/${/Warehouse|Ruins|Metal/.test(mesh.name)?'metal':'wood'}/${mesh.name}`;
         // A long rotated rail cannot use its whole AABB: that would block the
         // diagonal walkway beside it. Subdivide its actual projected segment.
         if(Math.max(Math.abs(nx),Math.abs(nz))/length<.97){
-          let from=a,to=b,span=Math.hypot(a.x-b.x,a.z-b.z);
-          for(const [u,v]of [[a,c],[b,c]]){const distance=Math.hypot(u.x-v.x,u.z-v.z);if(distance>span){from=u;to=v;span=distance;}}
+          let fromX=ax,fromZ=az,toX=bx,toZ=bz,span=Math.hypot(ax-bx,az-bz);
+          const ac=Math.hypot(ax-cx,az-cz),bc=Math.hypot(bx-cx,bz-cz);
+          if(ac>span){toX=cx;toZ=cz;span=ac;}if(bc>span){fromX=bx;fromZ=bz;toX=cx;toZ=cz;span=bc;}
           if(span>.6){
             const pieces=Math.ceil(span/.28);
             for(let part=0;part<pieces;part++){
-              const t=part/pieces,s=(part+1)/pieces,x0=from.x+(to.x-from.x)*t,z0=from.z+(to.z-from.z)*t,x1=from.x+(to.x-from.x)*s,z1=from.z+(to.z-from.z)*s;
+              const t=part/pieces,s=(part+1)/pieces,x0=fromX+(toX-fromX)*t,z0=fromZ+(toZ-fromZ)*t,x1=fromX+(toX-fromX)*s,z1=fromZ+(toZ-fromZ)*s;
               addCollider({type:'aabb',minX:Math.min(x0,x1)-.025,maxX:Math.max(x0,x1)+.025,minZ:Math.min(z0,z1)-.025,maxZ:Math.max(z0,z1)+.025,minY,maxY,tag});
             }
             continue;
@@ -120,12 +135,13 @@ export class AuthoredMapPhysics {
         addCollider({type:'aabb',minX:minX-.025,maxX:maxX+.025,minZ:minZ-.025,maxZ:maxZ+.025,minY,maxY,tag});
       }
     }
-    const prototypes=new Map(data.vegetation?.prototypes.map(p=>[p.name,p])??[]);
+    const prototypeBounds=new Map<string,{maxH:number;minX:number;maxX:number;minZ:number;maxZ:number}>();
+    for(const prototype of data.vegetation?.prototypes??[]){const ps=prototype.positions;let maxH=0,minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;for(let i=0;i<ps.length;i+=3){maxH=Math.max(maxH,ps[i+2]);minX=Math.min(minX,ps[i]);maxX=Math.max(maxX,ps[i]);minZ=Math.min(minZ,ps[i+1]);maxZ=Math.max(maxZ,ps[i+1]);}prototypeBounds.set(prototype.name,{maxH,minX,maxX,minZ,maxZ});}
     for(const instance of data.vegetation?.instances??[]){
       if(!/pine|birch|spruce|tree|rock_large|boulder/i.test(instance.prototype))continue;
-      const p=authoredPoint(instance.position),tree=/pine|birch|spruce|tree/i.test(instance.prototype),prototype=prototypes.get(instance.prototype);
+      const p=authoredPoint(instance.position),tree=/pine|birch|spruce|tree/i.test(instance.prototype),prototype=prototypeBounds.get(instance.prototype);
       let height=tree?8:1.4,radius=tree?.24:.7;
-      if(prototype){const ps=prototype.positions;let maxH=0,minX=Infinity,maxX=-Infinity,minZ=Infinity,maxZ=-Infinity;for(let i=0;i<ps.length;i+=3){maxH=Math.max(maxH,ps[i+2]);minX=Math.min(minX,ps[i]);maxX=Math.max(maxX,ps[i]);minZ=Math.min(minZ,ps[i+1]);maxZ=Math.max(maxZ,ps[i+1]);}height=maxH*instance.scale[2];if(!tree)radius=Math.max(maxX-minX,maxZ-minZ)*Math.max(instance.scale[0],instance.scale[1])*.4;}
+      if(prototype){height=prototype.maxH*instance.scale[2];if(!tree)radius=Math.max(prototype.maxX-prototype.minX,prototype.maxZ-prototype.minZ)*Math.max(instance.scale[0],instance.scale[1])*.4;}
       if(!tree&&data.trail?.path?.length){
         let clearance=Infinity;for(const point of data.trail.path)clearance=Math.min(clearance,Math.hypot(p.x-point[0],p.z+point[1]));
         // A conservative circular rock proxy must not cover a clear authored trail.
@@ -149,23 +165,24 @@ export class AuthoredMapPhysics {
 
   private surfaceAt(x:number,z:number,referenceY?:number):Surface|null {
     if(!Number.isFinite(x)||!Number.isFinite(z))return null;
-    const grounds=this.ground.at(x,z);let ground:Surface|null=null;
-    for(const surface of grounds)if(!ground||surface.height>ground.height)ground=surface;
-    let chosen=ground;
-    const ceiling=Number.isFinite(referenceY)?referenceY!+STEP:Infinity;
-    for(const surface of this.walking.at(x,z)){
-      if(surface.height>ceiling)continue;
-      // Upper floors require an explicit current height, preventing ground-floor teleportation.
-      if(surface.kind>=3&&!Number.isFinite(referenceY))continue;
-      if(!chosen||surface.height>chosen.height)chosen=surface;
-    }
-    return chosen;
+    const explicit=Number.isFinite(referenceY)?1:0,key=this.sampleKey,bits=this.sampleBits;key[0]=x;key[1]=z;key[2]=explicit?referenceY!:0;
+    let hash=bits[0]^bits[1]^bits[2]^bits[3]^bits[4]^bits[5];hash=Math.imul(hash^(hash>>>16),0x45d9f3b);const slot=(hash^(hash>>>16))&127;
+    if(this.sampleValid[slot]&&this.sampleX[slot]===x&&this.sampleZ[slot]===z&&this.sampleHasHeight[slot]===explicit&&(!explicit||this.sampleY[slot]===referenceY))return this.samples[slot]??null;
+    this.sample.height=-Infinity;this.sample.slope=Infinity;this.sample.kind=-1;
+    let found=this.ground.top(x,z,this.sample);
+    // Upper floors still require the caller's exact current height. Cache keys
+    // retain the exact coordinates and reference height; no position rounding.
+    found=this.walking.top(x,z,this.sample,explicit?referenceY!+STEP:Infinity,!!explicit,this.sample.height)||found;
+    let result:Surface|null=null;
+    if(found){result=this.samples[slot]??{height:0,slope:0,kind:0};result.height=this.sample.height;result.slope=this.sample.slope;result.kind=this.sample.kind;}
+    this.sampleValid[slot]=1;this.sampleX[slot]=x;this.sampleZ[slot]=z;this.sampleY[slot]=referenceY??0;this.sampleHasHeight[slot]=explicit;this.samples[slot]=result;
+    return result;
   }
   heightAt(x:number,z:number,referenceY?:number):number {return this.surfaceAt(x,z,referenceY)?.height??-1000;}
   slopeAt(x:number,z:number,referenceY?:number):number {return this.surfaceAt(x,z,referenceY)?.slope??Infinity;}
   inWater(x:number,z:number,referenceY?:number):boolean {
     const surface=this.surfaceAt(x,z,referenceY);if(!surface)return true;
-    return this.water.at(x,z).some(water=>water.height>surface.height+.12);
+    return this.water.top(x,z,this.waterSample,Infinity,true,surface.height+.12);
   }
   isWalkable(x:number,z:number,referenceY?:number):boolean {
     if(x<this.bounds.minX+.4||x>this.bounds.maxX-.4||z<this.bounds.minZ+.35||z>this.bounds.maxZ-.4)return false;

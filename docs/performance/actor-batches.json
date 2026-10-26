@@ -1,0 +1,81 @@
+{
+  "errors": [],
+  "proof": [
+    {
+      "id": "humanoid-lv1",
+      "motion": "Walk",
+      "batch": {
+        "before": 67,
+        "after": 6,
+        "batches": 6,
+        "parts": 67
+      },
+      "beforeCalls": 67,
+      "afterCalls": 6,
+      "beforeTriangles": 14880,
+      "afterTriangles": 14880,
+      "differentChannels": 0,
+      "changedPixels": 0,
+      "changedPixelPercent": 0,
+      "maxChannelDelta": 0,
+      "meanChannelDelta": 0
+    },
+    {
+      "id": "humanoid-lv1",
+      "motion": "Death",
+      "batch": {
+        "before": 67,
+        "after": 6,
+        "batches": 6,
+        "parts": 67
+      },
+      "beforeCalls": 67,
+      "afterCalls": 6,
+      "beforeTriangles": 14880,
+      "afterTriangles": 14880,
+      "differentChannels": 3,
+      "changedPixels": 1,
+      "changedPixelPercent": 0.0003814697265625,
+      "maxChannelDelta": 14,
+      "meanChannelDelta": 0.00003910064697265625
+    },
+    {
+      "id": "drone-lv1",
+      "motion": "Patrol",
+      "batch": {
+        "before": 63,
+        "after": 7,
+        "batches": 5,
+        "parts": 61
+      },
+      "beforeCalls": 63,
+      "afterCalls": 7,
+      "beforeTriangles": 13456,
+      "afterTriangles": 13456,
+      "differentChannels": 0,
+      "changedPixels": 0,
+      "changedPixelPercent": 0,
+      "maxChannelDelta": 0,
+      "meanChannelDelta": 0
+    },
+    {
+      "id": "drone-lv1",
+      "motion": "Death",
+      "batch": {
+        "before": 63,
+        "after": 7,
+        "batches": 5,
+        "parts": 61
+      },
+      "beforeCalls": 63,
+      "afterCalls": 7,
+      "beforeTriangles": 13456,
+      "afterTriangles": 13456,
+      "differentChannels": 0,
+      "changedPixels": 0,
+      "changedPixelPercent": 0,
+      "maxChannelDelta": 0,
+      "meanChannelDelta": 0
+    }
+  ]
+}

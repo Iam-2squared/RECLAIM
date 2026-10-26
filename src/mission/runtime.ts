@@ -28,6 +28,7 @@ export class Mission {
  horde:HordeDirector|null=null;encounter:EncounterPresentation|null=null;
  private deathReturnSeconds=0;private corpseAges=new Map<string,number>();private markerKey='';
  private cachedColliders:readonly Collider[]|null=null;private shotSolids:readonly Solid[]=[];
+ private visualDirty=true;private deviceMask=-1;private deviceCache:Solid[]=[];private combinedBase:readonly Solid[]|null=null;private combinedDevices:readonly Solid[]|null=null;private combinedSolids:readonly Solid[]=[];
  private speed=0;private actionTime=0;private actionMotion:PlayerMotion='Idle';private hurtTime=0;private damageFlash=0;private hits=0;private meleeHits=0;
  private readonly freeMouse=new FreeMouseLook();private lockRequest=0;private pendingLock=false;
  paused=true;disposed=false;hp:number=COMBAT_TUNING.playerHp;keys=new Set<string>();clock=new SimulationClock();elapsed=0;checkpointClock=0;hudClock=0;nextShot=0;shots=0;misses=0;lastHit=false;hitFlash=0;lastUI='';locked=false;freeLook=false;transitions=0;frames=0;frameTimes:number[]=[];loadMs=0;storyShowing=false;endShowing=false;lockSettledAt=0;ignoreFirstMouseMove=false;jumpBuffered=false;
@@ -122,7 +123,7 @@ export class Mission {
   const request=++this.lockRequest;this.pendingLock=true;
   try{const promise=this.canvas.requestPointerLock();promise?.then(()=>{if(request!==this.lockRequest&&document.pointerLockElement===this.canvas)document.exitPointerLock();}).catch(()=>{if(request===this.lockRequest)this.lockError();});}catch{if(request===this.lockRequest)this.lockError();}
  }
- pause(release=true){this.lockRequest++;this.pendingLock=false;this.paused=true;this.freeLook=false;this.freeMouse.reset();this.canvas.style.cursor='';this.weapons.clearInput();this.projectiles.clear();this.effects.clear();this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
+ pause(release=true){this.visualDirty=true;this.lockRequest++;this.pendingLock=false;this.paused=true;this.freeLook=false;this.freeMouse.reset();this.canvas.style.cursor='';this.weapons.clearInput();this.projectiles.clear();this.effects.clear();this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
  showInitial(){node('mission-area').textContent=this.loader.area.displayName;node('mission-prototype').textContent=this.areaId==='shiretoko'?'導入プレイ / 仮バランス':'環境プロトタイプ / 正式任務は開発中';if(this.areaId==='shiretoko'&&this.store.value.introStep===0&&!this.debug)this.showStory('WAKE / 01','北の家で、目を覚ます。','朝の薄明かり。木造の家には、いつもと違う静けさがある。まず、ラジオの報道を確かめよう。','起き上がる');else if(this.areaId==='shiretoko'&&this.store.value.introStep===2&&!this.debug)this.showStory('RADIO / 02','日本各地で、AIが暴走。','日本各地に危機が広がっている。東京の親友から連絡が届いた。','届いた連絡を読む');else this.pause(false);}
  showStory(kicker:string,title:string,text:string,action:string){this.pause();this.storyShowing=true;node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-story').hidden=false;node('mission-story-kicker').textContent=kicker;node('mission-story-title').textContent=title;node('mission-story-text').textContent=text;node('mission-continue').textContent=action;node('mission-continue').focus();}
  continueStory(){
@@ -136,8 +137,10 @@ export class Mission {
  interact(){
   if(this.areaId==='shiretoko'&&this.store.value.introStep===1&&!this.storyShowing){const radio=this.loader.area.landmarks.find(p=>p.type==='radio'||p.id==='radio');const p=radio?.position??{x:-3,z:-3};if(Math.hypot(this.controller.position.x-p.x,this.controller.position.z-p.z)>2.4){this.hooks.announce('ラジオに近づいてEキーを押してください。');return;}this.recordOpening('radio');this.hooks.effect('radio');this.showStory('RADIO / 02','日本各地で、AIが暴走。','「……日本各地でAIの暴走が相次ぎ、危機的な状況が広がっています……」\n報道を聞いた直後、東京にいる親友から連絡が届く。','届いた連絡を読む');}
  }
+ get needsFrame(){return !this.paused||this.hp<=0||this.visualDirty||this.hitFlash>0||this.damageFlash>0;}
  update(dt:number){
   if(this.disposed||document.hidden)return;
+  if(!this.needsFrame)return;
   if(!Number.isFinite(dt)||dt<0)dt=0;dt=Math.min(dt,SIMULATION_TIMING.maxFrameSeconds);
   this.hitFlash=Math.max(0,this.hitFlash-dt);
   this.damageFlash=Math.max(0,(this.damageFlash??0)-dt);
@@ -158,8 +161,10 @@ export class Mission {
    if(damage)this.takeDamage(damage);
   }
   if(this.horde){const result=this.horde.step(dt,this.controller.position,{combatEnabled:this.debug||this.store.value.introStep===4,visible:unit=>this.enemyVisible(unit.position,unit.kind==='humanoid'?1:0),canMove:(from,to,radius,kind)=>this.enemyCanMove(from,to,radius,kind==='drone')});if(result.damage)this.takeDamage(result.damage);}
-  if(!this.paused){this.updateCamera();for(const shot of this.weapons.step(dt))this.fireShot(shot);const world=this.shotWorld();
-   for(let i=0;i<2;i++){const frame=this.projectiles.tick(world,dt/2);for(const receipt of frame.impacts){this.effects.impact(receipt.impact);if(!this.acceptHit(receipt.impact.targetId,receipt.damage,receipt.impact))this.misses++;}this.misses+=frame.expirations.length;}
+  if(!this.paused){for(const shot of this.weapons.step(dt)){this.updateCamera();this.fireShot(shot);}
+   if(this.projectiles.active||this.projectiles.visibleTracers.length){const world=this.projectiles.active?this.shotWorld():{solids:[],drone:null,heightAt:()=>0};
+    for(let i=0;i<2;i++){const frame=this.projectiles.tick(world,dt/2);for(const receipt of frame.impacts){this.effects.impact(receipt.impact);if(!this.acceptHit(receipt.impact.targetId,receipt.damage,receipt.impact))this.misses++;}this.misses+=frame.expirations.length;}
+   }
    this.effects.step(dt,this.projectiles.visibleTracers);
   }
   this.checkpointClock+=dt;if(this.checkpointClock>.35){this.checkpointClock=0;if(!this.debug){this.store.record({type:'position',areaId:this.areaId,position:{...this.controller.position},grounded:this.controller.grounded});this.save();}}
@@ -181,9 +186,10 @@ export class Mission {
   if(this.drone&&this.drone.hp>0)targets.push({id:this.drone.id,center:{...this.drone.position},radius:.72,material:'drone'});
   if(this.humanoid&&this.humanoid.hp>0)for(const [height,radius]of [[.45,.28],[1.0,.34],[1.6,.25]])targets.push({id:this.humanoid.id,center:{...this.humanoid.position,y:this.humanoid.position.y+height},radius,material:'humanoid'});
   for(const unit of this.horde?.units??[])if(unit.hp>0){if(unit.kind==='drone')targets.push({id:unit.id,center:{...unit.position},radius:.72,material:'drone'});else for(const [height,radius]of [[.45,.28],[1,.34],[1.6,.25]])targets.push({id:unit.id,center:{...unit.position,y:unit.position.y+height},radius,material:'humanoid'});}
-  return {solids:this.horde?[...this.shotSolids,...this.deviceSolids()]:this.shotSolids,drone:null,targets,heightAt:(x,z)=>this.loader.terrain.heightAt(x,z)};
+  const devices=this.deviceSolids();if(this.combinedBase!==this.shotSolids||this.combinedDevices!==devices){this.combinedBase=this.shotSolids;this.combinedDevices=devices;this.combinedSolids=devices.length?[...this.shotSolids,...devices]:this.shotSolids;}
+  return {solids:this.combinedSolids,drone:null,targets,heightAt:(x,z)=>this.loader.terrain.heightAt(x,z)};
  }
- private deviceSolids():Solid[]{return(this.horde?.devices??[]).filter(d=>!d.destroyed).map(d=>({id:d.id,material:'metal',bounds:{minX:d.position.x-1.2,maxX:d.position.x+1.2,minY:d.position.y,maxY:d.position.y+(d.kind==='humanoid'?2.3:2.1),minZ:d.position.z-1.0,maxZ:d.position.z+1.0}}));}
+ private deviceSolids():Solid[]{const devices=this.horde?.devices,mask=(devices?.[0]?.destroyed?1:0)|(devices?.[1]?.destroyed?2:0);if(this.deviceMask!==mask){this.deviceMask=mask;this.deviceCache=(devices??[]).filter(d=>!d.destroyed).map(d=>({id:d.id,material:'metal',bounds:{minX:d.position.x-1.2,maxX:d.position.x+1.2,minY:d.position.y,maxY:d.position.y+(d.kind==='humanoid'?2.3:2.1),minZ:d.position.z-1.0,maxZ:d.position.z+1.0}}));}return this.deviceCache;}
  private fireShot(shot:WeaponShot){
   this.shots++;this.lastHit=false;this.actionTime=shot.melee?.36:.14;this.actionMotion=shot.melee?'Melee':'Shoot';
   this.updateVisuals(0);
@@ -231,7 +237,7 @@ export class Mission {
  }
  private enemyVisible(position:EnemyPosition,height:number){
   const origin={...this.controller.position,y:this.controller.position.y+PLAYER_TUNING.eyeHeight},delta=new T.Vector3(position.x-origin.x,position.y+height-origin.y,position.z-origin.z),distance=delta.length();
-  return distance<.01||distance<40&&obstructionDistance(origin,delta.normalize(),distance,this.loader.combatColliders?.(origin.x,origin.z)??this.loader.colliders,this.loader.terrain)>=distance-.12;
+  return distance<.01||distance<40&&obstructionDistance(origin,delta.normalize(),distance,this.loader.sightColliders?.(origin.x,origin.z)??this.loader.colliders,this.loader.terrain)>=distance-.12;
  }
  private enemyCanMove(from:Readonly<EnemyPosition>,to:Readonly<EnemyPosition>,radius:number,flying:boolean){
   const bounds=this.loader.area.bounds;
@@ -254,6 +260,7 @@ export class Mission {
   if(this.hp===0){if(this.horde){if(!this.debug)this.store.reset(true);this.deathReturnSeconds=2.2;}this.thirdPerson=true;this.endShowing=true;this.pause();node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-end').hidden=false;node('mission-end-title').textContent=this.horde?'家から、もう一度。':'安全な起点から、もう一度。';node('mission-end-text').textContent=this.horde?'行動不能になりました。まもなく家へ戻り、体力・装備・敵の出現を最初からやり直します。':'敵の攻撃で行動不能になりました。再挑戦では起点と体力、装備を戻します。';node('mission-retry').hidden=false;node('mission-next').hidden=true;}
  }
  private updateVisuals(dt:number){
+  this.visualDirty=true;
   const weapon=this.weapons.snapshot(),pose=this.weapons.pose;
   const motion:PlayerMotion=this.hp<=0?'Death':this.hurtTime>0?'Hit':weapon.reloading?'Reload':this.actionTime>0?this.actionMotion:!this.controller.grounded?'Jump':this.speed>4?'Run':this.speed>.1?'Walk':weapon.aiming?'Aim':'Idle';
   const visibleThird=this.thirdPerson&&this.camera.position.distanceTo(new T.Vector3(this.controller.position.x,this.controller.position.y+PLAYER_TUNING.eyeHeight,this.controller.position.z))>.8;
@@ -284,16 +291,16 @@ export class Mission {
   if(Math.abs(this.camera.fov-fov)>.01){this.camera.fov=fov;this.camera.updateProjectionMatrix();}
   this.camera.updateMatrixWorld(true);
  }
- resize(){this.freeMouse.reset();this.camera.aspect=innerWidth/innerHeight;this.camera.fov=innerWidth<700?82:74;this.camera.updateProjectionMatrix();}
- preferences(quality:WorldQuality){if(this.quality===quality)return;this.quality=quality;this.loader.setQuality(quality);this.actors.setEnemyViewDistance(quality==='low'?120:180);this.encounter?.setViewDistance(quality==='low'?120:180);this.hooks.invalidate();}
- render(){if(this.disposed||!this.renderBackpressure.canSubmit())return;const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.renderBackpressure.submitted();this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
+ resize(){this.visualDirty=true;this.freeMouse.reset();this.camera.aspect=innerWidth/innerHeight;this.camera.fov=innerWidth<700?82:74;this.camera.updateProjectionMatrix();}
+ preferences(quality:WorldQuality){if(this.quality===quality)return;this.visualDirty=true;this.quality=quality;this.loader.setQuality(quality);this.actors.setEnemyViewDistance(quality==='low'?120:180);this.encounter?.setViewDistance(quality==='low'?120:180);this.hooks.invalidate();}
+ render(){if(this.disposed||!this.renderBackpressure.canSubmit())return;const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.visualDirty=false;this.renderBackpressure.submitted();this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
  updateHUD(force=false){
   const step=this.store.value.introStep;
   let text=this.areaId==='sapporo'?'都市入口を徒歩で探索。廃車は装飾・運転不可。正式任務は開発中。':this.areaId!=='shiretoko'?'道標をたどり、歩ける環境を確かめる。正式任務は開発中。':step===0?'木造の家で目覚める。':step===1?'家のラジオへ近づき、Eで報道を聞く。':step===2?'親友から届いた連絡を読む。':step===3?'玄関を抜け、森へ出発する。':this.drone&&this.drone.hp>0?'林道の小型ドローンを停止させ、道標へ向かう。':'林道をたどり、次の区間の道標へ。';
   if(this.horde&&step===4)text=this.horde.devices.every(d=>d.destroyed)?'製造装置を停止した。残る敵に注意し、道標へ向かう。':'林道を進み、倉庫の人型・ドローン製造装置を破壊する。';
   if(this.debug)text='開発用の環境確認 / 進行は保存されません。';
   const exit=this.loader.area.exitTriggers[0],distance=exit?Math.round(Math.hypot(this.controller.position.x-exit.position.x,this.controller.position.z-exit.position.z)):0;
-  const weapon=this.weapons.snapshot(),horde=this.horde?.snapshot();const data=JSON.stringify([text,Math.ceil(this.hp),this.drone?.hp,this.drone?.state,this.humanoid?.hp,this.humanoid?.state,horde?.spawned,horde?.killed,horde?.devices.map(d=>d.hp),Math.ceil(horde?.nextSpawnIn??0),weapon.kind,weapon.ammo,weapon.reserve,Math.round(weapon.reloadProgress*10),weapon.aiming,this.thirdPerson,this.paused,distance,this.hitFlash>0,this.damageFlash>0,this.store.saveStatus]);if(!force&&data===this.lastUI)return;this.lastUI=data;
+  const weapon=this.weapons.snapshot(),horde=this.horde?.summary();const data=JSON.stringify([text,Math.ceil(this.hp),this.drone?.hp,this.drone?.state,this.humanoid?.hp,this.humanoid?.state,horde?.spawned,horde?.killed,horde?.devices.map(d=>d.hp),Math.ceil(horde?.nextSpawnIn??0),weapon.kind,weapon.ammo,weapon.reserve,Math.round(weapon.reloadProgress*10),weapon.aiming,this.thirdPerson,this.paused,distance,this.hitFlash>0,this.damageFlash>0,this.store.saveStatus]);if(!force&&data===this.lastUI)return;this.lastUI=data;
   node('mission-objective').textContent=text;node('mission-health').textContent=`${Math.ceil(this.hp)} / ${COMBAT_TUNING.playerHp}`;node('player-health-fill').style.width=`${100*this.hp/COMBAT_TUNING.playerHp}%`;node('player-health-bar').setAttribute('aria-valuenow',String(Math.ceil(this.hp)));node('mission-distance').textContent=`道標まで ${distance} m`;
   const enemySeen=this.drone&&(step===4||this.debug)&&Math.hypot(this.controller.position.x-this.drone.position.x,this.controller.position.z-this.drone.position.z)<30;const states={patrol:'巡回',alert:'発見',chase:'追跡',windup:'攻撃予備動作',attack:'攻撃',recover:'立て直し',hit:'ひるみ',dead:'停止'};
   node('mission-enemy').textContent=enemySeen&&this.drone?`ドローンLv.${this.enemyLevel} / HP ${this.drone.hp} / ${states[this.drone.state]}${this.humanoid?`　人型 / HP ${this.humanoid.hp}`:''}`:this.areaId==='shiretoko'?'人型・偵察ドローン / 林道を探索':'環境探索 / 正式任務は開発中';

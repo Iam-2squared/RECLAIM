@@ -1,6 +1,7 @@
 import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
+import { batchActorMeshes } from './actor-mesh-batches.ts';
 
 export type PlayerCharacter = 'jonesy' | 'ramirez';
 export type ActorMotion = 'Idle' | 'Walk' | 'Run' | 'Jump' | 'Aim' | 'Shoot' | 'Reload' | 'Hit' | 'Death' | 'Melee' | 'Attack' | 'Hover' | 'Patrol' | 'Chase' | 'Ram';
@@ -76,16 +77,19 @@ export class MotionPlayback {
   private action: T.AnimationAction | null = null;
   private requested: ActorMotion = 'Idle';
   private actual = '';
+  private deferredSeconds = 0;
   constructor(root: T.Object3D, clips: readonly T.AnimationClip[]) {
     this.root = root;
     this.mixer = new T.AnimationMixer(root);
     for (const clip of clips) this.clips.set(clip.name.toLowerCase(), clip);
   }
   play(motion: ActorMotion): void {
+    if(this.requested===motion&&this.action)return;
     this.requested = motion;
     const choices = ALIASES[motion] ?? [motion, 'Idle', 'Hover'];
     const clip = choices.map(name => this.clips.get(name.toLowerCase())).find(Boolean);
     if (!clip || this.action?.getClip() === clip) return;
+    this.flushDeferred();
     const previous = this.action;
     const next = this.mixer.clipAction(clip);
     next.reset().setEffectiveWeight(1).setEffectiveTimeScale(1);
@@ -97,16 +101,22 @@ export class MotionPlayback {
     this.action = next;
     this.actual = clip.name;
   }
-  step(dt: number): void {
-    if (finite(dt) && dt > 0) this.mixer.update(Math.min(dt, .1));
+  private flushDeferred():void {if(this.deferredSeconds>0){this.mixer.update(this.deferredSeconds);this.deferredSeconds=0;}}
+  step(dt: number,visible=true): void {
+    const elapsed=finite(dt)&&dt>0?Math.min(dt,.1):0;
+    if(!visible){this.deferredSeconds+=elapsed;return;}
+    this.flushDeferred();if(elapsed)this.mixer.update(elapsed);
   }
   snapshot() { return { requested: this.requested, clip: this.actual, clips: [...this.clips.values()].map(c => c.name), time: this.action?.time ?? 0 }; }
-  dispose(): void { this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.root); this.action = null; }
+  dispose(): void { this.mixer.stopAllAction(); this.mixer.uncacheRoot(this.root); this.action = null;this.deferredSeconds=0; }
 }
 
 type Actor = { root: T.Group; visual: T.Group; motion: MotionPlayback; clips: readonly T.AnimationClip[]; hand: T.Bone | null; fallback: boolean };
-type EnemyRequest = { position: ActorPosition; yaw: number; motion: ActorMotion; level: 1 | 5 };
+type EnemyRequest = { position: {x:number;y:number;z:number}; yaw: number; motion: ActorMotion; level: 1 | 5 };
 type Weapon = { first: T.Group; third: T.Group; firstTip: T.Object3D | null; thirdTip: T.Object3D | null };
+
+const updateVisibleWorld=function(this:T.Object3D,force?:boolean):void {if(this.visible)T.Object3D.prototype.updateMatrixWorld.call(this,force);};
+const suspendHiddenTransforms=(root:T.Object3D)=>{root.updateMatrixWorld=updateVisibleWorld;};
 
 function resources(root: T.Object3D, geometries: Set<T.BufferGeometry>, materials: Set<T.Material>, textures: Set<T.Texture>): void {
   root.traverse(object => {
@@ -126,7 +136,7 @@ function normalizeActor(scene: T.Group, animations: readonly T.AnimationClip[], 
   visual.rotation.y = Math.PI;
   visual.add(scene); root.add(visual);
   root.updateMatrixWorld(true);
-  scene.traverse(object => { const mesh = object as T.SkinnedMesh; if (mesh.isSkinnedMesh) mesh.skeleton.update(); });
+  const skins=new Set<T.Skeleton>();scene.traverse(object => { const mesh = object as T.SkinnedMesh; if (mesh.isSkinnedMesh) skins.add(mesh.skeleton); });skins.forEach(skin=>skin.update());
   const bounds = new T.Box3().setFromObject(scene, true);
   const size = bounds.getSize(new T.Vector3()), center = bounds.getCenter(new T.Vector3());
   if (![size.x, size.y, size.z].every(finite) || Math.min(size.x, size.y, size.z) <= 0) throw new Error('Invalid model bounds');
@@ -150,9 +160,11 @@ function normalizeActor(scene: T.Group, animations: readonly T.AnimationClip[], 
     if ((object as T.SkinnedMesh).isSkinnedMesh) object.frustumCulled = false;
     if ((object as T.Bone).isBone && /^hand_r(?:_|$)/i.test(object.name)) hand = object as T.Bone;
   });
+  batchActorMeshes(scene,animations);
   const motion = new MotionPlayback(scene, animations);
   motion.play(id.startsWith('drone') ? 'Hover' : 'Idle');
   root.updateMatrixWorld(true);
+  suspendHiddenTransforms(root);
   return { root, visual, motion, clips: animations, hand, fallback: false };
 }
 
@@ -162,6 +174,7 @@ function fallbackActor(id: ModelId): Actor {
   if (id.startsWith('drone')) visual.add(new T.Mesh(new T.BoxGeometry(.64, .22, .5), material));
   else { const body = new T.Mesh(new T.CapsuleGeometry(.22, 1.18, 4, 8), material); body.position.y = .83; visual.add(body); }
   root.name = `Unavailable model fallback: ${id}`;
+  suspendHiddenTransforms(root);
   return { root, visual, motion: new MotionPlayback(visual, []), clips: [], hand: null, fallback: true };
 }
 
@@ -179,6 +192,7 @@ function cloneActor(template: Actor): Actor {
   }
   let hand:T.Bone|null=null;
   root.traverse(object=>{if((object as T.Bone).isBone&&/^hand_r(?:_|$)/i.test(object.name))hand=object as T.Bone;});
+  suspendHiddenTransforms(root);
   return {root,visual,motion:new MotionPlayback(root,template.clips),clips:template.clips,hand,fallback:template.fallback};
 }
 
@@ -214,7 +228,7 @@ export class MissionActors {
   private readonly owned = new Set<T.Object3D>();
   private embedded: EmbeddedMissionAssets | null = null;
   private readonly scratch = new T.Vector3();
-  private playerPosition: ActorPosition = { x: 0, y: 0, z: 0 };
+  private readonly playerPosition = { x: 0, y: 0, z: 0 };
   private playerYaw = 0;
   private playerMotion: ActorMotion = 'Idle';
   private thirdPerson = false;
@@ -230,6 +244,7 @@ export class MissionActors {
     scene.add(this.thirdWeaponHolder);
     this.firstWeaponHolder.visible = false;
     this.thirdWeaponHolder.visible = false;
+    suspendHiddenTransforms(this.firstWeaponHolder);suspendHiddenTransforms(this.thirdWeaponHolder);
   }
   load(): Promise<void> {
     if (this.pending) return this.pending;
@@ -300,6 +315,7 @@ export class MissionActors {
       const gltf = await new GLTFLoader().loadAsync(this.options.weaponUrls?.[kind] ?? (encoded ? `data:model/gltf-binary;base64,${encoded}` : `${baseUrl()}mission-weapons/${kind}.glb`));
       if (this.disposed) { this.discard(gltf.scene); return; }
       first = new T.Group(); first.add(gltf.scene);
+      batchActorMeshes(gltf.scene,gltf.animations);
       first.updateMatrixWorld(true);
       const grip = gltf.scene.getObjectByName('Grip_R');
       if (grip) gltf.scene.position.sub(grip.getWorldPosition(new T.Vector3()));
@@ -308,6 +324,7 @@ export class MissionActors {
       this.report(kind); first = fallbackWeapon(kind);
     }
     const third = cloneSkeleton(first) as T.Group;
+    suspendHiddenTransforms(first);suspendHiddenTransforms(third);
     // Keep depth testing between the model's own separate mechanical parts.
     // Disabling it lets the stock and scope's rear surfaces cover the view.
     first.traverse(object => {
@@ -326,14 +343,13 @@ export class MissionActors {
   }
   setPlayer(position: ActorPosition, yaw: number, motion: ActorMotion, dt: number, thirdPerson: boolean): void {
     if (this.disposed || !positionValid(position) || !finite(yaw)) return;
-    this.playerPosition = { ...position }; this.playerYaw = yaw; this.playerMotion = motion; this.thirdPerson = thirdPerson;
+    this.playerPosition.x=position.x;this.playerPosition.y=position.y;this.playerPosition.z=position.z;this.playerYaw = yaw; this.playerMotion = motion; this.thirdPerson = thirdPerson;
     const actor = this.actors.get(this.character);
     if (actor) {
       actor.root.position.set(position.x, position.y, position.z);
       actor.root.rotation.y = yaw;
       actor.root.visible = thirdPerson;
-      actor.motion.play(motion); actor.motion.step(dt);
-      actor.root.updateMatrixWorld(true);
+      actor.motion.play(motion); actor.motion.step(dt,thirdPerson);
     }
     this.positionThirdWeapon();
     this.firstWeaponHolder.visible = !thirdPerson && this.weapons.has(this.selectedWeapon);
@@ -341,8 +357,9 @@ export class MissionActors {
   }
   setEnemy(kind: EnemyKind, position: ActorPosition, yaw: number, motion: ActorMotion, dt: number, level: 1 | 5 = 1): void {
     if (this.disposed || !positionValid(position) || !finite(yaw)) return;
-    const request = { position: { ...position }, yaw, motion, level };
-    this.enemyRequests.set(kind, request);
+    let request=this.enemyRequests.get(kind);
+    if(!request){request={position:{...position},yaw,motion,level};this.enemyRequests.set(kind,request);}
+    else{request.position.x=position.x;request.position.y=position.y;request.position.z=position.z;request.yaw=yaw;request.motion=motion;request.level=level;}
     const id: ModelId = `${kind}-lv${level}`;
     if (!this.actors.has(id) && level === 5) void this.loadActor(id);
     const actor = this.actors.get(id) ?? this.actors.get(`${kind}-lv1`);
@@ -353,7 +370,7 @@ export class MissionActors {
   }
   /** Independent authored actors; cloned skeletons share cached geometry/textures. */
   setEnemyUnit(id:string,kind:EnemyKind,position:ActorPosition,yaw:number,motion:ActorMotion,dt:number,level:1|5=1):void {
-    if(this.disposed||!id||id.length>128||!positionValid(position)||!finite(yaw)||!['humanoid','drone'].includes(kind)||![1,5].includes(level))return;
+    if(this.disposed||!id||id.length>128||!positionValid(position)||!finite(yaw)||(kind!=='humanoid'&&kind!=='drone')||(level!==1&&level!==5))return;
     if(!this.enemyUnits.has(id)&&this.enemyUnits.size>=50)return;
     if(this.status==='idle')void this.load();
     const model:ModelId=`${kind}-lv${level}`,base:ModelId=`${kind}-lv1`;
@@ -369,9 +386,9 @@ export class MissionActors {
       const actor=cloneActor(template);actor.root.name=`Enemy unit ${id} (${model})`;this.scene.add(actor.root);
       unit={actor,template,kind,model,displayModel,request:{position:{...position},yaw,motion,level}};this.enemyUnits.set(id,unit);
     }
-    unit.kind=kind;unit.displayModel=displayModel;unit.request={position:{...position},yaw,motion,level};
+    unit.kind=kind;unit.displayModel=displayModel;unit.request.position.x=position.x;unit.request.position.y=position.y;unit.request.position.z=position.z;unit.request.yaw=yaw;unit.request.motion=motion;unit.request.level=level;
     unit.actor.root.position.set(position.x,position.y,position.z);unit.actor.root.rotation.y=yaw;
-    unit.actor.root.visible=Math.hypot(position.x-this.playerPosition.x,position.z-this.playerPosition.z)<=this.enemyViewDistance;
+    const dx=position.x-this.playerPosition.x,dz=position.z-this.playerPosition.z;unit.actor.root.visible=dx*dx+dz*dz<=this.enemyViewDistance*this.enemyViewDistance;
     unit.actor.motion.play(motion);if(unit.actor.root.visible)unit.actor.motion.step(dt);
   }
   setEnemyViewDistance(metres:number):void {
@@ -390,6 +407,7 @@ export class MissionActors {
     for(const [id,actor] of this.actors)if(id!==this.character)actor.root.visible=false;
   }
   private positionThirdWeapon(): void {
+    if(!this.thirdPerson)return;
     const actor = this.actors.get(this.character);
     this.thirdWeaponHolder.position.set(this.playerPosition.x, this.playerPosition.y + 1.14, this.playerPosition.z);
     this.thirdWeaponHolder.rotation.set(offset(this.weaponPose.lookPitch, 1.4), this.playerYaw, 0, 'YXZ');
@@ -423,7 +441,6 @@ export class MissionActors {
     if (!weapon) return null;
     const tip = this.thirdPerson ? weapon.thirdTip : weapon.firstTip;
     const holder = this.thirdPerson ? weapon.third : weapon.first;
-    holder.updateWorldMatrix(true, true);
     return tip ? tip.getWorldPosition(target) : holder.localToWorld(target.set(.65, .16, 0));
   }
   snapshot() {

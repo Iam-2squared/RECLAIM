@@ -1,0 +1,142 @@
+{
+  "base": "http://127.0.0.1:5176/",
+  "label": "after",
+  "setup": {
+    "decodeMs": 17709.30000000447,
+    "worldBuildMs": 5888.29999999702,
+    "actorLoadMs": 27852.80000000447,
+    "world": {
+      "areaId": "shiretoko",
+      "source": "authored-map",
+      "atmosphere": "purple_storm",
+      "quality": "balanced",
+      "activeChunks": 157,
+      "nearChunks": 157,
+      "farChunks": 0,
+      "loadedChunks": 157,
+      "unloadedChunks": 0,
+      "trees": 1256,
+      "rocks": 0,
+      "grass": 0,
+      "instances": 1256,
+      "totalAuthoredInstances": 3330,
+      "authoredTerrainMeshes": 12,
+      "authoredStructureMeshes": 64,
+      "authoredRenderMeshes": 47,
+      "geometries": 64,
+      "materials": 9,
+      "textures": 5,
+      "triangles": 1259139,
+      "renderObjects": 213,
+      "approximateGpuBytes": 23164878,
+      "colliders": 507,
+      "terrainCacheEntries": 0,
+      "lastLoadMs": 2940.2999999970198,
+      "totalLoadMs": 2940.2999999970198,
+      "disposed": false
+    }
+  },
+  "cases": {
+    "results": [
+      {
+        "enemies": 2,
+        "stepMs": 1.3000000044703484,
+        "cameraMs": 0.10000000149011612,
+        "visualMs": 0.30000000447034836,
+        "renderAndGpuWaitMs": 14.700000002980232,
+        "drawCalls": 168,
+        "triangles": 888798,
+        "counts": {
+          "emptyProjectileTicks": 0,
+          "enemyVisualUpdates": 180
+        },
+        "world": {
+          "areaId": "shiretoko",
+          "source": "authored-map",
+          "atmosphere": "purple_storm",
+          "quality": "balanced",
+          "activeChunks": 157,
+          "nearChunks": 157,
+          "farChunks": 0,
+          "loadedChunks": 157,
+          "unloadedChunks": 0,
+          "trees": 1256,
+          "rocks": 0,
+          "grass": 0,
+          "instances": 1256,
+          "totalAuthoredInstances": 3330,
+          "authoredTerrainMeshes": 12,
+          "authoredStructureMeshes": 64,
+          "authoredRenderMeshes": 47,
+          "geometries": 64,
+          "materials": 9,
+          "textures": 5,
+          "triangles": 1259139,
+          "renderObjects": 213,
+          "approximateGpuBytes": 23164878,
+          "colliders": 507,
+          "terrainCacheEntries": 0,
+          "lastLoadMs": 2940.2999999970198,
+          "totalLoadMs": 2940.2999999970198,
+          "disposed": false
+        },
+        "actorUnits": 2
+      },
+      {
+        "enemies": 50,
+        "stepMs": 24,
+        "cameraMs": 0.09999999403953552,
+        "visualMs": 2.5,
+        "renderAndGpuWaitMs": 21.5,
+        "drawCalls": 576,
+        "triangles": 1569054,
+        "counts": {
+          "emptyProjectileTicks": 0,
+          "enemyVisualUpdates": 4500
+        },
+        "world": {
+          "areaId": "shiretoko",
+          "source": "authored-map",
+          "atmosphere": "purple_storm",
+          "quality": "balanced",
+          "activeChunks": 157,
+          "nearChunks": 157,
+          "farChunks": 0,
+          "loadedChunks": 157,
+          "unloadedChunks": 0,
+          "trees": 1256,
+          "rocks": 0,
+          "grass": 0,
+          "instances": 1256,
+          "totalAuthoredInstances": 3330,
+          "authoredTerrainMeshes": 12,
+          "authoredStructureMeshes": 64,
+          "authoredRenderMeshes": 47,
+          "geometries": 64,
+          "materials": 9,
+          "textures": 5,
+          "triangles": 1259139,
+          "renderObjects": 213,
+          "approximateGpuBytes": 23164878,
+          "colliders": 507,
+          "terrainCacheEntries": 0,
+          "lastLoadMs": 2940.2999999970198,
+          "totalLoadMs": 2940.2999999970198,
+          "disposed": false
+        },
+        "actorUnits": 50
+      }
+    ],
+    "paused": {
+      "cpuMs": 26.5,
+      "visualCalls": 1,
+      "submittedFrames": 1
+    },
+    "heap": {
+      "used": 219169005,
+      "total": 227803489
+    }
+  },
+  "errors": [],
+  "note": "Same map, models, camera, 1280x720/DPR1 balanced, synthetic fixed placement of 2/50 actors; CPU timings and draw calls are comparison probes, not end-user FPS."
+}

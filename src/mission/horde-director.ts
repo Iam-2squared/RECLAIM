@@ -22,15 +22,22 @@ export type HordeOptions={road:readonly EnemyPosition[];warehouseRoad:Readonly<R
 const flat=(a:Readonly<EnemyPosition>,b:Readonly<EnemyPosition>)=>Math.hypot(a.x-b.x,a.z-b.z);
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const finitePoint=(p:Readonly<EnemyPosition>)=>[p.x,p.y,p.z].every(Number.isFinite);
+type RoadProjection={distance:number;along:number;point:EnemyPosition};
+type RoadSegment={a:EnemyPosition;dx:number;dy:number;dz:number;den:number;length:number};
 
 class Road {
   readonly points:readonly EnemyPosition[];readonly cumulative:number[]=[0];readonly length:number;
   private readonly cells=new Map<string,number[]>();
+  private readonly segments:RoadSegment[]=[];
+  private readonly allSegments:number[]=[];
+  private readonly candidateCells=new Map<string,readonly number[]>();
+  private lastX=NaN;private lastZ=NaN;private lastDistance=Infinity;private lastAlong=0;private lastPointX=0;private lastPointY=0;private lastPointZ=0;
   constructor(points:readonly EnemyPosition[]){
     this.points=points.filter(finitePoint).map(p=>({...p})).filter((p,i,all)=>i===0||flat(p,all[i-1])>1e-5);
     if(this.points.length<2)throw new RangeError('A horde road needs at least two finite distinct points');
     for(let i=1;i<this.points.length;i++){
       const a=this.points[i-1],b=this.points[i];this.cumulative.push(this.cumulative[i-1]+flat(a,b));
+      const dx=b.x-a.x,dz=b.z-a.z,den=dx*dx+dz*dz;this.segments.push({a,dx,dy:b.y-a.y,dz,den,length:Math.sqrt(den)});this.allSegments.push(i-1);
       for(let x=Math.floor(Math.min(a.x,b.x)/32);x<=Math.floor(Math.max(a.x,b.x)/32);x++)for(let z=Math.floor(Math.min(a.z,b.z)/32);z<=Math.floor(Math.max(a.z,b.z)/32);z++){
         const key=`${x},${z}`,cell=this.cells.get(key);if(cell)cell.push(i-1);else this.cells.set(key,[i-1]);
       }
@@ -43,13 +50,19 @@ class Road {
     const a=this.points[lo],b=this.points[lo+1],span=this.cumulative[lo+1]-this.cumulative[lo],t=span>0?(d-this.cumulative[lo])/span:0;
     return{x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t,z:a.z+(b.z-a.z)*t};
   }
-  project(point:Readonly<EnemyPosition>):{distance:number;along:number;point:EnemyPosition}{
-    const cx=Math.floor(point.x/32),cz=Math.floor(point.z/32),candidates=new Set<number>();
-    for(let ring=0;ring<=2&&candidates.size===0;ring++)for(let dx=-ring;dx<=ring;dx++)for(let dz=-ring;dz<=ring;dz++)for(const index of this.cells.get(`${cx+dx},${cz+dz}`)??[])candidates.add(index);
-    const indices=candidates.size?candidates.values():Array.from({length:this.points.length-1},(_,i)=>i);
-    let best=Infinity,along=0,result=this.points[0];
-    for(const i of indices){const a=this.points[i],b=this.points[i+1],dx=b.x-a.x,dz=b.z-a.z,den=dx*dx+dz*dz,t=clamp(((point.x-a.x)*dx+(point.z-a.z)*dz)/(den||1),0,1),p={x:a.x+dx*t,y:a.y+(b.y-a.y)*t,z:a.z+dz*t},distance=flat(point,p);if(distance<best){best=distance;along=this.cumulative[i]+Math.sqrt(den)*t;result=p;}}
-    return{distance:best,along,point:{...result}};
+  project(point:Readonly<EnemyPosition>):RoadProjection {
+    if(point.x===this.lastX&&point.z===this.lastZ)return{distance:this.lastDistance,along:this.lastAlong,point:{x:this.lastPointX,y:this.lastPointY,z:this.lastPointZ}};
+    const cx=Math.floor(point.x/32),cz=Math.floor(point.z/32),key=`${cx},${cz}`;let indices=this.candidateCells.get(key);
+    if(!indices){
+      const candidates=new Set<number>();
+      // Preserve the original first populated ring and candidate insertion order.
+      for(let ring=0;ring<=2&&candidates.size===0;ring++)for(let dx=-ring;dx<=ring;dx++)for(let dz=-ring;dz<=ring;dz++)for(const index of this.cells.get(`${cx+dx},${cz+dz}`)??[])candidates.add(index);
+      indices=candidates.size?Array.from(candidates):this.allSegments;
+      if(this.candidateCells.size>=128)this.candidateCells.clear();this.candidateCells.set(key,indices);
+    }
+    let best=Infinity,along=0,bestX=this.points[0].x,bestY=this.points[0].y,bestZ=this.points[0].z;
+    for(const i of indices){const s=this.segments[i],a=s.a,t=clamp(((point.x-a.x)*s.dx+(point.z-a.z)*s.dz)/(s.den||1),0,1),x=a.x+s.dx*t,z=a.z+s.dz*t,distance=Math.hypot(point.x-x,point.z-z);if(distance<best){best=distance;along=this.cumulative[i]+s.length*t;bestX=x;bestY=a.y+s.dy*t;bestZ=z;}}
+    this.lastX=point.x;this.lastZ=point.z;this.lastDistance=best;this.lastAlong=along;this.lastPointX=bestX;this.lastPointY=bestY;this.lastPointZ=bestZ;return{distance:best,along,point:{x:bestX,y:bestY,z:bestZ}};
   }
 }
 
@@ -75,6 +88,8 @@ export class HordeDirector {
   readonly road:Road;readonly warehouseRoad:Record<HordeKind,Road>;
   private readonly warehouseBounds:HordeOptions['warehouseBounds'];private readonly joins:Record<HordeKind,number>;
   private accumulator=0;private pending:HordeEvent[]=[];private nextSpawnAt=Infinity;
+  private playerX=NaN;private playerZ=NaN;private playerMain:RoadProjection|null=null;
+  private readonly playerBranch:Record<HordeKind,RoadProjection|null>={humanoid:null,drone:null};
   elapsed=0;scheduled=0;spawned=0;killed=0;skipped=0;
   constructor(options:HordeOptions){
     this.config={...HORDE_DEFAULTS,...options.config};this.config.cap=Math.max(2,Math.min(50,Math.floor(this.config.cap)));this.config.spawnInterval=Math.max(.1,this.config.spawnInterval);this.config.fixedStep=clamp(this.config.fixedStep,1/120,.1);
@@ -94,6 +109,7 @@ export class HordeDirector {
   reset():void {
     this.units.length=0;this.pending=[];this.elapsed=0;this.accumulator=0;this.scheduled=0;this.spawned=0;this.killed=0;this.skipped=0;this.nextSpawnAt=this.config.spawnInterval;
     for(const device of this.devices){device.hp=device.maxHp;device.destroyed=false;}
+    this.playerX=this.playerZ=NaN;this.playerMain=this.playerBranch.humanoid=this.playerBranch.drone=null;
     for(let i=0;i<Math.min(2,this.config.cap);i++){this.scheduled++;this.initialSpawn(i+1,this.config.initialRoadDistances[i]??28+i*16);}
   }
   get finished():boolean{return this.scheduled>=this.config.cap||this.devices.every(device=>device.destroyed);}
@@ -142,7 +158,8 @@ export class HordeDirector {
     else unit.warehouseDistance=this.warehouseRoad[unit.kind].project(unit.position).along;
   }
   private navigate(unit:HordeUnit,player:Readonly<EnemyPosition>,dt:number,context:HordeStepContext):void {
-    const branch=this.warehouseRoad[unit.kind],mainPlayer=this.road.project(player),branchPlayer=branch.project(player),playerOnBranch=branchPlayer.distance+1<mainPlayer.distance;
+    if(player.x!==this.playerX||player.z!==this.playerZ){this.playerX=player.x;this.playerZ=player.z;this.playerMain=this.playerBranch.humanoid=this.playerBranch.drone=null;}
+    const branch=this.warehouseRoad[unit.kind],mainPlayer=this.playerMain??(this.playerMain=this.road.project(player)),branchPlayer=this.playerBranch[unit.kind]??(this.playerBranch[unit.kind]=branch.project(player)),playerOnBranch=branchPlayer.distance+1<mainPlayer.distance;
     let route=unit.lane==='road'?this.road:branch,along=unit.lane==='road'?unit.roadDistance:unit.warehouseDistance,target=unit.lane==='road'?(playerOnBranch?this.joins[unit.kind]:mainPlayer.along):(playerOnBranch?branchPlayer.along:branch.length);
     if(Math.abs(target-along)<.18){
       if(unit.lane==='warehouse'&&!playerOnBranch){unit.lane='road';unit.roadDistance=this.joins[unit.kind];route=this.road;along=unit.roadDistance;target=mainPlayer.along;}
@@ -163,9 +180,11 @@ export class HordeDirector {
   private tick(dt:number,player:Readonly<EnemyPosition>,context:HordeStepContext):number {
     this.elapsed+=dt;this.schedule();let damage=0;
     for(const unit of this.units){
-      const heightAt=(x:number,z:number)=>this.terrain.heightAt(x,z,unit.position.y-(unit.kind==='drone'?1.85:0)),visible=context.combatEnabled!==false&&(context.visible?.(unit)??true);
+      const heightAt=(x:number,z:number)=>this.terrain.heightAt(x,z,unit.position.y-(unit.kind==='drone'?1.85:0));
       if(unit.hp<=0){unit.machine.step(dt,player,heightAt,false);continue;}
       const near=flat(unit.position,player)<=ENEMY_RULES[unit.kind].scan;
+      // Outside awareness range visibility cannot affect this navigation branch.
+      const visible=(near||unit.state==='hit')&&context.combatEnabled!==false&&(context.visible?.(unit)??true);
       if(unit.state==='hit'||near&&visible){
         Object.assign(unit.machine.origin,{x:unit.position.x,y:heightAt(unit.position.x,unit.position.z),z:unit.position.z});
         const amount=unit.machine.step(dt,player,heightAt,visible,(from,to,radius)=>this.permission(unit,from,to,radius,context));
@@ -185,7 +204,9 @@ export class HordeDirector {
     return{damage,events:this.drainEvents()};
   }
   drainEvents():HordeEvent[]{const events=this.pending;this.pending=[];return events;}
-  snapshot(){return{elapsed:this.elapsed,target:this.config.cap,scheduled:this.scheduled,spawned:this.spawned,killed:this.killed,alive:this.units.filter(unit=>unit.hp>0).length,skipped:this.skipped,finished:this.finished,nextSpawnIn:!this.finished?Math.max(0,this.nextSpawnAt-this.elapsed):null,units:this.units.map(unit=>unit.snapshot()),devices:this.devices.map(device=>({...device,position:{...device.position}}))};}
+  /** HUD counters do not need copies of all actor states and device positions. */
+  summary(){let alive=0;for(const unit of this.units)if(unit.hp>0)alive++;return{elapsed:this.elapsed,target:this.config.cap,scheduled:this.scheduled,spawned:this.spawned,killed:this.killed,alive,skipped:this.skipped,finished:this.finished,nextSpawnIn:!this.finished?Math.max(0,this.nextSpawnAt-this.elapsed):null,devices:this.devices as readonly Readonly<HordeDevice>[]};}
+  snapshot(){const{devices,...summary}=this.summary();return{...summary,units:this.units.map(unit=>unit.snapshot()),devices:devices.map(device=>({...device,position:{...device.position}}))};}
 }
 
 type WarehouseMetadata={access?:{name:string;start_world:readonly number[];end_world:readonly number[]}[];footprint_local?:readonly number[]};

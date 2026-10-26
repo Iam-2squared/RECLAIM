@@ -1,0 +1,26 @@
+{
+  "physics": {
+    "digest": "6fe625aa2410349837cfcce23faf2276e0bf485347291f0b1a93a4aa2d7954cd",
+    "samples": 1738,
+    "createdMs": 5545.131600000001,
+    "queryMs": 485.21119999999974,
+    "stats": {
+      "terrainTriangles": 10636,
+      "walkingTriangles": 107931,
+      "waterTriangles": 2634,
+      "colliders": 48582
+    }
+  },
+  "horde": {
+    "digest": "a3ef94b2e8dc0015f9106effa6f49dd3d9c276a15991c6ff09479da9c47eca1f",
+    "createdMs": 470.3757000000005,
+    "simulationMs": 23840.6424,
+    "spawned": 50,
+    "elapsed": 239.99999999998894,
+    "roadLength": 1653.543851054887,
+    "warehouseLength": {
+      "human": 71.25278021380768,
+      "drone": 70.17889483152864
+    }
+  }
+}

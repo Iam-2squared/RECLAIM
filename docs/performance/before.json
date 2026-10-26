@@ -1,0 +1,139 @@
+{
+  "base": "http://127.0.0.1:5175/",
+  "label": "before",
+  "setup": {
+    "decodeMs": 5969.9000000059605,
+    "worldBuildMs": 6318.0999999940395,
+    "actorLoadMs": 14164.20000000298,
+    "world": {
+      "areaId": "shiretoko",
+      "source": "authored-map",
+      "atmosphere": "purple_storm",
+      "quality": "balanced",
+      "activeChunks": 157,
+      "nearChunks": 157,
+      "farChunks": 0,
+      "loadedChunks": 157,
+      "unloadedChunks": 0,
+      "trees": 1256,
+      "rocks": 0,
+      "grass": 0,
+      "instances": 1256,
+      "totalAuthoredInstances": 3330,
+      "authoredTerrainMeshes": 12,
+      "authoredStructureMeshes": 64,
+      "geometries": 93,
+      "materials": 88,
+      "textures": 5,
+      "triangles": 1296167,
+      "renderObjects": 455,
+      "approximateGpuBytes": 23164878,
+      "colliders": 507,
+      "terrainCacheEntries": 0,
+      "lastLoadMs": 3430.2999999970198,
+      "totalLoadMs": 3430.2999999970198,
+      "disposed": false
+    }
+  },
+  "cases": {
+    "results": [
+      {
+        "enemies": 2,
+        "stepMs": 18.899999998509884,
+        "cameraMs": 0.19999999552965164,
+        "visualMs": 0.8000000044703484,
+        "renderAndGpuWaitMs": 31.899999998509884,
+        "drawCalls": 335,
+        "triangles": 887998,
+        "counts": {
+          "emptyProjectileTicks": 180,
+          "enemyVisualUpdates": 180
+        },
+        "world": {
+          "areaId": "shiretoko",
+          "source": "authored-map",
+          "atmosphere": "purple_storm",
+          "quality": "balanced",
+          "activeChunks": 157,
+          "nearChunks": 157,
+          "farChunks": 0,
+          "loadedChunks": 157,
+          "unloadedChunks": 0,
+          "trees": 1256,
+          "rocks": 0,
+          "grass": 0,
+          "instances": 1256,
+          "totalAuthoredInstances": 3330,
+          "authoredTerrainMeshes": 12,
+          "authoredStructureMeshes": 64,
+          "geometries": 93,
+          "materials": 88,
+          "textures": 5,
+          "triangles": 1296167,
+          "renderObjects": 455,
+          "approximateGpuBytes": 23164878,
+          "colliders": 507,
+          "terrainCacheEntries": 0,
+          "lastLoadMs": 3430.2999999970198,
+          "totalLoadMs": 3430.2999999970198,
+          "disposed": false
+        },
+        "actorUnits": 2
+      },
+      {
+        "enemies": 50,
+        "stepMs": 219.39999999850988,
+        "cameraMs": 0.19999999552965164,
+        "visualMs": 2.899999998509884,
+        "renderAndGpuWaitMs": 64.60000000149012,
+        "drawCalls": 3551,
+        "triangles": 1568254,
+        "counts": {
+          "emptyProjectileTicks": 180,
+          "enemyVisualUpdates": 4500
+        },
+        "world": {
+          "areaId": "shiretoko",
+          "source": "authored-map",
+          "atmosphere": "purple_storm",
+          "quality": "balanced",
+          "activeChunks": 157,
+          "nearChunks": 157,
+          "farChunks": 0,
+          "loadedChunks": 157,
+          "unloadedChunks": 0,
+          "trees": 1256,
+          "rocks": 0,
+          "grass": 0,
+          "instances": 1256,
+          "totalAuthoredInstances": 3330,
+          "authoredTerrainMeshes": 12,
+          "authoredStructureMeshes": 64,
+          "geometries": 93,
+          "materials": 88,
+          "textures": 5,
+          "triangles": 1976423,
+          "renderObjects": 3671,
+          "approximateGpuBytes": 23164878,
+          "colliders": 507,
+          "terrainCacheEntries": 0,
+          "lastLoadMs": 3430.2999999970198,
+          "totalLoadMs": 3430.2999999970198,
+          "disposed": false
+        },
+        "actorUnits": 50
+      }
+    ],
+    "paused": {
+      "cpuMs": 167.29999999701977,
+      "visualCalls": 30,
+      "submittedFrames": 2
+    },
+    "heap": {
+      "used": 370710160,
+      "total": 429449064
+    }
+  },
+  "errors": [],
+  "note": "Same map, models, camera, 1280x720/DPR1 balanced, synthetic fixed placement of 2/50 actors; CPU timings and draw calls are comparison probes, not end-user FPS."
+}

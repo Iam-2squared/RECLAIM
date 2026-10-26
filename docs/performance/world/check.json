@@ -1,0 +1,268 @@
+{
+  "before": {
+    "loadMs": 15828.10000000149,
+    "stats": {
+      "areaId": "shiretoko",
+      "source": "authored-map",
+      "atmosphere": "purple_storm",
+      "quality": "balanced",
+      "activeChunks": 202,
+      "nearChunks": 202,
+      "farChunks": 0,
+      "loadedChunks": 618,
+      "unloadedChunks": 416,
+      "trees": 1520,
+      "rocks": 0,
+      "grass": 0,
+      "instances": 1520,
+      "totalAuthoredInstances": 3330,
+      "authoredTerrainMeshes": 12,
+      "authoredStructureMeshes": 64,
+      "geometries": 93,
+      "materials": 88,
+      "textures": 5,
+      "triangles": 1691635,
+      "renderObjects": 287,
+      "approximateGpuBytes": 23164878,
+      "colliders": 1747,
+      "terrainCacheEntries": 0,
+      "lastLoadMs": 3650.2000000029802,
+      "totalLoadMs": 3650.2000000029802,
+      "disposed": false
+    },
+    "captures": [
+      {
+        "id": "cabin",
+        "position": [
+          -169,
+          83.52,
+          597
+        ],
+        "target": [
+          -169,
+          83.3,
+          590
+        ],
+        "renderMs": 15.799999997019768,
+        "calls": 165,
+        "triangles": 984805
+      },
+      {
+        "id": "yard",
+        "position": [
+          -165,
+          84,
+          577
+        ],
+        "target": [
+          -170,
+          84,
+          604
+        ],
+        "renderMs": 6.299999997019768,
+        "calls": 52,
+        "triangles": 175814
+      },
+      {
+        "id": "warehouse",
+        "position": [
+          -191,
+          112,
+          -99
+        ],
+        "target": [
+          -201,
+          111.3,
+          -90
+        ],
+        "renderMs": 5.199999995529652,
+        "calls": 78,
+        "triangles": 659878
+      },
+      {
+        "id": "panorama",
+        "position": [
+          -196,
+          98,
+          654
+        ],
+        "target": [
+          -100,
+          105,
+          180
+        ],
+        "renderMs": 10.100000001490116,
+        "calls": 174,
+        "triangles": 934899
+      },
+      {
+        "id": "mountain",
+        "position": [
+          -156,
+          109,
+          -180
+        ],
+        "target": [
+          -120,
+          130,
+          -300
+        ],
+        "renderMs": 4.200000002980232,
+        "calls": 97,
+        "triangles": 564562
+      }
+    ]
+  },
+  "after": {
+    "loadMs": 13384.5,
+    "stats": {
+      "areaId": "shiretoko",
+      "source": "authored-map",
+      "atmosphere": "purple_storm",
+      "quality": "balanced",
+      "activeChunks": 202,
+      "nearChunks": 202,
+      "farChunks": 0,
+      "loadedChunks": 618,
+      "unloadedChunks": 416,
+      "trees": 1520,
+      "rocks": 0,
+      "grass": 0,
+      "instances": 1520,
+      "totalAuthoredInstances": 3330,
+      "authoredTerrainMeshes": 12,
+      "authoredStructureMeshes": 64,
+      "authoredRenderMeshes": 47,
+      "geometries": 64,
+      "materials": 9,
+      "textures": 5,
+      "triangles": 1691635,
+      "renderObjects": 258,
+      "approximateGpuBytes": 23164878,
+      "colliders": 1747,
+      "terrainCacheEntries": 0,
+      "lastLoadMs": 2424.5999999940395,
+      "totalLoadMs": 2424.5999999940395,
+      "disposed": false
+    },
+    "captures": [
+      {
+        "id": "cabin",
+        "position": [
+          -169,
+          83.52,
+          597
+        ],
+        "target": [
+          -169,
+          83.3,
+          590
+        ],
+        "renderMs": 11.199999995529652,
+        "calls": 140,
+        "triangles": 988861
+      },
+      {
+        "id": "yard",
+        "position": [
+          -165,
+          84,
+          577
+        ],
+        "target": [
+          -170,
+          84,
+          604
+        ],
+        "renderMs": 5.200000002980232,
+        "calls": 35,
+        "triangles": 175962
+      },
+      {
+        "id": "warehouse",
+        "position": [
+          -191,
+          112,
+          -99
+        ],
+        "target": [
+          -201,
+          111.3,
+          -90
+        ],
+        "renderMs": 5.700000002980232,
+        "calls": 69,
+        "triangles": 661470
+      },
+      {
+        "id": "panorama",
+        "position": [
+          -196,
+          98,
+          654
+        ],
+        "target": [
+          -100,
+          105,
+          180
+        ],
+        "renderMs": 7.399999998509884,
+        "calls": 145,
+        "triangles": 934899
+      },
+      {
+        "id": "mountain",
+        "position": [
+          -156,
+          109,
+          -180
+        ],
+        "target": [
+          -120,
+          130,
+          -300
+        ],
+        "renderMs": 4.5,
+        "calls": 97,
+        "triangles": 564562
+      }
+    ]
+  },
+  "parity": [
+    {
+      "id": "cabin",
+      "identical": true,
+      "sha256": "fdaf12dc0d0c953ab74419dc286548eed97219ddb5a6f50a0b2908dde3ca3123",
+      "beforeCalls": 165,
+      "afterCalls": 140
+    },
+    {
+      "id": "yard",
+      "identical": true,
+      "sha256": "f3a79f68583139561c26632ac101da4ebacc1571d7ba443fd2759ae840964a7c",
+      "beforeCalls": 52,
+      "afterCalls": 35
+    },
+    {
+      "id": "warehouse",
+      "identical": true,
+      "sha256": "c4cbaceb709402fda37daa704bcfdee8fe505c9c0968cbff7afd07251efe3bb4",
+      "beforeCalls": 78,
+      "afterCalls": 69
+    },
+    {
+      "id": "panorama",
+      "identical": true,
+      "sha256": "a8feadeed526533ce80ce202d364c594a341117b21dd10bca78bf4e63fbc2d71",
+      "beforeCalls": 174,
+      "afterCalls": 145
+    },
+    {
+      "id": "mountain",
+      "identical": true,
+      "sha256": "1f03ec30220c3ed92c2c813ebd140ac492b78fb9503a80e06540d0d95ad41a53",
+      "beforeCalls": 97,
+      "afterCalls": 97
+    }
+  ]
+}

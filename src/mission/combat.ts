@@ -43,14 +43,19 @@ export function raySphere(origin:Position,direction:Position,center:Position,rad
 /** Gameplay obstruction shares player colliders, plus samples the canonical terrain. */
 export function obstructionDistance(origin:Position,direction:Position,range:number,colliders:readonly Collider[],terrain:WalkingTerrain):number {
   let result=range;
+  const endX=origin.x+direction.x*range,endY=origin.y+direction.y*range,endZ=origin.z+direction.z*range;
+  const rayMinX=Math.min(origin.x,endX)-1e-7,rayMaxX=Math.max(origin.x,endX)+1e-7,rayMinY=Math.min(origin.y,endY)-1e-7,rayMaxY=Math.max(origin.y,endY)+1e-7,rayMinZ=Math.min(origin.z,endZ)-1e-7,rayMaxZ=Math.max(origin.z,endZ)+1e-7;
   for(const c of colliders){
     // Conservatively enclose trunks/rocks in their collision box, matching capsule blockers.
-    const bounds=c.type==='aabb'?c:{minX:c.x-c.radius,maxX:c.x+c.radius,minZ:c.z-c.radius,maxZ:c.z+c.radius,minY:c.minY,maxY:c.maxY};
-    let lo=0,hi=result;
-    for(const [o,d,min,max] of [[origin.x,direction.x,bounds.minX,bounds.maxX],[origin.y,direction.y,bounds.minY,bounds.maxY],[origin.z,direction.z,bounds.minZ,bounds.maxZ]]) {
-      if(Math.abs(d)<1e-8){if(o<min||o>max){hi=-1;break;}}
-      else {let a=(min-o)/d,b=(max-o)/d;if(a>b)[a,b]=[b,a];lo=Math.max(lo,a);hi=Math.min(hi,b);}
-    }
+    const minX=c.type==='aabb'?c.minX:c.x-c.radius,maxX=c.type==='aabb'?c.maxX:c.x+c.radius,minZ=c.type==='aabb'?c.minZ:c.z-c.radius,maxZ=c.type==='aabb'?c.maxZ:c.z+c.radius;
+    if(maxX<rayMinX||minX>rayMaxX||c.maxY<rayMinY||c.minY>rayMaxY||maxZ<rayMinZ||minZ>rayMaxZ)continue;
+    let lo=0,hi=result,a:number,b:number;
+    if(Math.abs(direction.x)<1e-8){if(origin.x<minX||origin.x>maxX)continue;}
+    else{a=(minX-origin.x)/direction.x;b=(maxX-origin.x)/direction.x;if(a>b){const swap=a;a=b;b=swap;}lo=Math.max(lo,a);hi=Math.min(hi,b);}if(hi<lo)continue;
+    if(Math.abs(direction.y)<1e-8){if(origin.y<c.minY||origin.y>c.maxY)continue;}
+    else{a=(c.minY-origin.y)/direction.y;b=(c.maxY-origin.y)/direction.y;if(a>b){const swap=a;a=b;b=swap;}lo=Math.max(lo,a);hi=Math.min(hi,b);}if(hi<lo)continue;
+    if(Math.abs(direction.z)<1e-8){if(origin.z<minZ||origin.z>maxZ)continue;}
+    else{a=(minZ-origin.z)/direction.z;b=(maxZ-origin.z)/direction.z;if(a>b){const swap=a;a=b;b=swap;}lo=Math.max(lo,a);hi=Math.min(hi,b);}
     if(hi>=lo&&lo>=0)result=Math.min(result,lo);
   }
   for(let t=.35;t<result;t+=.45)if(origin.y+direction.y*t<terrain.heightAt(origin.x+direction.x*t,origin.z+direction.z*t)+.03){result=t;break;}

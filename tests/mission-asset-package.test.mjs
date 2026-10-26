@@ -61,6 +61,9 @@ test('standalone collection requires all six animated models and verifies every 
     assert.deepEqual(Object.keys(result.payload.models),MISSION_MODEL_IDS);
     assert.deepEqual(Object.keys(result.payload.weapons),MISSION_WEAPON_IDS);
     assert.equal(result.records.models.length,6); assert.equal(result.records.weapons.length,3);
+    const production=await collectMissionAssets(fixture,{includeDevModels:false});
+    assert.deepEqual(Object.keys(production.payload.models),['jonesy','ramirez','humanoid-lv1','drone-lv1']);
+    assert.deepEqual(Object.keys(production.payload.weapons),MISSION_WEAPON_IDS);assert.equal(production.records.models.length,4);
     assert.equal(sha(Buffer.from(result.payload.weapons.assault,'base64')),result.records.weapons[0].sha256);
     models[0].sha256='0'.repeat(64);
     await writeFile(resolve(fixture,'mission-models/manifest.json'),JSON.stringify({models}));
