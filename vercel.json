@@ -4,5 +4,10 @@
   "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "git": { "deploymentEnabled": false }
+  "git": {
+    "deploymentEnabled": {
+      "**": false,
+      "codex/publish-playable-20261026": true
+    }
+  }
 }
