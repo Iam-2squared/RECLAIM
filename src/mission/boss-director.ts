@@ -17,9 +17,9 @@ type BossRule=Readonly<{hp:number;bodyRadius:number;bodyHeight:number;barHeight:
 
 /** Foot-based dimensions from the supplied metre-scale animated exports. */
 export const BOSS_RULES:Readonly<Record<BossKind,BossRule>>=Object.freeze({
-  boar:Object.freeze({hp:2000,bodyRadius:1.35,bodyHeight:2.31,barHeight:3.05,speed:2.5,reach:3.1,damage:18,strikeAt:.68,recover:1.15,
+  boar:Object.freeze({hp:1000,bodyRadius:1.35,bodyHeight:2.31,barHeight:3.05,speed:2.5,reach:3.1,damage:18,strikeAt:.68,recover:1.15,
     hitboxes:Object.freeze([{x:0,y:1.15,z:-.3,radius:1.12},{x:0,y:.85,z:-1.58,radius:.78},{x:0,y:1.05,z:1,radius:.85},{x:-.75,y:.8,z:0,radius:.62},{x:.75,y:.8,z:0,radius:.62}])}),
-  owl:Object.freeze({hp:1500,bodyRadius:1.1,bodyHeight:3.93,barHeight:4.6,speed:1.9,reach:2.65,damage:14,strikeAt:.75,recover:1.35,
+  owl:Object.freeze({hp:1000,bodyRadius:1.1,bodyHeight:3.93,barHeight:4.6,speed:1.9,reach:2.65,damage:14,strikeAt:.75,recover:1.35,
     hitboxes:Object.freeze([{x:0,y:.72,z:0,radius:.66},{x:0,y:1.75,z:0,radius:.72},{x:0,y:2.85,z:0,radius:.8},{x:-1.05,y:2.7,z:0,radius:.6},{x:1.05,y:2.7,z:0,radius:.6}])}),
 });
 const finite=Number.isFinite;

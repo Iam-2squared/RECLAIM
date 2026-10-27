@@ -25,7 +25,7 @@ import { BossHealthPresentation } from './boss-health.ts';
 import './boss-health.css';
 import './mission.css';
 const node=<E extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id)! as E;
-export type MissionHooks={returnHome:()=>void;announce:(s:string)=>void;invalidate:()=>void;effect:(kind:'radio'|'shot'|'hit')=>void;stopEffects:()=>void};
+export type MissionHooks={returnHome:()=>void;announce:(s:string)=>void;invalidate:()=>void;effect:(kind:'radio'|'shot'|'hit',weapon?:'assault'|'sniper')=>void;stopEffects:()=>void};
 export class Mission {
  loader:MissionWorld;camera=new T.PerspectiveCamera(74,1,.055,2200);controller:CharacterController;drone:RamDrone|null=null;humanoid:HumanoidEnemy|null=null;
  actors:MissionActors;weapons:WeaponState;projectiles=new MissionProjectilePipeline();effects:CombatEffects;thirdPerson=false;enemyLevel:1|5=1;
@@ -136,7 +136,7 @@ export class Mission {
   const request=++this.lockRequest;this.pendingLock=true;
   try{const promise=this.canvas.requestPointerLock();promise?.then(()=>{if(request!==this.lockRequest&&document.pointerLockElement===this.canvas)document.exitPointerLock();}).catch(()=>{if(request===this.lockRequest)this.lockError();});}catch{if(request===this.lockRequest)this.lockError();}
  }
- pause(release=true){this.visualDirty=true;this.lockRequest++;this.pendingLock=false;this.paused=true;this.freeLook=false;this.freeMouse.reset();this.canvas.style.cursor='';this.weapons.clearInput();this.projectiles.clear();this.effects.clear();this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
+ pause(release=true){this.hooks.stopEffects();this.visualDirty=true;this.lockRequest++;this.pendingLock=false;this.paused=true;this.freeLook=false;this.freeMouse.reset();this.canvas.style.cursor='';this.weapons.clearInput();this.projectiles.clear();this.effects.clear();this.keys.clear();this.jumpBuffered=false;this.controller.clearInput();this.clock.reset();if(release&&document.pointerLockElement===this.canvas)document.exitPointerLock();if(!this.storyShowing&&!this.endShowing){node('mission-overlay').hidden=false;node('mission-pause').hidden=false;}this.hooks.invalidate();}
  showInitial(){node('mission-area').textContent=this.loader.area.displayName;node('mission-prototype').textContent=this.areaId==='shiretoko'?'導入プレイ / 仮バランス':'環境プロトタイプ / 正式任務は開発中';if(this.areaId==='shiretoko'&&this.store.value.introStep===0&&!this.debug)this.showStory('WAKE / 01','北の家で、目を覚ます。','朝の薄明かり。木造の家には、いつもと違う静けさがある。まず、ラジオの報道を確かめよう。','起き上がる');else if(this.areaId==='shiretoko'&&this.store.value.introStep===2&&!this.debug)this.showStory('RADIO / 02','日本各地で、AIが暴走。','日本各地に危機が広がっている。東京の親友から連絡が届いた。','届いた連絡を読む');else this.pause(false);}
  showStory(kicker:string,title:string,text:string,action:string){this.pause();this.storyShowing=true;node('mission-overlay').hidden=false;node('mission-pause').hidden=true;node('mission-story').hidden=false;node('mission-story-kicker').textContent=kicker;node('mission-story-title').textContent=title;node('mission-story-text').textContent=text;node('mission-continue').textContent=action;node('mission-continue').focus();}
  continueStory(){
@@ -233,7 +233,7 @@ export class Mission {
    this.projectiles.fire(muzzle,launch,{owner:'player',weapon:shot.kind==='sniper'?'sniper':'assault',damage:shot.damage},shot.speed,shot.range);
    this.effects.muzzle(muzzle,launch);
   }
-  if(!shot.melee)this.hooks.effect('shot');else if(this.lastHit)this.hooks.effect('hit');this.updateHUD(true);
+  if(!shot.melee)this.hooks.effect('shot',shot.kind==='sniper'?'sniper':'assault');else if(this.lastHit)this.hooks.effect('hit');this.updateHUD(true);
  }
  private acceptHit(id:string|null,damage:number,impact:TaggedImpact):boolean {
   const boss=this.bosses?.bosses.find(b=>b.id===id);

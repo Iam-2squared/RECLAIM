@@ -25,6 +25,7 @@ const live=element('live-region');
 const media=matchMedia('(prefers-reduced-motion: reduce)');
 let prefs:Preferences;
 try{prefs=parsePreferences(localStorage.getItem('reclaim.display.v1'),media.matches);}catch{prefs=parsePreferences(null,media.matches);}
+atmosphere.setGunfireEnabled(prefs.gunfire);
 let world:GameRenderer|null=null,fallback:ReturnType<typeof makeFallback>|null=null,mission:Mission|null=null,referenceMenus:ReferenceMenus|null=null;
 let worldInitialized=false;
 const legacyWorld=import.meta.env.DEV&&(new URLSearchParams(location.search).get('legacy-world')==='1'||new URLSearchParams(location.search).get('combat-preview')==='1');
@@ -155,7 +156,7 @@ async function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,deb
  endReveal();mission?.dispose();mission=null;home.close(false);home.drawer(false);state.goMission();
  titleScreen.hidden=true;homeScreen.hidden=true;element('mission-screen').hidden=false;document.body.dataset.screen='mission';lastFrame=performance.now();
  referenceMenus?.refresh();
- try{mission=new Mission(world.renderer,campaign,areaId,prefs.quality,home.saved,{returnHome:()=>switchScreen('home'),announce,invalidate:invalidateRender,effect:kind=>atmosphere.effect(kind),stopEffects:()=>atmosphere.stopEffects()},resume,debug,referenceMenus?.lobby.character??'jonesy',loadedWorld);world.renderer.domElement.tabIndex=-1;invalidateRender();}
+ try{mission=new Mission(world.renderer,campaign,areaId,prefs.quality,home.saved,{returnHome:()=>switchScreen('home'),announce,invalidate:invalidateRender,effect:(kind,weapon)=>atmosphere.effect(kind,weapon),stopEffects:()=>atmosphere.stopEffects()},resume,debug,referenceMenus?.lobby.character??'jonesy',loadedWorld);world.renderer.domElement.tabIndex=-1;invalidateRender();}
  catch(error){loadedWorld?.dispose();announce(`探索の読み込みに失敗しました。${error instanceof Error?error.message:''}`);switchScreen('home');}
 }
 homeButton.addEventListener('click',()=>switchScreen('home'));
@@ -163,10 +164,13 @@ element('back-title').addEventListener('click',()=>switchScreen('title'));
 let settingsOpener: HTMLElement | null = null;
 element('settings-button').addEventListener('click',()=>{settingsOpener=document.activeElement instanceof HTMLElement?document.activeElement:null;mission?.pause();settings.showModal();});
 settings.addEventListener('close',()=>{if(home.modal&&home.panel)element('panel-title').focus({preventScroll:true});else settingsOpener?.focus({preventScroll:true});});
-const quality=element<HTMLSelectElement>('quality-select'),motion=element<HTMLInputElement>('motion-toggle');quality.value=prefs.quality;motion.checked=prefs.reducedMotion;
-function savePrefs(){world?.preferences(prefs);mission?.preferences(prefs.quality);referenceMenus?.refresh();invalidateRender();try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));element('settings-save-status').hidden=true;}catch{element('settings-save-status').hidden=false;announce('表示設定を保存できませんでした。この画面では変更を維持します。');}}
+const quality=element<HTMLSelectElement>('quality-select'),motion=element<HTMLInputElement>('motion-toggle'),gunfire=element<HTMLInputElement>('gunfire-toggle');quality.value=prefs.quality;motion.checked=prefs.reducedMotion;gunfire.checked=prefs.gunfire;
+function savePrefs(){world?.preferences(prefs);mission?.preferences(prefs.quality);referenceMenus?.refresh();invalidateRender();try{localStorage.setItem('reclaim.display.v1',JSON.stringify(prefs));element('settings-save-status').hidden=true;}catch{element('settings-save-status').hidden=false;announce('設定を保存できませんでした。この画面では変更を維持します。');}}
 quality.addEventListener('change',()=>{prefs.quality=quality.value==='low'?'low':'balanced';savePrefs();});
 motion.addEventListener('change',()=>{prefs.reducedMotion=motion.checked;savePrefs();});
+gunfire.addEventListener('change',()=>{prefs.gunfire=gunfire.checked;atmosphere.setGunfireEnabled(prefs.gunfire);savePrefs();});
+const unlockMissionAudio=()=>{if(state.screen==='mission'&&(atmosphere.gunfireEnabled||atmosphere.enabled))void atmosphere.unlock().catch(()=>{});};
+document.addEventListener('pointerdown',unlockMissionAudio,true);document.addEventListener('keydown',unlockMissionAudio,true);
 const off=icon('<path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/>');
 const on=icon('<path d="M4 9h4l5-4v14l-5-4H4zM17 8a6 6 0 010 8M20 5a10 10 0 010 14"/>');
 element('sound-icon').innerHTML=off;
@@ -178,11 +182,11 @@ const viewportScroll=()=>{syncMenuViewport();home.layout();};
 addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);window.visualViewport?.addEventListener('scroll',viewportScroll);document.addEventListener('visibilitychange',visibility);
 const enforceMissionPointerLock=()=>{if(state.screen!=='mission'&&document.pointerLockElement)document.exitPointerLock();};
 document.addEventListener('pointerlockchange',enforceMissionPointerLock);
-function dispose(){if(disposed)return;disposed=true;endReveal();stopFrameLoop();mission?.dispose();mission=null;referenceMenus?.dispose();home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('pointerlockchange',enforceMissionPointerLock);}
+function dispose(){if(disposed)return;document.removeEventListener('pointerdown',unlockMissionAudio,true);document.removeEventListener('keydown',unlockMissionAudio,true);disposed=true;endReveal();stopFrameLoop();mission?.dispose();mission=null;referenceMenus?.dispose();home.dispose();world?.dispose();atmosphere.dispose();removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('scroll',viewportScroll);document.removeEventListener('visibilitychange',visibility);document.removeEventListener('pointerlockchange',enforceMissionPointerLock);}
 // Preserve the page when it goes into the browser back/forward cache.
 addEventListener('pagehide',(event:PageTransitionEvent)=>{if(!event.persisted)dispose();});
 // Read-only diagnostics for automated checks. No state mutation or network entry point.
-Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({missionSnapshot:()=>mission?.snapshot(false)??null,snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,menus:referenceMenus?.snapshot()??null,lobby:referenceMenus?.lobby.snapshot()??null,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount,fallbackFrames,rendererFrames:world?.renderer.info.render.frame??0},home:home.snapshot(),campaign:campaign.value,mission:mission?.snapshot()??null,render:world?.stats()??null})}),writable:false});
+Object.defineProperty(window,'__RECLAIM__',{value:Object.freeze({missionSnapshot:()=>mission?.snapshot(false)??null,snapshot:()=>({screen:state.screen,squadPreview:state.squadPreview,revealing:state.bossOpacity(performance.now(),prefs.reducedMotion)>0,reducedMotion:prefs.reducedMotion,renderer:document.body.dataset.renderer,audio:atmosphere.snapshot(),menus:referenceMenus?.snapshot()??null,lobby:referenceMenus?.lobby.snapshot()??null,renderClock:{rafTime:lastRafTime,clockTime:lastFrame,frames:frameCount,fallbackFrames,rendererFrames:world?.renderer.info.render.frame??0},home:home.snapshot(),campaign:campaign.value,mission:mission?.snapshot()??null,render:world?.stats()??null})}),writable:false});
 syncMenuViewport();document.body.dataset.ready='true';
 for(const button of [titleButton,homeButton,soundButton,element<HTMLButtonElement>('settings-button')])button.disabled=false;
 element('boot-notice').hidden=true;

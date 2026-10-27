@@ -10,7 +10,7 @@ const create=()=>new BossDirector(arena,terrain);
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 
 test('two named bosses use independent supplied dimensions, HP and shot targets',()=>{
-  const d=create();assert.deepEqual(d.bosses.map(b=>[b.kind,b.name,b.hp]),[['boar','錆猪',2000],['owl','哨戒梟',1500]]);
+  const d=create();assert.deepEqual(d.bosses.map(b=>[b.kind,b.name,b.hp]),[['boar','錆猪',1000],['owl','哨戒梟',1000]]);
   assert.ok(d.bosses.every(b=>distance(b.position,arena.center)+b.bodyRadius<arena.radius));
   assert.ok(distance(d.bosses[0].position,d.bosses[1].position)>9);
   for(const boss of d.bosses){
@@ -18,7 +18,7 @@ test('two named bosses use independent supplied dimensions, HP and shot targets'
     const from={...boss.position,x:boss.position.x-8,y:boss.position.y+1.1},to={...from,x:boss.position.x+8};
     assert.equal(resolveSegmentImpact(from,to,{solids:[],drone:null,targets:d.targets(),heightAt:()=>-999}).targetId,boss.id);
   }
-  const [boar,owl]=d.bosses;assert.equal(d.hit(boar.id,8),true);assert.equal(boar.hp,1992);assert.equal(owl.hp,1500);assert.equal(boar.motion,'Hit');
+  const [boar,owl]=d.bosses;assert.equal(d.hit(boar.id,8),true);assert.equal(boar.hp,992);assert.equal(owl.hp,1000);assert.equal(boar.motion,'Hit');
   for(const damage of [NaN,Infinity,0,-1])assert.equal(d.hit(owl.id,damage),false);
   assert.equal(d.hit('not-a-boss',10),false);
 });
@@ -64,7 +64,7 @@ test('flinches do not restart continuously; death removes only its targets and r
   d.hit(owl.id,9999);assert.equal(d.defeated,true);assert.equal(d.targets().length,0);
   assert.equal(d.step(20,{...boar.position}).damage,0);
   d.reset();assert.equal(d.elapsed,0);assert.equal(d.defeated,false);assert.equal(d.targets().length,10);
-  assert.ok(d.bosses.every(b=>b.hp===b.maxHp&&b.motion==='Idle'&&b.hits===0));
+  assert.ok(d.bosses.every(b=>b.hp===1000&&b.maxHp===1000&&b.motion==='Idle'&&b.hits===0));
 });
 
 test('fixed-step partitioning is deterministic, invalid time and players do not advance bosses',()=>{

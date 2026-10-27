@@ -24,9 +24,9 @@ export class ScreenState {
   goMission(): void { this.revealStarted = null; this.screen = 'mission'; }
   goTitle(): void { this.revealStarted = null; this.screen = 'title'; }
 }
-export type Preferences = { quality: 'balanced' | 'low'; reducedMotion: boolean };
+export type Preferences = { quality: 'balanced' | 'low'; reducedMotion: boolean; gunfire: boolean };
 export function parsePreferences(raw: string | null, systemReduced = false): Preferences {
-  const defaults: Preferences = { quality: 'balanced', reducedMotion: systemReduced };
+  const defaults: Preferences = { quality: 'balanced', reducedMotion: systemReduced, gunfire: true };
   if (!raw) return defaults;
   try {
     const value = JSON.parse(raw);
@@ -34,6 +34,7 @@ export function parsePreferences(raw: string | null, systemReduced = false): Pre
     return {
       quality: value.quality === 'low' ? 'low' : 'balanced',
       reducedMotion: typeof value.reducedMotion === 'boolean' ? value.reducedMotion : systemReduced,
+      gunfire: typeof value.gunfire === 'boolean' ? value.gunfire : true,
     };
   } catch { return defaults; }
 }
