@@ -1,0 +1,365 @@
+/* Only the playable touch mission uses this HUD; desktop menus keep their layout. */
+body[data-screen="mission"][data-mission-input="touch"] {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+/* Keep cards scrollable; only the gameplay canvas and controls own gestures. */
+body[data-screen="mission"][data-mission-input="touch"] #scene canvas { touch-action: none; }
+
+.mission-touch-controls {
+  --touch-left: max(12px, env(safe-area-inset-left, 0px));
+  --touch-right: max(12px, env(safe-area-inset-right, 0px));
+  --touch-top: max(12px, env(safe-area-inset-top, 0px));
+  --touch-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  --touch-ink: #eef1e6;
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  height: 100vh;
+  height: 100dvh;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+#mission-touch-controls[hidden] { display: none; }
+.mission-touch-controls button,
+.touch-look {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.mission-touch-controls button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #d3dcc383;
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: #122624c7;
+  box-shadow: 0 2px 12px #07110d38, inset 0 1px 0 #e9f4d714;
+  color: var(--touch-ink);
+  font: 600 12px/1.25 Arial, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.mission-touch-controls button[aria-pressed="true"],
+.mission-touch-controls button.active,
+.mission-touch-controls button:active {
+  border-color: #f2d38f;
+  background: #706440e8;
+  color: #fff6d9;
+}
+
+.mission-touch-controls button:focus-visible,
+.touch-look:focus-visible {
+  outline: 2px solid #fff0bd;
+  outline-offset: 3px;
+}
+
+.touch-look {
+  position: absolute;
+  z-index: 0;
+  top: 22%;
+  right: 0;
+  bottom: calc(var(--touch-bottom) + 185px);
+  left: 38%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #dce6d94f;
+  font-size: 11px;
+  letter-spacing: .04em;
+  background: transparent;
+}
+
+.touch-movement,
+.touch-actions,
+.touch-equipment,
+.touch-top {
+  position: absolute;
+  z-index: 1;
+}
+
+.touch-movement {
+  left: var(--touch-left);
+  bottom: calc(var(--touch-bottom) + 62px);
+  width: 116px;
+  height: 116px;
+}
+
+.mission-touch-controls .touch-stick {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border-color: #d7e5cc85;
+  background: #18302b80;
+  box-shadow: inset 0 0 0 15px #c4d4b50b, 0 3px 16px #06120d36;
+  color: #e3eddaae;
+  font-size: 10px;
+  overflow: hidden;
+}
+
+.touch-stick::before {
+  content: "";
+  position: absolute;
+  inset: 13px;
+  border: 1px dashed #d5e2c72e;
+  border-radius: 50%;
+}
+
+.touch-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid #e1edcfb3;
+  background: #a5b99c77;
+  box-shadow: 0 2px 9px #07130d45;
+  transform: translate(-50%, -50%) translate(var(--stick-x, 0px), var(--stick-y, 0px));
+  pointer-events: none;
+}
+
+.touch-movement #touch-sprint {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 9px);
+  width: 100%;
+}
+
+.touch-actions {
+  right: var(--touch-right);
+  bottom: calc(var(--touch-bottom) + 62px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  width: clamp(126px, 34vw, 144px);
+}
+
+.touch-actions button {
+  min-height: 53px;
+  padding: 7px 4px;
+  font-size: 11px;
+}
+
+.mission-touch-controls #touch-fire {
+  border-color: #f1c287c2;
+  background: #79522dcb;
+  color: #fff2d7;
+  font-weight: 700;
+}
+
+.mission-touch-controls #touch-fire:active,
+.mission-touch-controls #touch-fire.active {
+  background: #bb7b3be8;
+  border-color: #ffe1ab;
+}
+
+.touch-equipment {
+  left: 50%;
+  bottom: var(--touch-bottom);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  width: calc(100% - var(--touch-left) - var(--touch-right));
+  max-width: 440px;
+  transform: translateX(-50%);
+}
+
+.touch-equipment button {
+  font-size: 11px;
+  padding: 7px 4px;
+  min-height: 46px;
+  border-radius: 8px;
+}
+
+.touch-top {
+  top: calc(var(--touch-top) + 53px);
+  right: var(--touch-right);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  width: 96px;
+}
+
+.touch-top button { font-size: 11px; }
+.touch-help {
+  position: absolute;
+  left: var(--touch-left);
+  right: var(--touch-right);
+  bottom: calc(var(--touch-bottom) + 214px);
+  margin: 0;
+  text-align: center;
+  color: #e0e8d9b3;
+  font-size: 10px;
+  line-height: 1.5;
+  text-shadow: 0 1px 5px #06130d;
+  pointer-events: none;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] :is(.mission-controls, .frame-corner, .topbar .brand, #reference-motion) {
+  display: none !important;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .topbar {
+  inset: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) auto auto;
+  height: 44px;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .utility { gap: 7px; }
+body[data-screen="mission"][data-mission-input="touch"] .utility .icon-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #122624c7;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .mission-top {
+  top: max(12px, env(safe-area-inset-top, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  width: calc(100% - max(12px, env(safe-area-inset-left, 0px)) - max(124px, calc(env(safe-area-inset-right, 0px) + 112px)));
+  max-width: 350px;
+  padding: 8px 10px;
+  border-left-width: 2px;
+  background: linear-gradient(90deg, #142822d6, #14282275);
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .mission-top .mission-meta { font-size: 8px; letter-spacing: .1em; }
+body[data-screen="mission"][data-mission-input="touch"] .mission-top h2 { font-size: 19px; margin: 3px 0; }
+body[data-screen="mission"][data-mission-input="touch"] #mission-prototype { display: none; }
+body[data-screen="mission"][data-mission-input="touch"] #mission-objective {
+  margin: 3px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  max-height: 3em;
+  overflow: hidden;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .player-vitals {
+  left: max(14px, env(safe-area-inset-left, 0px));
+  top: calc(max(12px, env(safe-area-inset-top, 0px)) + 103px);
+  bottom: auto;
+  right: auto;
+  width: 168px;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .player-vital-label:first-child,
+body[data-screen="mission"][data-mission-input="touch"] #player-shield-bar { display: none; }
+body[data-screen="mission"][data-mission-input="touch"] .player-vital-label.health { margin-top: 0; }
+body[data-screen="mission"][data-mission-input="touch"] .player-vital-label strong { font-size: 13px; }
+body[data-screen="mission"][data-mission-input="touch"] .player-vital-track.health { height: 13px; }
+
+body[data-screen="mission"][data-mission-input="touch"] .mission-status {
+  left: max(14px, env(safe-area-inset-left, 0px));
+  top: calc(max(12px, env(safe-area-inset-top, 0px)) + 151px);
+  bottom: auto;
+  right: auto;
+  width: calc(100% - 132px);
+  max-width: 270px;
+  text-align: left;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] #mission-weapon {
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+body[data-screen="mission"][data-mission-input="touch"] #mission-save { display: none; }
+
+/* Two compact boss cards stay below player stats instead of following the PC HUD. */
+body[data-screen="mission"][data-mission-input="touch"] .mission-boss-health {
+  top: calc(max(12px, env(safe-area-inset-top, 0px)) + 230px) !important;
+  bottom: auto;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  width: auto;
+  max-width: none;
+}
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-heading { display: none; }
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-rows {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-row {
+  min-width: 0;
+  padding: 7px 8px 8px;
+  border-left-width: 2px;
+}
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-label {
+  gap: 4px;
+  margin-bottom: 5px;
+}
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-label strong {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-numbers { font-size: 9px; }
+body[data-screen="mission"][data-mission-input="touch"] .boss-health-track { height: 5px; }
+
+body[data-screen="mission"][data-mission-input="touch"] .mission-overlay {
+  z-index: 10;
+  padding: calc(max(12px, env(safe-area-inset-top, 0px)) + 52px) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+
+body[data-screen="mission"][data-mission-input="touch"] .mission-card {
+  width: min(520px, 100%);
+  max-height: calc(100vh - max(12px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px)) - 64px);
+  max-height: calc(100dvh - max(12px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px)) - 64px);
+  padding: 20px;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+@media (orientation: landscape) {
+  .mission-touch-controls .touch-movement {
+    bottom: var(--touch-bottom);
+    width: 104px;
+    height: 104px;
+  }
+  .mission-touch-controls .touch-actions { bottom: var(--touch-bottom); width: 134px; }
+  .mission-touch-controls .touch-equipment { width: min(360px, calc(100% - 320px)); }
+  .mission-touch-controls .touch-look { top: 24%; bottom: calc(var(--touch-bottom) + 122px); }
+  .mission-touch-controls .touch-help { display: none; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-top { max-width: min(310px, 40vw); }
+  body[data-screen="mission"][data-mission-input="touch"] .player-vitals { top: calc(max(12px, env(safe-area-inset-top, 0px)) + 87px); }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-status {
+    left: auto;
+    right: calc(max(12px, env(safe-area-inset-right, 0px)) + 112px);
+    top: calc(max(12px, env(safe-area-inset-top, 0px)) + 58px);
+    width: min(270px, 34vw);
+    max-width: none;
+    text-align: right;
+  }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-top h2 { font-size: 17px; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-boss-health {
+    top: auto !important;
+    bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 60px);
+    left: 50%;
+    right: auto;
+    width: min(320px, calc(100% - 320px));
+    transform: translateX(-50%);
+  }
+  body[data-screen="mission"][data-mission-input="touch"] .boss-health-label strong { font-size: 11px; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-card { padding: 16px 20px; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-card h3 { font-size: 20px; margin: 7px 0 10px; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-card p { font-size: 12px; line-height: 1.65; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-actions { margin-top: 14px; }
+}
+
+@media (orientation: portrait) and (max-width: 350px) {
+  .mission-touch-controls .touch-movement { width: 108px; height: 108px; }
+  .mission-touch-controls .touch-actions { width: 126px; }
+  .mission-touch-controls .touch-equipment button { font-size: 10px; }
+  body[data-screen="mission"][data-mission-input="touch"] .mission-status { font-size: 9px; }
+}

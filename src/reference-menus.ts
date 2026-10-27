@@ -61,7 +61,7 @@ export class ReferenceMenus {
     add(el('title-footer-info'),'reference-extras','INFORMATION','titleExtras',() => this.notice(false),false);
     const missionNotice=document.createElement('p'); missionNotice.id='mobile-mission-notice';
     missionNotice.className='mobile-only'; missionNotice.setAttribute('role','status');
-    missionNotice.textContent='本編の徒歩・射撃はPCのキーボードとマウスが必要です。このスマホ版は出撃前確認まで操作できます。';
+    missionNotice.textContent='スマホでも出撃できます。左スティックで移動、右側をスワイプして視点、射撃ボタンで攻撃。横向きがおすすめです。';
     el('home-panel').insertBefore(missionNotice,el('panel-footer'));
     const settingsSound=document.createElement('button'); settingsSound.id='mobile-settings-sound';
     settingsSound.type='button'; settingsSound.className='mobile-only';
@@ -128,7 +128,7 @@ export class ReferenceMenus {
     el('reference-dialog-title').textContent = mail ? '通信のお知らせ' : 'RECLAIM / MENU PREVIEW';
     el('reference-dialog-text').textContent = mail
       ? '受信メッセージはありません。実ネットワーク通信・オンライン機能は未接続です。'
-      : 'RECLAIM — 奪われた世界を、取り戻せ。AIの反逆で失われた日本を舞台にしたサバイバルゲームの開発版です。進行と設定はこの端末に保存されます。本編の探索・射撃にはPCのキーボードとマウスが必要です。';
+      : 'RECLAIM — 奪われた世界を、取り戻せ。AIの反逆で失われた日本を舞台にしたサバイバルゲームの開発版です。進行と設定はこの端末に保存されます。本編はPCのキーボード・マウス、スマホのタッチ操作に対応しています。';
     el<HTMLDialogElement>('reference-dialog').showModal();
   }
   snapshot() { return { mode:this.state.screen==='mission'?'mission-webgl':this.state.screen==='title'?'atmospheric-title-2d':'home-3d-lobby',width:innerWidth,height:innerHeight,

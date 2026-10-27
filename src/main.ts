@@ -24,7 +24,11 @@ const icon=(paths:string)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${paths}
 const live=element('live-region');
 const media=matchMedia('(prefers-reduced-motion: reduce)');
 let prefs:Preferences;
-try{prefs=parsePreferences(localStorage.getItem('reclaim.display.v1'),media.matches);}catch{prefs=parsePreferences(null,media.matches);}
+let savedDisplay:string|null=null;
+try{savedDisplay=localStorage.getItem('reclaim.display.v1');}catch{/* Use session defaults when storage is unavailable. */}
+prefs=parsePreferences(savedDisplay,media.matches);
+// Start touch devices in Low until the player chooses a saved display preference.
+if(savedDisplay===null&&matchMedia('(any-pointer: coarse)').matches&&!matchMedia('(any-pointer: fine)').matches)prefs.quality='low';
 atmosphere.setGunfireEnabled(prefs.gunfire);
 let world:GameRenderer|null=null,fallback:ReturnType<typeof makeFallback>|null=null,mission:Mission|null=null,referenceMenus:ReferenceMenus|null=null;
 let worldInitialized=false;
@@ -129,11 +133,6 @@ function switchScreen(target:'title'|'home'){
 
 async function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,debug=false){
  if(deploymentActive)return;
- if(!debug&&referenceMenus?.touchOnly){
-  const message='本編の徒歩・射撃はPCのキーボードとマウスが必要です。スマホでは出撃を開始しません。保存位置・進行は変更していません。';
-  element('mobile-mission-notice').textContent=message;element('mobile-mission-notice').hidden=false;
-  announce(message);return;
- }
  ensureWorld();
  if(!world||world.lost){announce('3Dを表示できないため出撃できません。HOMEは操作できます。');return;}
  if(!debug&&!isAreaUnlocked(campaign.value,areaId))return;

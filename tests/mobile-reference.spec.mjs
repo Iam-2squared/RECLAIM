@@ -118,9 +118,10 @@ for (const view of views) {
     await tap(page, '#start-button');
     await capture(page, info, 'briefing');
     if (input.mobile) {
-      await expect(page.locator('#home-panel')).toContainText(/PC|キーボード|マウス/);
+      await expect(page.locator('#home-panel')).toContainText(/タッチ|スティック|スワイプ/);
       await expect(page.locator('#mobile-mission-notice')).toBeVisible();
-      if (await page.locator('#mission-launch').isEnabled()) await tap(page, '#mission-launch');
+      // Briefing alone must not start play. Actual explicit mobile launch and
+      // multi-touch exploration are covered by mobile-mission.spec.mjs.
       await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
       expect((await snapshot(page)).mission).toBeNull();
       expect((await snapshot(page)).campaign).toEqual(campaign);
@@ -217,7 +218,7 @@ test('character apply/cancel/reset draft and weapon swap persist; map/reset canc
   expect((await snapshot(page)).home.preview).toMatchObject({ appearance: { name: '北の旅人', palette: 'slate' }, primary: 'sniper', secondary: 'assault', held: 'secondary' });
 });
 
-test('CONTINUE only accepts an actual consistent checkpoint and never starts or rewrites it on mobile', async ({ page }, info) => {
+test('CONTINUE opens a consistent checkpoint briefing without starting or rewriting it', async ({ page }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => localStorage.setItem('reclaim.campaign.v1', JSON.stringify({ version: 1, introStep: 4, droneDefeated: false, completedAreaIds: [], passages: [], checkpoint: { areaId: 'shiretoko', x: 0, y: 0, z: 8, yaw: Math.PI, pitch: 0, hp: 80 }, traversal: { areaId: 'shiretoko', distance: 9.5, lastPosition: { x: 0, y: 0, z: 8 }, passedCheckpointIds: [] } })));
   await ready(page);
@@ -228,7 +229,7 @@ test('CONTINUE only accepts an actual consistent checkpoint and never starts or 
   await expect(page.locator('#home-panel')).toBeVisible();
   await expect(page.locator('#mission-resume')).toBeVisible();
   await capture(page, info, 'continue-briefing');
-  if (await page.locator('#mission-resume').isEnabled()) await tap(page, '#mission-resume');
+  await expect(page.locator('#mission-resume')).toBeEnabled();
   expect((await snapshot(page)).mission).toBeNull();
   expect((await snapshot(page)).campaign).toEqual(before);
   await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');

@@ -69,7 +69,8 @@ test('actual Mission.update still advances fixed-step simulation before a deferr
  assert(render,'test must execute actual Mission render body');
  const actualRender=new Function('performance',render);
  const f=fixture(),gate=new MissionRenderBackpressure(f.gl);let simulationTicks=0,draws=0,cameraUpdates=0;
- const mission={disposed:false,paused:false,hitFlash:0,hudClock:0,frames:0,frameTimes:[],renderBackpressure:gate,
+ // Model an active frame: Mission.update now checks needsFrame before advancing.
+ const mission={disposed:false,paused:false,needsFrame:true,hitFlash:0,hudClock:0,frames:0,frameTimes:[],renderBackpressure:gate,
   clock:{advance(dt,step){assert.equal(dt,1/60);step(dt);}},step(dt){simulationTicks++;assert.equal(dt,1/60);},
   updateCamera(){cameraUpdates++;},updateHUD(){},loader:{scene:{}},camera:{},
   renderer:{render(){draws++;}},render(){actualRender.call(this,{now:()=>0});}};
