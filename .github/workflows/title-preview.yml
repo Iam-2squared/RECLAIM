@@ -35,6 +35,12 @@ jobs:
           - suite: mobile-webkit
             browser: webkit
             tests: tests/mobile-reference.spec.mjs
+          - suite: mobile-mission-chromium
+            browser: chromium
+            tests: tests/mobile-mission.spec.mjs
+          - suite: mobile-mission-webkit
+            browser: webkit
+            tests: tests/mobile-mission.spec.mjs
     steps:
       - uses: actions/checkout@v5
         with:
@@ -63,8 +69,11 @@ jobs:
         if: ${{ !startsWith(matrix.suite, 'mobile-') }}
         run: npm run test:e2e -- ${{ matrix.tests }} --project=${{ matrix.suite == 'iphone-webkit' && 'iphone-webkit' || 'chromium' }}
       - name: Mobile 2D touch and failure-mode gates
-        if: ${{ startsWith(matrix.suite, 'mobile-') }}
+        if: ${{ matrix.suite == 'mobile-chromium' || matrix.suite == 'mobile-webkit' }}
         run: npx playwright test --config=scripts/mobile-playwright.config.mjs --project=${{ matrix.suite }}
+      - name: Mobile mission gameplay and simultaneous touch
+        if: ${{ startsWith(matrix.suite, 'mobile-mission-') }}
+        run: npx playwright test --config=scripts/mobile-mission-playwright.config.mjs --project=${{ matrix.suite }}
       - name: Read approved main PC baseline
         if: matrix.suite == 'chromium-ui'
         uses: actions/checkout@v5

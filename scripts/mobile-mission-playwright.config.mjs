@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 process.env.LIBGL_ALWAYS_SOFTWARE ??= '1';
 const remoteURL = process.env.RECLAIM_PREVIEW_URL;
 if (remoteURL && new URL(remoteURL).protocol !== 'https:') throw new Error('RECLAIM_PREVIEW_URL must use HTTPS');
+const proxyURL = process.env.RECLAIM_BROWSER_PROXY ? new URL(process.env.RECLAIM_BROWSER_PROXY) : null;
+if (proxyURL?.username || proxyURL?.password) throw new Error('RECLAIM_BROWSER_PROXY must not include credentials');
+const remoteProxy = remoteURL && proxyURL ? { proxy: { server: proxyURL.origin } } : {};
 
 export default defineConfig({
   testDir: '../tests',
@@ -12,6 +15,7 @@ export default defineConfig({
   outputDir: '../test-results/mobile-mission',
   use: {
     baseURL: remoteURL ?? 'http://127.0.0.1:4176',
+    contextOptions: { ...remoteProxy },
     screenshot: 'only-on-failure',
   },
   projects: [

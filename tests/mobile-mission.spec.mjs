@@ -96,7 +96,9 @@ async function start(page, browserName, viewport) {
   await page.locator('#mission-continue').tap();
   await page.locator('#mission-lock').tap();
   await expect.poll(async () => (await mission(page))?.inputMode).toBe('touch');
-  expect(await page.evaluate(() => document.pointerLockElement !== null)).toBe(false);
+  // Safari may omit the Pointer Lock API entirely; absent and null both mean
+  // no pointer lock, and touch exploration must work in either case.
+  expect(await page.evaluate(() => Boolean(document.pointerLockElement))).toBe(false);
   // The authored spawn is beside the radio: complete the actual opening with
   // the touch interaction, without fabricating campaign state or coordinates.
   await page.locator('#touch-interact').tap();
