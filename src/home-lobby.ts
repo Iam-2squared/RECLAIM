@@ -55,7 +55,7 @@ export class HomeLobby {
   refresh(active:boolean) {
     if(this.disposed)return;
     this.active=active;
-    this.scene.setActive(active&&!document.getElementById('authored-map-dialog'));
+    this.scene.setActive(active&&this.home.panel!=='map'&&!document.getElementById('authored-map-dialog'));
     if(!active)return;
     const prefs=this.preferences();
     this.scene.setReducedMotion(prefs.reducedMotion);

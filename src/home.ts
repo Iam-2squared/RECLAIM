@@ -1,4 +1,5 @@
 import './home.css';
+import './home-map.css';
 import { HOME_KEY, MAX_NAME, PALETTES, GUNS, MELEE, RARITIES, ROUTE, defaults, parseHome, normalizeName, chooseGun, gunName, type Appearance, type HomePreview, type GunId, type PaletteId } from './home-state';
 import { WEAPON_PREVIEWS } from './weapon-assets';
 import { mountAuthoredMap } from './authored-map';
@@ -91,10 +92,11 @@ export class Home {
     el('squad-note').textContent=this.partySize>1?`${this.partySize}人のローカル編成プレビュー`:'ソロ / この端末のプレビュー';
   }
   panelMode() {
-    const modal = Boolean(this.panel && this.compactMode);
+    const modal = Boolean(this.panel && this.panel !== 'map' && this.compactMode);
     if (modal === this.modal) return;
     this.modal = modal;
-    el('home-panel').setAttribute('aria-modal', String(modal));
+    if(this.panel==='map')el('home-panel').removeAttribute('aria-modal');
+    else el('home-panel').setAttribute('aria-modal', String(modal));
     el('panel-backdrop').hidden = !modal;
     if (modal) {
       const roots = [document.querySelector<HTMLElement>('.topbar')!, ...Array.from(el('home-screen').children).filter(n => n.id !== 'home-panel' && n.id !== 'panel-backdrop') as HTMLElement[]];
@@ -160,6 +162,12 @@ export class Home {
     el('panel-category').textContent = item?.[2] ?? 'MISSION / 01';
     el('panel-title').textContent = item?.[1] ?? '最初の出撃：知床';
     el('home-panel').hidden = false; document.body.dataset.panelOpen = 'true';
+    document.body.dataset.homeView = id === 'map' ? 'map' : 'lobby';
+    el('home-panel').setAttribute('role',id === 'map' ? 'region' : 'dialog');
+    if(id === 'map')el('home-panel').removeAttribute('aria-modal');
+    else el('home-panel').setAttribute('aria-modal',String(this.modal));
+    el('panel-close').textContent=id === 'map' ? '← HOME' : '×';
+    el('panel-close').setAttribute('aria-label',id === 'map' ? 'HOMEへ戻る' : 'パネルを閉じる');
     el<HTMLButtonElement>('start-button').disabled = true;
     this.footer();
     el('nav-items').querySelectorAll<HTMLElement>('button').forEach(b => b.setAttribute('aria-expanded', String(b.dataset.panel === id)));
@@ -174,7 +182,7 @@ export class Home {
   close(focus = true) {
     if (!this.panel) return;
     this.draft = null; this.panel = null; this.sync();
-    el('home-panel').hidden = true; document.body.dataset.panelOpen = 'false';
+    el('home-panel').hidden = true; document.body.dataset.panelOpen = 'false';document.body.dataset.homeView='lobby';
     el<HTMLButtonElement>('start-button').disabled = false;
     this.panelMode();
     el('nav-items').querySelectorAll<HTMLElement>('button').forEach(b => b.setAttribute('aria-expanded', 'false'));
@@ -238,14 +246,23 @@ export class Home {
     const route=visibleRoute(this.campaign.value),available=visibleAreas(this.campaign.value);
     const path=route.map(r=>`${r.x},${r.y}`).join(' ');
     el('panel-content').innerHTML = `<div class="map-overview"><div class="paper-map"><span class="map-caption">JAPAN / JOURNEY</span><svg id="campaign-map" viewBox="0 0 350 360" role="group" aria-label="日本編の旅路概略図"><g class="map-grid"><path d="M0 90h350M0 180h350M0 270h350M87 0v360M175 0v360M262 0v360"/></g><g class="map-land"><path d="M252 38l23-15 15 22 43 4-18 28-30 14-23 18-29-15 12-28-21-7zM233 122l21 13-8 31 15 22-7 35 15 24 3 34-27 27-38 1-19 15-27-8-26-9-15 12-39-3-17 18-26-9 2-21 31-7 24-18 25-11 24 4 27-12 18-10 12-30 11-25 4-29-5-24zM50 315l20 18-18 25-18-4-7-17zM78 329l28-4 15 10-25 12-20-5z"/></g><polyline class="map-route" points="${path}"/>${route.map((r,i)=>`<circle data-region="${i}" cx="${r.x}" cy="${r.y}" r="${i===0?7:4}" tabindex="0" role="button" aria-label="${r.number} ${r.name}の情報を見る"/>`).join('')}<text x="281" y="35">知床</text><text x="12" y="36">N ↑</text></svg><span class="map-caption">物語の旅路概略図 / 実際の登山経路ではありません</span></div><div class="map-details"><p class="panel-intro">まだ知らない、日本の先へ。</p><label class="field-label" for="region-select">地域を閲覧</label><select id="region-select" class="region-select">${route.map((r,i)=>`<option value="${i}">${String(r.number).padStart(2,'0')} / ${r.name}</option>`).join('')}</select><div id="region-detail" class="region-detail"><h3 id="region-name"></h3><span id="region-status" class="status-tag"></span><p id="region-description"></p></div><div class="campaign-subareas" aria-label="北海道の道中"><span class="field-label">道中の記録</span>${['shiretoko','ishikari-mountains','hidaka-mountains','sapporo'].map(id=>{const a=available.find(a=>a.id===id);return`<div><span>${a?.displayName??'???'}</span><small>${a?(a.status==='playable'?'探索可能':'環境プロトタイプ'):'???'}</small></div>`;}).join('')}</div><p class="muted">知床と札幌へ出撃できます。道中の記録と、制作済みの市街戦は別に選べます。</p></div></div>`;
-    mountAuthoredMap(el('panel-content'),()=>this.startMission('shiretoko'));
-    const city=document.createElement('section');city.className='authored-map-card';city.innerHTML='<div class="authored-map-heading"><span>SAPPORO / CITY BATTLE</span><strong>札幌の市街戦</strong></div><p>青いラインに沿ってチェックポイントへ。タワー下の小ボスを経て、札幌駅で最終決戦。</p><button type="button" id="sapporo-map-deploy" class="primary-action">札幌に出撃</button>';city.querySelector('button')!.addEventListener('click',()=>this.startMission('sapporo'));el('panel-content').append(city);
+    const details=el('panel-content').querySelector<HTMLElement>('.map-details')!;
+    const deployments=document.createElement('div');deployments.className='map-deployment-cards';deployments.setAttribute('aria-label','出撃できるマップ');
+    details.append(deployments);
+    mountAuthoredMap(deployments,()=>this.startMission('shiretoko'));
+    const city=document.createElement('section');city.className='authored-map-card map-city-card';city.innerHTML='<div class="authored-map-heading"><span>SAPPORO / CITY BATTLE</span><strong>札幌の市街戦</strong></div><p>青いラインに沿ってチェックポイントへ。タワー下の小ボスを経て、札幌駅で最終決戦。</p><button type="button" id="sapporo-map-deploy" class="primary-action">札幌に出撃</button>';city.querySelector('button')!.addEventListener('click',()=>this.startMission('sapporo'));deployments.append(city);
+    const records=details.querySelector<HTMLElement>('.campaign-subareas')!;
+    const recordDisclosure=document.createElement('details');recordDisclosure.className='map-route-records';recordDisclosure.innerHTML='<summary>道中の記録</summary>';recordDisclosure.append(records);details.append(recordDisclosure);
+    const legend=document.createElement('div');legend.className='map-screen-legend';legend.innerHTML='<span><i></i> 出撃可能</span><span><i></i> 未到達</span><small>地点を選択して詳細を表示</small>';el('panel-content').querySelector('.paper-map')!.append(legend);
+    el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>c.dataset.revealed=String(route[Number(c.dataset.region)].revealed));
     this.footer('<div class="campaign-save-actions"><p>18訪問地点 / 未到達の情報は ???</p><button id="campaign-reset" class="text-action" type="button">進行をリセット</button></div><div id="campaign-reset-confirm" class="campaign-reset-confirm" hidden>進行だけを初期状態へ戻します。外観と武器は保持します。<div class="panel-actions"><button id="campaign-reset-yes" class="secondary-action" type="button">進行リセットを確定</button><button id="campaign-reset-no" class="text-action" type="button">キャンセル</button></div></div>');
     el('campaign-reset').addEventListener('click',()=>{el('campaign-reset-confirm').hidden=false;el('campaign-reset-yes').focus();this.layout();});
     el('campaign-reset-no').addEventListener('click',()=>{el('campaign-reset-confirm').hidden=true;el('campaign-reset').focus();this.layout();});
     el('campaign-reset-yes').addEventListener('click',()=>{this.campaign.reset(true);this.map();this.layout();this.announce('進行をリセットしました。外観・武器は保持します。');});
     const select=el<HTMLSelectElement>('region-select');
     const update=()=>{const i=Number(select.value),r=route[i];el('region-name').textContent=r.name;el('region-status').textContent=r.revealed?(r.status==='playable'?'探索可能':'環境プロトタイプ'):'???';el('region-description').textContent=r.description;el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>c.setAttribute('aria-pressed',String(Number(c.dataset.region)===i)));};
+    const current=this.campaign.value.checkpoint?.areaId;
+    const currentIndex=route.findIndex(r=>r.id===current);if(currentIndex>=0)select.value=String(currentIndex);
     select.addEventListener('change',update);el('campaign-map').querySelectorAll<SVGElement>('[data-region]').forEach(c=>{const choose=()=>{select.value=c.dataset.region!;update();};c.addEventListener('click',choose);c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose();}});});update();
   }
 
