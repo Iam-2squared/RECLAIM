@@ -6,9 +6,18 @@
     <meta name="theme-color" content="#242726" />
     <meta name="description" content="RECLAIM — 奪われた世界を、取り戻せ。東京タイトル画面のインタラクティブ・プロトタイプ。" />
     <title>RECLAIM — 奪われた世界を、取り戻せ。</title>
+    <!-- Apply before the bundle loads so the retired base layout never flashes. -->
+    <style id="boot-presentation">
+      html{background:#121b26}
+      body:not([data-ready="true"]){margin:0;background:#121b26;color:#eeeae0}
+      body:not([data-ready="true"]) :is(main,.topbar,#scene,.vignette,.grain,.frame-corner){visibility:hidden}
+      body:not([data-ready="true"]) #boot-notice{position:fixed;inset:0;z-index:18;display:grid;align-content:center;justify-items:center;gap:12px;width:auto;max-width:none;margin:0;padding:24px;border:0;transform:none;background:#121b26;color:#eeeae0;text-align:center;font:13px/1.8 Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif}
+      body:not([data-ready="true"]) #boot-notice>br{display:none}
+      body:not([data-ready="true"]) #boot-notice>span{max-width:420px}
+    </style>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23242726'/%3E%3Cpath d='M17 51V13h22l8 8v11l-8 6 10 13H36L26 37v14zm9-23h11v-6H26z' fill='%23e8e5db'/%3E%3C/svg%3E" />
   </head>
-  <body>
+  <body data-screen="title" data-menu-presentation="atmospheric-title-2d">
     <div id="scene" aria-hidden="true"></div>
     <div class="vignette" aria-hidden="true"></div>
     <div class="grain" aria-hidden="true"></div>

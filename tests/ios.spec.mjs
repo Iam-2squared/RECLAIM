@@ -18,7 +18,7 @@ const fullSquad = fourFits;
 test('a file-viewer-like module block gives a visible Safari instruction instead of an active dead HOME button', async ({ page }) => {
   await page.route(/\/assets\/.*\.js(?:\?.*)?$/, route => route.abort());
   await page.goto('/');
-  await expect(page.locator('#title-screen')).toBeVisible();
+  await expect(page.locator('#title-screen')).toBeHidden();
   await expect(page.locator('#boot-notice')).toContainText('Preview URLをSafari');
   await expect(page.locator('#boot-notice')).toBeInViewport();
   await expect(page.locator('#home-button')).toBeDisabled();
