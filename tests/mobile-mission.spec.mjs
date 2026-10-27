@@ -87,12 +87,19 @@ async function start(page, browserName, viewport) {
     await page.setViewportSize({ width: 667, height: 240 });
     const card = page.locator('#mission-story');
     await expect.poll(() => card.evaluate(node => node.scrollHeight - node.clientHeight)).toBeGreaterThan(0);
+    // A subsequent tap must wait for the native fling to finish. Otherwise
+    // Chromium consumes that tap only to stop momentum after this real swipe.
+    await card.evaluate(node => {
+      window.__mobileStoryScrollEnded = false;
+      node.addEventListener('scrollend', () => { window.__mobileStoryScrollEnded = true; }, { once: true });
+    });
     const scroll = await fingers(page, browserName);
     try {
       await scroll.down(7, '#mission-story');
       for (let step = 0; step < 6; step++) await scroll.move(7, 0, -12);
       await scroll.up(7);
       await expect.poll(() => card.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+      await expect.poll(() => page.evaluate(() => window.__mobileStoryScrollEnded)).toBe(true);
     } finally { await scroll.close(); }
     await page.setViewportSize(viewport);
   }
@@ -151,11 +158,23 @@ async function reachableControls(page) {
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
   test(`touch mission ${viewport.width}x${viewport.height}: story, multi-touch combat and clean resume`, async ({ page, browserName }, info) => {
     await page.setViewportSize(viewport);
-    const errors = [], homeRequests = [];
+    const errors = [], homeRequests = [], mapRequests = [];
     page.on('pageerror', error => errors.push(error.message));
-    page.on('request', request => { if (/\/home-models\/.*\.glb(?:\?.*)?$/.test(request.url())) homeRequests.push(request.url()); });
+    page.on('request', request => {
+      if (/\/home-models\/.*\.glb(?:\?.*)?$/.test(request.url())) homeRequests.push(request.url());
+      if (/\/home-map\/shiretoko/.test(request.url())) mapRequests.push(request.url());
+    });
     await start(page, browserName, viewport);
     expect(homeRequests).toHaveLength(1);
+    expect(mapRequests.some(url => url.includes('shiretoko-mobile.json.gz'))).toBe(true);
+    expect(mapRequests.some(url => url.includes('shiretoko.html'))).toBe(false);
+    const lightweight = await state(page);
+    expect(lightweight.mission.world.mobile).toBe(true);
+    expect(lightweight.render.antialias).toBe(false);
+    expect(lightweight.render.pixelRatio).toBeLessThanOrEqual(.6);
+    expect(lightweight.render.triangles, 'the actual low mobile frame stays below its scene budget').toBeLessThan(150000);
+    await expect.poll(async () => (await mission(page)).actors.weapons, { timeout: 20000 }).toEqual(['assault']);
+    expect((await mission(page)).actors.models).toEqual([]);
     await expect(page.locator('#lobby-stage canvas')).toHaveCount(0);
     const inactiveLobby = (await state(page)).lobby;
     expect(inactiveLobby.active).toBe(false);
