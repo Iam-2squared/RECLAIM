@@ -231,9 +231,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await page.locator('#touch-aim').tap();
       await expect(page.locator('#mission-scope')).toBeHidden();
       const equipment = async selector => {
+        const heldWeapon = (await mission(page)).weapon.kind;
         await input.down(8, '#touch-weapon');
         await expect(page.locator('#touch-equipment-panel')).toBeVisible();
         await input.up(8);
+        await expect(page.locator('#touch-equipment-panel'), 'releasing the opening thumb must not click an item underneath it').toBeVisible();
+        expect((await mission(page)).weapon.kind).toBe(heldWeapon);
         await page.locator(selector).tap();
         await expect(page.locator('#touch-equipment-panel')).toBeHidden();
       };

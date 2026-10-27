@@ -135,7 +135,7 @@ export class TouchControls {
       contact.timer = window.setTimeout(() => {
         if (!this.active || this.contacts.get(event.pointerId) !== contact || contact.moved) return;
         contact.longPress = true;
-        this.openEquipment();
+        this.openEquipment(event.pointerId);
       }, 450);
     }
     if (kind === 'move') this.moveStick(target, event.clientX, event.clientY);
@@ -213,9 +213,15 @@ export class TouchControls {
   }
 
   private cycleWeapon() { this.hooks.select(this.selectedWeapon === this.primaryWeapon ? 'secondary' : 'primary'); }
-  private openEquipment() {
+  private openEquipment(openingPointer?: number) {
+    if (this.equipmentOpen) return;
+    // Keep the opening thumb captured until it lifts. Otherwise its release can
+    // click a newly appeared equipment action beneath the original weapon tile.
+    const openingContact = openingPointer === undefined ? null : this.contacts.get(openingPointer);
+    if (openingContact) this.contacts.delete(openingPointer!);
     this.reset();
-    if (!this.active) return;
+    if (!this.active) { if (openingContact) this.release(openingContact, openingPointer!); return; }
+    if (openingContact) this.contacts.set(openingPointer!, openingContact);
     this.equipmentOpen = true; this.equipment.hidden = this.backdrop.hidden = false;
     this.root.dataset.equipmentOpen = 'true'; this.button('weapon').setAttribute('aria-expanded', 'true');
     (this.button('reload').disabled ? this.button('equipment-close') : this.button('reload')).focus({ preventScroll: true });

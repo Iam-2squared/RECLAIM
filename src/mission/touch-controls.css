@@ -43,7 +43,7 @@ body[data-screen="mission"][data-mission-input="touch"] #scene canvas{touch-acti
 .touch-equipment-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .touch-equipment-options button{min-height:44px;border-radius:7px;font-size:12px;padding:10px 8px;background:#26392dbf;border-color:#a3b59866}
 #touch-knife{grid-column:1/-1}
-.mission-touch-controls[data-equipment-open="true"] .touch-primary-control{visibility:hidden}
+.mission-touch-controls[data-equipment-open="true"] :is(.touch-movement,.touch-actions){visibility:hidden}
 body[data-screen="mission"][data-mission-input="touch"] :is(.mission-controls,.frame-corner,.grain,.vignette,.topbar .brand,#reference-motion){display:none!important}
 body[data-screen="mission"][data-mission-input="touch"][data-touch-controls-active="true"] .topbar{display:none!important}
 body[data-screen="mission"][data-mission-input="touch"] .topbar{inset:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) auto auto;height:44px}
