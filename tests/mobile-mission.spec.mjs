@@ -235,6 +235,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
         await input.down(8, '#touch-weapon');
         await expect(page.locator('#touch-equipment-panel')).toBeVisible();
         await input.up(8);
+        // Observe after the browser has dispatched the native compatibility
+        // click too, rather than sampling between pointerup and that click.
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await expect(page.locator('#touch-equipment-panel'), 'releasing the opening thumb must not click an item underneath it').toBeVisible();
         expect((await mission(page)).weapon.kind).toBe(heldWeapon);
         await page.locator(selector).tap();

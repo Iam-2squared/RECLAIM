@@ -31,7 +31,7 @@ export class TouchControls {
   readonly fine = matchMedia('(any-pointer: fine)');
   readonly root = document.createElement('div');
   private readonly contacts = new Map<number, Contact>();
-  private readonly suppressedClicks = new Map<HTMLElement, number>();
+  private lastPointerType = '';
   private readonly buttons = new Map<string, HTMLButtonElement>();
   private readonly button = (id: string) => this.buttons.get(id)!;
   private forward = 0;
@@ -117,7 +117,9 @@ export class TouchControls {
   private mediaChanged = () => { this.setActive(false); this.hooks.modeChanged(); };
 
   private pointerDown = (event: PointerEvent) => {
-    if (!this.active || (event.pointerType !== 'touch' && event.pointerType !== 'pen')) return;
+    if (!this.active) return;
+    this.lastPointerType = event.pointerType;
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-touch-input],[data-touch-action]') : null;
     if (!target || target instanceof HTMLButtonElement && target.disabled) return;
     const kind = target.dataset.touchAction ? 'action' : target.dataset.touchInput as Contact['kind'];
@@ -127,11 +129,9 @@ export class TouchControls {
     this.contacts.set(event.pointerId, contact);
     try { target.setPointerCapture(event.pointerId); } catch { /* Cancellation still clears owned input. */ }
     if (kind === 'action') {
-      this.suppressedClicks.set(target, performance.now() + 1000);
       this.activateAction(target);
     }
     if (kind === 'weapon') {
-      this.suppressedClicks.set(target, Infinity);
       contact.timer = window.setTimeout(() => {
         if (!this.active || this.contacts.get(event.pointerId) !== contact || contact.moved) return;
         contact.longPress = true;
@@ -176,7 +176,6 @@ export class TouchControls {
     if (contact.kind === 'fire') { this.firing = false; contact.element.setAttribute('aria-pressed', 'false'); this.hooks.fire(false); }
     if (contact.kind === 'jump') { this.jumping = false; contact.element.setAttribute('aria-pressed', 'false'); this.hooks.jump(false); }
     if (contact.kind === 'weapon' && !contact.longPress && !contact.moved) this.cycleWeapon();
-    if (contact.kind === 'action' || contact.kind === 'weapon') this.suppressedClicks.set(contact.element, performance.now() + 1000);
     this.release(contact, event.pointerId);
   };
 
@@ -193,10 +192,14 @@ export class TouchControls {
 
   private click = (event: MouseEvent) => {
     if (!this.active) return;
+    // Native thumb actions already ran through PointerEvents. Their compatibility
+    // click can hit a newly opened/closed panel item instead of the original button.
+    const pointerType = (event as PointerEvent).pointerType;
+    const touchSource = (event as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } }).sourceCapabilities?.firesTouchEvents;
+    if (event.detail > 0 && (pointerType === 'touch' || pointerType === 'pen' || touchSource || !pointerType && (this.lastPointerType === 'touch' || this.lastPointerType === 'pen'))) return;
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-touch-action],[data-touch-input="weapon"]') : null;
     if (!target || target instanceof HTMLButtonElement && target.disabled) return;
     event.preventDefault();
-    if (event.detail > 0 && performance.now() < (this.suppressedClicks.get(target) ?? 0)) return;
     if (target.dataset.touchInput === 'weapon') this.cycleWeapon(); else this.activateAction(target);
   };
 
@@ -215,8 +218,8 @@ export class TouchControls {
   private cycleWeapon() { this.hooks.select(this.selectedWeapon === this.primaryWeapon ? 'secondary' : 'primary'); }
   private openEquipment(openingPointer?: number) {
     if (this.equipmentOpen) return;
-    // Keep the opening thumb captured until it lifts. Otherwise its release can
-    // click a newly appeared equipment action beneath the original weapon tile.
+    // Keep the opening thumb owned until it lifts while resetting other input.
+    // Its compatibility click is discarded separately because browsers re-hit-test it.
     const openingContact = openingPointer === undefined ? null : this.contacts.get(openingPointer);
     if (openingContact) this.contacts.delete(openingPointer!);
     this.reset();
@@ -296,6 +299,6 @@ export class TouchControls {
     this.root.removeEventListener('pointerup', this.pointerUp); this.root.removeEventListener('pointercancel', this.pointerCancel);
     this.root.removeEventListener('lostpointercapture', this.lostCapture); this.root.removeEventListener('click', this.click);
     this.root.removeEventListener('keydown', this.keyDown); this.root.removeEventListener('contextmenu', this.contextMenu);
-    this.suppressedClicks.clear(); delete document.body.dataset.touchControlsActive; this.root.remove();
+    delete document.body.dataset.touchControlsActive; this.root.remove();
   }
 }
