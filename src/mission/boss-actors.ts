@@ -9,6 +9,8 @@ export type BossActorOptions = Readonly<{
   onLoad?: () => void;
   onError?: (message: string) => void;
   viewDistance?: number;
+  /** Stream distant boss visuals only when a touch player approaches. */
+  mobile?: boolean;
 }>;
 export type EmbeddedBossAssets = Partial<Record<BossModel, string>>;
 const IDS = ['boar', 'owl'] as const;
@@ -54,6 +56,7 @@ export class BossActors {
   private readonly visuals = new Map<BossModel, BossVisual>();
   private readonly requests = new Map<BossModel, BossRequest>();
   private readonly failed = new Set<string>();
+  private readonly loading = new Set<BossModel>();
   private readonly scratch = new T.Vector3();
   private pending: Promise<void> | null = null;
   private embedded: EmbeddedBossAssets = {};
@@ -74,7 +77,7 @@ export class BossActors {
     this.status = 'loading';
     try { this.embedded = parseEmbeddedBossAssets(typeof document === 'undefined' ? null : document.getElementById('reclaim-boss-assets')?.textContent ?? null); }
     catch { this.report('embedded'); }
-    this.pending = Promise.all(IDS.map(id => this.loadModel(id))).then(() => {
+    this.pending = Promise.all(this.options.mobile?[]:IDS.map(id => this.loadModel(id))).then(() => {
       if (this.disposed) return;
       this.status = this.failed.size ? 'degraded' : 'ready';
       for (const [kind, request] of this.requests) this.setBoss(request.id, kind, request.position, request.yaw, request.motion, 0);
@@ -88,6 +91,8 @@ export class BossActors {
     this.options.onError?.(`${id === 'embedded' ? '同梱ボス' : NAMES[id as BossModel]}の3Dデータを読み込めませんでした。`);
   }
   private async loadModel(id: BossModel): Promise<void> {
+    if(this.disposed||this.visuals.has(id)||this.loading.has(id)||this.failed.has(id))return;
+    this.loading.add(id);
     let decoded: T.Group | null = null;
     try {
       const encoded = this.embedded[id], url = this.options.modelUrls?.[id] ?? (encoded ? `data:model/gltf-binary;base64,${encoded}` : `${import.meta.env?.BASE_URL ?? '/'}mission-bosses/${id}.glb`);
@@ -120,26 +125,41 @@ export class BossActors {
     } catch {
       if (decoded) disposeVisual(decoded);
       this.report(id);
-    }
+    } finally {this.loading.delete(id);}
+  }
+  private ensureNearbyModel(kind:BossModel):void {
+    if(this.visuals.has(kind)||this.loading.has(kind)||this.failed.has(kind)||this.disposed)return;
+    void this.loadModel(kind).then(()=>{
+      if(this.disposed)return;
+      this.status=this.failed.size?'degraded':'ready';
+      const request=this.requests.get(kind);
+      if(request)this.setBoss(request.id,kind,request.position,request.yaw,request.motion,0);
+      this.options.onLoad?.();
+    });
   }
   setBoss(id: string, kind: BossModel, position: ActorPosition, yaw: number, motion: string, dt: number): void {
     if (this.disposed || !finitePosition(position) || !Number.isFinite(yaw) || !IDS.includes(kind)) return;
     let request = this.requests.get(kind);
     if (!request) { request = { id, position: { ...position }, yaw, motion }; this.requests.set(kind, request); }
     else { request.id = id; Object.assign(request.position, position); request.yaw = yaw; request.motion = motion; }
+    this.camera.getWorldPosition(this.scratch);
+    const distanceSquared=(position.x-this.scratch.x)**2+(position.y-this.scratch.y)**2+(position.z-this.scratch.z)**2;
+    if(this.options.mobile&&distanceSquared<(this.viewDistance+24)**2)this.ensureNearbyModel(kind);
     const visual = this.visuals.get(kind); if (!visual) return;
     visual.root.position.set(position.x, position.y, position.z); visual.root.rotation.y = yaw;
-    this.camera.getWorldPosition(this.scratch);
-    visual.root.visible = this.scratch.distanceToSquared(visual.root.position) < this.viewDistance * this.viewDistance;
-    visual.motion.play((CLIPS.includes(motion) ? motion : 'Idle') as ActorMotion);
-    visual.motion.step(dt, visual.root.visible);
+    visual.root.visible = distanceSquared < this.viewDistance * this.viewDistance;
+    // Far mobile bosses retain their gameplay requests without touching skeletons.
+    if(!this.options.mobile||visual.root.visible){
+      visual.motion.play((CLIPS.includes(motion) ? motion : 'Idle') as ActorMotion);
+      visual.motion.step(dt,visual.root.visible,this.options.mobile?.05:0);
+    }
   }
   reset(): void {
     this.requests.clear();
     for (const visual of this.visuals.values()) { visual.root.visible = false; visual.motion.play('Idle'); visual.motion.mixer.setTime(0); }
   }
   snapshot() {
-    return { status: this.status, embedded: !!Object.keys(this.embedded).length, errors: [...this.failed], bosses: [...this.requests].map(([kind, request]) => {
+    return { status: this.status, mobile:this.options.mobile??false,decodedModels:this.visuals.size,animationRate:this.options.mobile?20:null, embedded: !!Object.keys(this.embedded).length, errors: [...this.failed], bosses: [...this.requests].map(([kind, request]) => {
       const visual = this.visuals.get(kind);
       return { id: request.id, kind, loaded: !!visual, visible: visual?.root.visible ?? false, position: { ...request.position }, yaw: request.yaw, ...(visual ? { ...visual.motion.snapshot(), dimensions: { width: visual.width, height: visual.height, depth: visual.depth }, meshes: visual.meshes } : {}) };
     }) };
@@ -147,6 +167,6 @@ export class BossActors {
   dispose(): void {
     if (this.disposed) return; this.disposed = true;
     for (const visual of this.visuals.values()) { visual.motion.dispose(); disposeVisual(visual.root); }
-    this.visuals.clear(); this.requests.clear(); this.status = 'disposed';
+    this.visuals.clear(); this.requests.clear();this.loading.clear(); this.status = 'disposed';
   }
 }

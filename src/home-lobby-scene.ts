@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js';
 
 type Character = 'jonesy'|'ramirez';
-type Options = {onLoad?:()=>void;onLayout?:()=>void;onError?:(message:string)=>void;assetUrls?:Partial<Record<Character,string>>};
+type Options = {mobile?:boolean;onLoad?:()=>void;onLoading?:()=>void;onLayout?:()=>void;onError?:(message:string)=>void;assetUrls?:Partial<Record<Character,string>>};
 type Actor = {root:T.Object3D;character:Character;mixer:T.AnimationMixer;action:T.AnimationAction};
 const POSITIONS=[[-.65,.35],[-2.3,-.28],[1.05,-.3],[2.7,-.18]] as const;
 
@@ -37,17 +37,19 @@ export class HomeLobbyScene {
   private readonly motion=()=>{this.stop();this.invalidate();};
   private readonly contextLost=(event:Event)=>{event.preventDefault();this.fail('3D表示が中断されました。メニューは操作できます。');};
   constructor(readonly host:HTMLElement,readonly options:Options={}) {
+    if(options.mobile)this.formation=1;
     this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(host);
     document.addEventListener('visibilitychange',this.visibility);this.media.addEventListener('change',this.motion);
   }
   private init() {
     if(this.renderer||this.status==='error'||this.disposed)return;
     try {
-      this.renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'low-power'});
+      this.renderer=new T.WebGLRenderer({alpha:true,antialias:!this.options.mobile,powerPreference:'low-power'});
       const canvas=this.renderer.domElement;canvas.style.cssText='width:100%;height:100%;display:block';canvas.setAttribute('aria-hidden','true');
       canvas.addEventListener('webglcontextlost',this.contextLost);this.host.append(canvas);
       this.renderer.setClearColor(0x102848,0);this.renderer.outputColorSpace=T.SRGBColorSpace;
       this.renderer.toneMapping=T.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.1;
+      if(!this.pads.length){
       this.scene.add(new T.HemisphereLight(0xe4f3ff,0x53607c,2.0));
       const key=new T.DirectionalLight(0xfff2df,3.1);key.position.set(-3,5,5);this.scene.add(key);
       const fill=new T.DirectionalLight(0x9cc9ff,1.0);fill.position.set(4,2,3);this.scene.add(fill);
@@ -66,55 +68,75 @@ export class HomeLobbyScene {
         const shadow=new T.Mesh(shadowGeometry,new T.MeshBasicMaterial({color:0x061b30,transparent:true,opacity:.32,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.scale.set(1,1.5,1);shadow.position.y=.032;pad.add(shadow);
         this.pads.push(pad);this.scene.add(pad);
       }
+      }
       this.resize();
     } catch(error) {this.fail(error instanceof Error?error.message:'3D表示を開始できませんでした。');}
   }
   private fail(message:string) {this.error=message;this.status='error';this.stop();this.options.onError?.(message);}
-  private async load() {
-    if(this.pending||this.status==='ready'||this.status==='error'||this.disposed)return this.pending;
-    this.status='loading';
+  private requiredCharacters():Character[] {
+    return this.options.mobile&&this.formation===1?[this.character]:['jonesy','ramirez'];
+  }
+  private async loadCharacter(id:Character) {
+    const embeddedNode=document.getElementById('reclaim-home-models');
+    const embedded=embeddedNode?JSON.parse(embeddedNode.textContent??'{}') as Partial<Record<Character,string>>:null;
+    const loader=new GLTFLoader();let gltf;
+    if(embedded?.[id]) {
+      const binary=atob(embedded[id]!);const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+      gltf=await loader.parseAsync(bytes.buffer,'');
+    } else gltf=await loader.loadAsync(this.options.assetUrls?.[id]??`${import.meta.env.BASE_URL}home-models/${id}.glb`);
+    const idle=T.AnimationClip.findByName(gltf.animations,'Idle');
+    if(!idle||!Number.isFinite(idle.duration)||idle.duration<=0||!idle.tracks.length)throw Error('キャラクターの待機アニメーションを読み込めませんでした。');
+    const root=new T.Group();root.add(gltf.scene);
+    // Normalize against the supplied standing Idle pose, not the bind pose.
+    const probe=new T.AnimationMixer(root);probe.clipAction(idle).play();probe.setTime(0);root.updateMatrixWorld(true);
+    root.traverse(object=>{
+      const mesh=object as T.SkinnedMesh;if(!mesh.isSkinnedMesh)return;
+      // The animated Ramirez export has reversed/inconsistent head normals.
+      // Derive display normals from its existing faces; retain all source
+      // positions, UVs, triangle indices, skinning and animation channels.
+      const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+      if(id==='ramirez'&&materials.some(material=>/head/i.test(material.name)))mesh.geometry.computeVertexNormals();
+      mesh.skeleton.update();
+    });
+    const box=new T.Box3().setFromObject(root,true);const height=box.max.y-box.min.y;
+    if(!Number.isFinite(height)||height<=0)throw Error('キャラクターの形状を読み込めませんでした。');
+    const center=box.getCenter(new T.Vector3());gltf.scene.position.sub(new T.Vector3(center.x,box.min.y,center.z));
+    root.scale.setScalar(1.8/height);root.updateMatrixWorld(true);
+    probe.stopAllAction();probe.uncacheRoot(root);
+    this.clips.set(id,gltf.animations);
+    this.templates.set(id,root);
+  }
+  private load() {
+    if(this.pending||this.status==='error'||this.disposed)return this.pending;
+    if(this.requiredCharacters().every(id=>this.templates.has(id))) {
+      if(this.status!=='ready'){this.status='ready';this.rebuild();this.options.onLoad?.();this.invalidate();}
+      return Promise.resolve();
+    }
+    this.status='loading';this.options.onLoading?.();
     this.pending=(async()=>{
       try {
-        const embeddedNode=document.getElementById('reclaim-home-models');
-        const embedded=embeddedNode?JSON.parse(embeddedNode.textContent??'{}') as Partial<Record<Character,string>>:null;
-        await Promise.all((['jonesy','ramirez'] as const).map(async id=>{
-          const loader=new GLTFLoader();let gltf;
-          if(embedded?.[id]) {
-            const binary=atob(embedded[id]!);const bytes=new Uint8Array(binary.length);
-            for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-            gltf=await loader.parseAsync(bytes.buffer,'');
-          } else gltf=await loader.loadAsync(this.options.assetUrls?.[id]??`${import.meta.env.BASE_URL}home-models/${id}.glb`);
-          const idle=T.AnimationClip.findByName(gltf.animations,'Idle');
-          if(!idle||!Number.isFinite(idle.duration)||idle.duration<=0||!idle.tracks.length)throw Error('キャラクターの待機アニメーションを読み込めませんでした。');
-          const root=new T.Group();root.add(gltf.scene);
-          // Normalize against the supplied standing Idle pose, not the bind pose.
-          const probe=new T.AnimationMixer(root);probe.clipAction(idle).play();probe.setTime(0);root.updateMatrixWorld(true);
-          root.traverse(object=>{
-            const mesh=object as T.SkinnedMesh;if(!mesh.isSkinnedMesh)return;
-            // The animated Ramirez export has reversed/inconsistent head normals.
-            // Derive display normals from its existing faces; retain all source
-            // positions, UVs, triangle indices, skinning and animation channels.
-            const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
-            if(id==='ramirez'&&materials.some(material=>/head/i.test(material.name)))mesh.geometry.computeVertexNormals();
-            mesh.skeleton.update();
-          });
-          const box=new T.Box3().setFromObject(root,true);const height=box.max.y-box.min.y;
-          if(!Number.isFinite(height)||height<=0)throw Error('キャラクターの形状を読み込めませんでした。');
-          const center=box.getCenter(new T.Vector3());gltf.scene.position.sub(new T.Vector3(center.x,box.min.y,center.z));
-          root.scale.setScalar(1.8/height);root.updateMatrixWorld(true);
-          probe.stopAllAction();probe.uncacheRoot(root);
-          this.clips.set(id,gltf.animations);
-          this.templates.set(id,root);
-        }));
+        // Selection can change during download. Finish each outstanding batch
+        // before checking the latest roster; no missing-template clone is used.
+        while(!this.disposed){
+          const missing=this.requiredCharacters().filter(id=>!this.templates.has(id));
+          if(!missing.length)break;
+          const results=await Promise.allSettled(missing.map(id=>this.loadCharacter(id)));
+          const failed=results.find((result):result is PromiseRejectedResult=>result.status==='rejected');
+          if(failed)throw failed.reason;
+          if(this.options.mobile&&!this.active)break;
+        }
         if(this.disposed){this.release();return;}
-        this.status='ready';this.rebuild();this.options.onLoad?.();this.invalidate();
+        this.status=this.requiredCharacters().every(id=>this.templates.has(id))?'ready':'idle';
+        if(this.status==='ready'){this.rebuild();this.options.onLoad?.();this.invalidate();}
       } catch(error) {if(!this.disposed)this.fail(error instanceof Error?error.message:'キャラクターを読み込めませんでした。');}
-    })();
+    })().finally(()=>{this.pending=null;});
     return this.pending;
   }
   private rebuild() {
+    if(this.options.mobile&&!this.active)return;
     this.clearActors();
-    if(this.status!=='ready')return;
+    if(this.status!=='ready'||!this.requiredCharacters().every(id=>this.templates.has(id)))return;
     const ids:Character[]=[this.character,this.character==='jonesy'?'ramirez':'jonesy',this.character,this.character==='jonesy'?'ramirez':'jonesy'];
     for(let i=0;i<this.formation;i++) {
       const root=cloneSkeleton(this.templates.get(ids[i])!);const [x,z]=POSITIONS[i];root.position.set(x,.025,z);
@@ -139,15 +161,16 @@ export class HomeLobbyScene {
   resize() {
     if(this.disposed)return;
     this.width=this.host.clientWidth;this.height=this.host.clientHeight;
-    if(this.renderer&&this.width&&this.height){this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,this.quality==='low'?1:1.5));this.renderer.setSize(this.width,this.height,false);this.fit();this.options.onLayout?.();this.invalidate();}
+    if(this.renderer&&this.width&&this.height){this.renderer.setPixelRatio(Math.min(devicePixelRatio||1,this.options.mobile?(this.quality==='low'?.65:.75):this.quality==='low'?1:1.5));this.renderer.setSize(this.width,this.height,false);this.fit();this.options.onLayout?.();this.invalidate();}
   }
   setActive(active:boolean) {
     if(this.disposed||this.active===active)return;
     this.active=active;
-    if(active){this.init();void this.load();this.resize();this.invalidate();}else this.stop();
+    if(active){this.init();if(this.options.mobile)this.rebuild();void this.load();this.resize();this.invalidate();}
+    else {this.stop();if(this.options.mobile)this.suspendRenderer();}
   }
-  setFormation(count:1|2|3|4) {if(this.formation===count)return;this.formation=count;this.rebuild();}
-  setCharacter(character:Character) {if(this.character===character)return;this.character=character;this.rebuild();}
+  setFormation(count:1|2|3|4) {if(this.formation===count)return;this.formation=count;if(this.active)void this.load();this.rebuild();}
+  setCharacter(character:Character) {if(this.character===character)return;this.character=character;if(this.active)void this.load();this.rebuild();}
   setReducedMotion(reduced:boolean) {if(this.reduced===reduced)return;this.reduced=reduced;this.stop();this.invalidate();}
   setQuality(quality:'low'|'balanced') {if(this.quality===quality)return;this.quality=quality;this.resize();}
   setRegion(region:string) {if(this.region===region)return;this.region=region;this.invalidate();}
@@ -161,7 +184,7 @@ export class HomeLobbyScene {
     this.frameId=0;
     if(!this.active||document.hidden||this.disposed||!this.renderer||this.status==='error')return;
     const animate=this.status==='ready'&&!this.reduced&&!this.media.matches;
-    if(!this.lastFrame||time-this.lastFrame>=1000/30){
+    if(!this.lastFrame||time-this.lastFrame>=1000/(this.options.mobile?15:30)){
       const delta=this.lastFrame?Math.min(.1,Math.max(0,(time-this.lastFrame)/1000)):0;
       this.lastFrame=time;
       if(animate)for(const actor of this.actors)actor.mixer.update(delta);
@@ -177,7 +200,13 @@ export class HomeLobbyScene {
   }
   snapshot() {
     const info=this.renderer?.info;
-    return{active:this.active,running:this.active&&!document.hidden&&!this.reduced&&!this.media.matches&&this.status==='ready',status:this.status,error:this.error,frames:this.frames,models:[...this.templates.keys()].sort(),modelCount:this.actors.length,formation:this.formation,character:this.character,region:this.region,slots:this.anchors(),animation:{clip:'Idle',available:Object.fromEntries([...this.clips].map(([id,clips])=>[id,clips.map(clip=>clip.name)])),actors:this.actors.map(actor=>({character:actor.character,clip:actor.action.getClip().name,duration:actor.action.getClip().duration,time:actor.action.time,mixerTime:actor.mixer.time,position:actor.root.position.toArray()}))},resources:{geometries:info?.memory.geometries??0,textures:info?.memory.textures??0,drawCalls:info?.render.calls??0,triangles:info?.render.triangles??0,pixelRatio:this.renderer?.getPixelRatio()??0}};
+    return{active:this.active,mobile:!!this.options.mobile,frameRateLimit:this.options.mobile?15:30,running:this.active&&!document.hidden&&!this.reduced&&!this.media.matches&&this.status==='ready',status:this.status,error:this.error,frames:this.frames,models:[...this.templates.keys()].sort(),modelCount:this.actors.length,formation:this.formation,character:this.character,region:this.region,slots:this.anchors(),animation:{clip:'Idle',available:Object.fromEntries([...this.clips].map(([id,clips])=>[id,clips.map(clip=>clip.name)])),actors:this.actors.map(actor=>({character:actor.character,clip:actor.action.getClip().name,duration:actor.action.getClip().duration,time:actor.action.time,mixerTime:actor.mixer.time,position:actor.root.position.toArray()}))},resources:{geometries:info?.memory.geometries??0,textures:info?.memory.textures??0,drawCalls:info?.render.calls??0,triangles:info?.render.triangles??0,pixelRatio:this.renderer?.getPixelRatio()??0}};
+  }
+  private suspendRenderer() {
+    this.clearActors();
+    const renderer=this.renderer;if(!renderer)return;
+    renderer.domElement.removeEventListener('webglcontextlost',this.contextLost);
+    renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();this.renderer=null;
   }
   private release() {
     const geometries=new Set<T.BufferGeometry>(),materials=new Set<T.Material>(),textures=new Set<T.Texture>();

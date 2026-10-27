@@ -37,6 +37,7 @@ export class Mission {
  private visualDirty=true;private deviceMask=-1;private deviceCache:Solid[]=[];private combinedBase:readonly Solid[]|null=null;private combinedDevices:readonly Solid[]|null=null;private combinedSolids:readonly Solid[]=[];
  private speed=0;private actionTime=0;private actionMotion:PlayerMotion='Idle';private hurtTime=0;private damageFlash=0;private hits=0;private meleeHits=0;
  private readonly freeMouse=new FreeMouseLook();private lockRequest=0;private pendingLock=false;
+ private readonly mobile=matchMedia('(any-pointer: coarse)').matches&&!matchMedia('(any-pointer: fine)').matches;
  private touch:TouchControls|null=null;private desktopPauseMessage='';private desktopPauseHint='';
  paused=true;disposed=false;hp:number=COMBAT_TUNING.playerHp;keys=new Set<string>();clock=new SimulationClock();elapsed=0;checkpointClock=0;hudClock=0;nextShot=0;shots=0;misses=0;lastHit=false;hitFlash=0;lastUI='';locked=false;freeLook=false;transitions=0;frames=0;frameTimes:number[]=[];loadMs=0;storyShowing=false;endShowing=false;lockSettledAt=0;ignoreFirstMouseMove=false;jumpBuffered=false;
  canvas:HTMLCanvasElement;store:CampaignStore;renderer:T.WebGLRenderer;renderBackpressure:MissionRenderBackpressure;hooks:MissionHooks;preview:HomePreview;areaId:AreaId;quality:WorldQuality;debug:boolean;
@@ -47,11 +48,11 @@ export class Mission {
   if(areaId==='shiretoko'&&this.loader.worldId&&this.loader.data){
    const accelerated=debug&&new URLSearchParams(location.search).has('horde-preview');
    this.horde=createAuthoredHorde(this.loader.data,this.loader.terrain,{level:this.enemyLevel,...(accelerated?{spawnInterval:.2}:{})});
-   this.encounter=new EncounterPresentation(this.loader.scene,this.camera,{reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,viewDistance:quality==='low'?120:180});
+   this.encounter=new EncounterPresentation(this.loader.scene,this.camera,{reducedMotion:matchMedia('(prefers-reduced-motion: reduce)').matches,viewDistance:this.mobile?(quality==='low'?80:110):(quality==='low'?120:180)});
    this.encounter.setSpawnDevices(this.horde.devices);
    if(this.loader.encounterLayout){
     this.bosses=new BossDirector(this.loader.encounterLayout.bossArena,this.loader.terrain);
-    this.bossHealth=new BossHealthPresentation(this.loader.scene,this.camera,{viewDistance:quality==='low'?120:180});
+    this.bossHealth=new BossHealthPresentation(this.loader.scene,this.camera,{viewDistance:this.mobile?(quality==='low'?80:110):(quality==='low'?120:180)});
    }
   }
   const terrain=this.loader.terrain;
@@ -68,11 +69,11 @@ export class Mission {
   if(debug&&this.horde&&new URLSearchParams(location.search).get('horde-preview')==='warehouse')this.controller.restore({x:-191,y:110.2,z:-99,yaw:-Math.PI/2,pitch:0});
   this.weapons=new WeaponState(preview[preview.held]);this.loader.scene.add(this.camera);
   this.effects=new CombatEffects(this.loader.scene);
-  this.actors=new MissionActors(this.loader.scene,this.camera,character,{onLoad:()=>{if(!this.disposed){this.updateVisuals(0);hooks.invalidate();}},onError:message=>hooks.announce(message)});
-  this.actors.setEnemyViewDistance(quality==='low'?120:180);
+  this.actors=new MissionActors(this.loader.scene,this.camera,character,{mobile:this.mobile,initialWeapon:preview[preview.held],onLoad:()=>{if(!this.disposed){this.updateVisuals(0);hooks.invalidate();}},onError:message=>hooks.announce(message)});
+  this.actors.setEnemyViewDistance(this.mobile?(quality==='low'?80:110):(quality==='low'?120:180));
   if(this.bosses){
-   this.bossActors=new BossActors(this.loader.scene,this.camera,{onLoad:()=>{if(!this.disposed){this.updateVisuals(0);hooks.invalidate();}},onError:message=>hooks.announce(message)});
-   this.bossActors.setViewDistance(quality==='low'?120:180);void this.bossActors.load();
+   this.bossActors=new BossActors(this.loader.scene,this.camera,{mobile:this.mobile,onLoad:()=>{if(!this.disposed){this.updateVisuals(0);hooks.invalidate();}},onError:message=>hooks.announce(message)});
+   this.bossActors.setViewDistance(this.mobile?(quality==='low'?80:110):(quality==='low'?120:180));void this.bossActors.load();
   }
   void this.actors.load();
   this.desktopPauseMessage=node('mission-pause-message').textContent??'';
@@ -149,8 +150,8 @@ export class Mission {
  private syncInputPresentation(){
   const touch=!!this.touch?.enabled;
   if(touch)document.body.dataset.missionInput='touch';else delete document.body.dataset.missionInput;
-  node('mission-pause-message').textContent=touch?'「探索を開始」でタッチ操作を有効にします。左のスティックで移動、右側をスワイプして視点を操作。射撃ボタンで攻撃（アサルトは長押しで連射）。構えとダッシュはタップで切り替えます。一時停止からHOMEへ戻っても安全な再開位置を保存します。':this.desktopPauseMessage;
-  const hint=node('mission-pause').querySelector('small');if(hint)hint.textContent=touch?'縦画面・横画面どちらでも操作できます。武器・装填・ジャンプは画面のボタンから。オンライン未接続。':this.desktopPauseHint;
+  node('mission-pause-message').textContent=touch?'「探索を開始」でタッチ操作を有効にします。左スティックで移動、大きく前に倒すとダッシュ。右側をスワイプして視点、射撃ボタンで攻撃します。弾切れ時は自動で装填します。武器をタップで主副切替、長押しで装備を開けます。':this.desktopPauseMessage;
+  const hint=node('mission-pause').querySelector('small');if(hint)hint.textContent=touch?'横向き推奨。構え・ジャンプは画面のボタン、装填・ナイフ・視点切替は武器の長押しから。オンライン未接続。':this.desktopPauseHint;
  }
  private startTouch(){
   this.lockRequest++;this.pendingLock=false;this.freeLook=false;this.freeMouse.reset();this.locked=false;
@@ -206,7 +207,10 @@ export class Mission {
   }
   if(this.horde){const result=this.horde.step(dt,this.controller.position,{combatEnabled:this.debug||this.store.value.introStep===4,visible:unit=>this.enemyVisible(unit.position,unit.kind==='humanoid'?1:0),canMove:(from,to,radius,kind)=>this.enemyCanMove(from,to,radius,kind==='drone')});if(result.damage)this.takeDamage(result.damage);}
   if(!this.paused&&this.bosses){const result=this.bosses.step(dt,this.controller.position,{combatEnabled:this.debug||this.store.value.introStep===4,canSee:boss=>this.enemyVisible(boss.position,boss.bodyHeight*.5),canMove:(from,to,radius)=>!this.loader.terrain.blockedAt?.(to.x,to.z,to.y,radius,2)});if(result.damage)this.takeDamage(result.damage);}
-  if(!this.paused){for(const shot of this.weapons.step(dt)){this.updateCamera();this.fireShot(shot);}
+  if(!this.paused){
+   if(this.mobile&&this.touch?.active&&this.touch.fireHeld&&!this.weapons.reloading&&(this.debug||this.store.value.introStep===4))this.shoot();
+   for(const shot of this.weapons.step(dt)){this.updateCamera();this.fireShot(shot);}
+   if(this.mobile&&this.weapons.empty&&!this.weapons.reloading)this.weapons.reload();
    if(this.projectiles.active||this.projectiles.visibleTracers.length){const world=this.projectiles.active?this.shotWorld():{solids:[],drone:null,heightAt:()=>0};
     for(let i=0;i<2;i++){const frame=this.projectiles.tick(world,dt/2);for(const receipt of frame.impacts){this.effects.impact(receipt.impact);if(!this.acceptHit(receipt.impact.targetId,receipt.damage,receipt.impact))this.misses++;}this.misses+=frame.expirations.length;}
    }
@@ -347,7 +351,7 @@ export class Mission {
   this.camera.updateMatrixWorld(true);
  }
  resize(){this.visualDirty=true;if(this.touch?.enabled)this.touch.reset();this.freeMouse.reset();this.camera.aspect=innerWidth/innerHeight;this.camera.fov=innerWidth<700?82:74;this.camera.updateProjectionMatrix();}
- preferences(quality:WorldQuality){if(this.quality===quality)return;this.visualDirty=true;this.quality=quality;this.loader.setQuality(quality);this.actors.setEnemyViewDistance(quality==='low'?120:180);this.encounter?.setViewDistance(quality==='low'?120:180);this.bossActors?.setViewDistance(quality==='low'?120:180);this.bossHealth?.setViewDistance(quality==='low'?120:180);this.hooks.invalidate();}
+ preferences(quality:WorldQuality){if(this.quality===quality)return;this.visualDirty=true;this.quality=quality;this.loader.setQuality(quality);this.actors.setEnemyViewDistance(this.mobile?(quality==='low'?80:110):(quality==='low'?120:180));this.encounter?.setViewDistance(this.mobile?(quality==='low'?80:110):(quality==='low'?120:180));this.bossActors?.setViewDistance(this.mobile?(quality==='low'?80:110):(quality==='low'?120:180));this.bossHealth?.setViewDistance(this.mobile?(quality==='low'?80:110):(quality==='low'?120:180));this.hooks.invalidate();}
  render(){if(this.disposed||!this.renderBackpressure.canSubmit())return;const start=performance.now();this.renderer.render(this.loader.scene,this.camera);this.visualDirty=false;this.renderBackpressure.submitted();this.frames++;this.frameTimes.push(performance.now()-start);if(this.frameTimes.length>240)this.frameTimes.shift();}
  updateHUD(force=false){
   const step=this.store.value.introStep;
@@ -357,7 +361,10 @@ export class Mission {
   if(this.debug)text='開発用の環境確認 / 進行は保存されません。';
   const exit=this.loader.area.exitTriggers[0],activeDevice=step===4?this.horde?.devices.filter(device=>!device.destroyed).sort((a,b)=>Math.hypot(this.controller.position.x-a.position.x,this.controller.position.z-a.position.z)-Math.hypot(this.controller.position.x-b.position.x,this.controller.position.z-b.position.z))[0]:undefined;
   const destination=activeDevice?.position??(step===4&&this.horde&&arena?arena.center:exit?.position),destinationLabel=activeDevice?(activeDevice.sourceId==='warehouse-original'?'奥の倉庫':'中継倉庫'):step===4&&this.horde&&arena?'山麓のボスエリア':'道標',distance=destination?Math.round(Math.hypot(this.controller.position.x-destination.x,this.controller.position.z-destination.z)):0;
-  const weapon=this.weapons.snapshot(),horde=this.horde?.summary();const data=JSON.stringify([text,Math.ceil(this.hp),this.drone?.hp,this.drone?.state,this.humanoid?.hp,this.humanoid?.state,horde?.spawned,horde?.killed,horde?.devices.map(d=>d.hp),Math.ceil(horde?.nextSpawnIn??0),weapon.kind,weapon.ammo,weapon.reserve,weapon.unlimitedReserve,Math.round(weapon.reloadProgress*10),weapon.aiming,this.thirdPerson,this.paused,distance,destinationLabel,this.hitFlash>0,this.damageFlash>0,this.store.saveStatus]);if(!force&&data===this.lastUI)return;this.lastUI=data;
+  const radio=step===1?this.loader.area.landmarks.find(point=>point.type==='radio'||point.id==='radio'):undefined;
+  const canInteract=this.areaId==='shiretoko'&&step===1&&!!radio&&Math.hypot(this.controller.position.x-radio.position.x,this.controller.position.z-radio.position.z)<=2.4;
+  if(this.mobile&&document.body.dataset.bossEncounter!==String(inArena))document.body.dataset.bossEncounter=String(inArena);
+  const weapon=this.weapons.snapshot(),horde=this.horde?.summary();const data=JSON.stringify([text,Math.ceil(this.hp),this.drone?.hp,this.drone?.state,this.humanoid?.hp,this.humanoid?.state,horde?.spawned,horde?.killed,horde?.devices.map(d=>d.hp),Math.ceil(horde?.nextSpawnIn??0),weapon.kind,weapon.ammo,weapon.reserve,weapon.unlimitedReserve,Math.round(weapon.reloadProgress*10),weapon.aiming,this.thirdPerson,this.paused,canInteract,distance,destinationLabel,this.hitFlash>0,this.damageFlash>0,this.store.saveStatus]);if(!force&&data===this.lastUI)return;this.lastUI=data;
   node('mission-objective').textContent=text;node('mission-health').textContent=`${Math.ceil(this.hp)} / ${COMBAT_TUNING.playerHp}`;node('player-health-fill').style.width=`${100*this.hp/COMBAT_TUNING.playerHp}%`;node('player-health-bar').setAttribute('aria-valuenow',String(Math.ceil(this.hp)));node('mission-distance').textContent=`${destinationLabel}まで ${distance} m`;
   const enemySeen=this.drone&&(step===4||this.debug)&&Math.hypot(this.controller.position.x-this.drone.position.x,this.controller.position.z-this.drone.position.z)<30;const states={patrol:'巡回',alert:'発見',chase:'追跡',windup:'攻撃予備動作',attack:'攻撃',recover:'立て直し',hit:'ひるみ',dead:'停止'};
   node('mission-enemy').textContent=enemySeen&&this.drone?`ドローンLv.${this.enemyLevel} / HP ${this.drone.hp} / ${states[this.drone.state]}${this.humanoid?`　人型 / HP ${this.humanoid.hp}`:''}`:this.areaId==='shiretoko'?'人型・偵察ドローン / 林道を探索':'環境探索 / 正式任務は開発中';
@@ -366,12 +373,12 @@ export class Mission {
   node('mission-view').textContent=`${this.thirdPerson?'三人称':'一人称'}${weapon.aiming?' / 構え':''}${this.touch?.active?' / タッチ操作':this.freeLook?' / マウス視点':''}`;
   node('mission-crosshair').dataset.hit=String(this.lastHit&&this.hitFlash>0);node('mission-crosshair').dataset.aim=String(weapon.aiming);node('mission-damage').hidden=!(this.damageFlash>0);node('mission-interact').hidden=this.areaId!=='shiretoko'||step!==1;
   const scoped=weapon.kind==='sniper'&&weapon.aiming&&!this.thirdPerson;node('mission-scope').hidden=!scoped;node('mission-crosshair').dataset.scope=String(scoped);
-  this.touch?.updateStatus({interact:this.areaId==='shiretoko'&&step===1,aiming:weapon.aiming,thirdPerson:this.thirdPerson,weapon:weapon.kind,primary:this.preview.primary,secondary:this.preview.secondary});
+  this.touch?.updateStatus({interact:canInteract,ammo:weapon.ammo,reloading:weapon.reloading,unlimitedReserve:weapon.unlimitedReserve,reserve:weapon.reserve??undefined,aiming:weapon.aiming,thirdPerson:this.thirdPerson,weapon:weapon.kind,primary:this.preview.primary,secondary:this.preview.secondary});
   node('mission-save').textContent=this.debug?'開発プレビュー / 進行保存なし':this.store.saveStatus==='saved'?'進行をこの端末に保存':'進行はこのセッションで維持';
  }
  snapshot(detail=true){const values=[...this.frameTimes].sort((a,b)=>a-b);return {areaId:this.areaId,paused:this.paused,locked:this.locked,inputMode:this.paused?'paused':this.touch?.active?'touch':this.locked?'pointer-lock':this.freeLook?'free-mouse':'paused',touch:this.touch?.snapshot()??null,player:{...this.controller.position,yaw:this.controller.yaw,pitch:this.controller.pitch,grounded:this.controller.grounded,distance:this.controller.distance,recoveries:this.controller.recoveries,hp:this.hp},enemy:this.drone?{...this.drone.snapshot(),state:this.drone.hp===0?'stopped':this.drone.state}:null,enemies:this.horde?this.horde.units.map(u=>u.snapshot()):[this.drone?.snapshot(),this.humanoid?.snapshot()].filter(Boolean),horde:this.horde?.snapshot()??null,encounter:this.encounter?.snapshot()??null,bosses:this.bosses?.snapshot()??null,bossActors:this.bossActors?.snapshot()??null,bossHealth:this.bossHealth?.snapshot()??null,deathReturnSeconds:this.deathReturnSeconds,shield:0,weapon:this.weapons.snapshot(),recoil:this.weapons.pose,thirdPerson:this.thirdPerson,actors:this.actors.snapshot(),projectiles:{active:this.projectiles.active,pending:this.projectiles.pendingReceipts,tracers:this.projectiles.visibleTracers.length},effects:this.effects.snapshot(),shots:this.shots,hits:this.hits,meleeHits:this.meleeHits,misses:this.misses,elapsed:this.elapsed,keys:[...this.keys],storyStep:this.store.value.introStep,frames:this.frames,renderQueue:this.renderBackpressure.snapshot(),loadMs:this.loadMs,renderCpuMs:{median:values[Math.floor(values.length*.5)]??0,p95:values[Math.floor(values.length*.95)]??0},world:detail?this.loader.stats():null,quality:this.quality,debug:this.debug,sites:this.loader.encounterLayout?{warehouse:{id:this.loader.encounterLayout.warehouse.id,center:this.loader.encounterLayout.warehouse.center,entrance:this.loader.encounterLayout.warehouse.entrance},bossArena:{id:this.loader.encounterLayout.bossArena.id,center:this.loader.encounterLayout.bossArena.center,radius:this.loader.encounterLayout.bossArena.radius,entrance:this.loader.encounterLayout.bossArena.entrance,bossPlaced:!!this.bosses,bossCount:this.bosses?.bosses.length??0}}:null};}
  dispose(){
-  if(this.disposed)return;this.save();this.touch?.dispose();this.touch=null;delete document.body.dataset.missionInput;node('mission-pause-message').textContent=this.desktopPauseMessage;const hint=node('mission-pause').querySelector('small');if(hint)hint.textContent=this.desktopPauseHint;this.disposed=true;this.lockRequest++;this.pendingLock=false;this.freeLook=false;this.freeMouse.reset();this.canvas.style.cursor='';this.canvas.removeEventListener('mouseleave',this.mouseLeave);this.renderBackpressure.dispose();this.hooks.stopEffects();this.keys.clear();if(document.pointerLockElement===this.canvas)document.exitPointerLock();
+  if(this.disposed)return;this.save();this.touch?.dispose();this.touch=null;delete document.body.dataset.missionInput;delete document.body.dataset.bossEncounter;node('mission-pause-message').textContent=this.desktopPauseMessage;const hint=node('mission-pause').querySelector('small');if(hint)hint.textContent=this.desktopPauseHint;this.disposed=true;this.lockRequest++;this.pendingLock=false;this.freeLook=false;this.freeMouse.reset();this.canvas.style.cursor='';this.canvas.removeEventListener('mouseleave',this.mouseLeave);this.renderBackpressure.dispose();this.hooks.stopEffects();this.keys.clear();if(document.pointerLockElement===this.canvas)document.exitPointerLock();
   document.removeEventListener('keydown',this.keyDown);document.removeEventListener('keyup',this.keyUp);document.removeEventListener('mousemove',this.mouseMove);document.removeEventListener('mouseup',this.mouseUp);document.removeEventListener('pointerlockchange',this.lockChange);document.removeEventListener('pointerlockerror',this.lockError);document.removeEventListener('visibilitychange',this.visibility);window.removeEventListener('blur',this.blur);this.canvas.removeEventListener('mousedown',this.mouseDown);this.canvas.removeEventListener('contextmenu',this.contextMenu);
   node('mission-lock').removeEventListener('click',this.lockClick);node('mission-home').removeEventListener('click',this.homeClick);node('mission-interact').removeEventListener('click',this.interactClick);node('mission-skip').removeEventListener('click',this.skipClick);node('mission-continue').removeEventListener('click',this.continueClick);node('mission-retry').removeEventListener('click',this.retryClick);node('mission-next').removeEventListener('click',this.nextClick);node('mission-pause-button').removeEventListener('click',this.pauseClick);
   this.weapons.clearInput();this.projectiles.clear();this.actors.dispose();this.bossActors?.dispose();this.bossHealth?.dispose();this.encounter?.dispose();this.effects.dispose();this.loader.scene.remove(this.camera);this.loader.dispose();this.renderer.renderLists.dispose();

@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "sourceViewerSha256": "1c4ee031c691da072e8a234114c5862049c7f7879cc0d06a525fccf757ae3081",
+  "sourcePayloadSha256": "d83fee5592d9bebee08c766a95dce2bb23240860c440dac30f9a02afc86a1764",
+  "nonTextureDataSha256": "ddadc3c565668ac73efa8d1fbc58f726c0640573314a71594b4690ff97ef6b91",
+  "sourceViewerBytes": 54148955,
+  "sourceGzipBytes": 40571500,
+  "sourceJsonBytes": 91855049,
+  "mobileGzipBytes": 7089281,
+  "mobileJsonBytes": 47562223,
+  "mobileGzipSha256": "4f43623445c9fe28d09305d941da834796dfddb1902e9a3e50750ad5dc3af968",
+  "mobileJsonSha256": "3375fb45c90071fd3369b1722f97949c019f1db0d629fa4853d768279dd8b102",
+  "textureMaxDimension": 1024,
+  "textureQuality": 78,
+  "pillowVersion": "12.3.0",
+  "omittedTextures": [
+    "cliff_normal",
+    "grass_detail_normal"
+  ],
+  "textures": [
+    {
+      "name": "cliff_color",
+      "sourceDimensions": [
+        4096,
+        1024
+      ],
+      "dimensions": [
+        1024,
+        256
+      ],
+      "sourceBytes": 4703294,
+      "bytes": 15628,
+      "sha256": "6db77cb8e7639d059596afab0aacbdc0e6ee7b9d97e9cd7581c56daebc0670d5"
+    },
+    {
+      "name": "terrain_color",
+      "sourceDimensions": [
+        4096,
+        4096
+      ],
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "sourceBytes": 22472222,
+      "bytes": 17004,
+      "sha256": "3906194ff7386d23aeb7a0517c2712d9cf9bf086ce589aacfc0ebab8618d5e4b"
+    }
+  ],
+  "nonTextureDataUnmodified": true
+}

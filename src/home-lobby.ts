@@ -21,7 +21,8 @@ export class HomeLobby {
   private disposed = false;
   private readonly mapVisibility=()=>this.refresh(this.active);
   constructor(readonly home:Home, readonly campaign:CampaignStore, readonly preferences:()=>Preferences, readonly announce:(s:string)=>void) {
-    let size = 4;
+    const mobile=matchMedia('(any-pointer: coarse)').matches&&!matchMedia('(any-pointer: fine)').matches;
+    let size = mobile?1:4;
     try {
       const saved=JSON.parse(localStorage.getItem(KEY)??'null');
       if(saved?.character==='ramirez')this.character='ramirez';
@@ -29,7 +30,9 @@ export class HomeLobby {
     } catch { /* Defaults are usable when storage is blocked. */ }
     home.setPartySize(size as 1|2|3|4);
     this.scene=new HomeLobbyScene(el('lobby-stage'),{
+      mobile,
       onLoad:()=>{ el('lobby-loading').hidden=true; this.positionLabels(); },
+      onLoading:()=>{ el('lobby-loading').hidden=false; text('lobby-loading','オペレーターを準備中…'); },
       onLayout:()=>this.positionLabels(),
       onError:()=>{ el('lobby-loading').hidden=false; text('lobby-loading','キャラクターを表示できませんでした。設定と出撃前の確認は引き続き操作できます。'); },
     });
@@ -55,8 +58,7 @@ export class HomeLobby {
   refresh(active:boolean) {
     if(this.disposed)return;
     this.active=active;
-    this.scene.setActive(active&&!document.getElementById('authored-map-dialog'));
-    if(!active)return;
+    if(!active){this.scene.setActive(false);return;}
     const prefs=this.preferences();
     this.scene.setReducedMotion(prefs.reducedMotion);
     this.scene.setQuality(prefs.quality);
@@ -64,6 +66,9 @@ export class HomeLobby {
     this.scene.setFormation(this.home.partySize);
     this.region=this.campaign.value.checkpoint?.areaId??'shiretoko';
     this.scene.setRegion(this.region);
+    // Apply the saved roster before activation so a solo phone does not start
+    // an unnecessary second character download during its first HOME visit.
+    this.scene.setActive(!document.getElementById('authored-map-dialog'));
     const backdrop=homeBackdrop(this.region);
     const screen=el('home-screen');screen.dataset.region=this.region;
     screen.style.setProperty('--lobby-sky',backdrop.sky);

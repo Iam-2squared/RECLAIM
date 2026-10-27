@@ -58,6 +58,7 @@ export class WeaponState {
     // explicit pause/switch clears this buffered edge; releasing stops autofire.
   }
   get reloading():boolean {return this.reloadDuration>0;}
+  get empty():boolean {return this.kind!=='knife'&&this.supply[this.kind].ammo===0;}
   private hasUnlimitedReserve():boolean {return this.kind!=='knife'&&this.unlimitedReserve;}
   reload():boolean {
     const rule=WEAPON_RULES[this.kind],stock=this.supply[this.kind];

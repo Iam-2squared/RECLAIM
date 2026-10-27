@@ -97,7 +97,10 @@ function frame(time:number,fromWatchdog=false){
   // A delayed compositor timestamp must not gate new UI/camera work. Use the
   // same current monotonic clock for the 30fps cap, animation and reveal expiry.
   const now=performance.now();
-  if(now-lastFrame<(state.screen==='mission'&&mission&&!mission.paused?0:1000/30))return;
+  // A mobile draw advances the same fixed 60 Hz simulation in the clock.
+  // Avoid rendering/mixing a full 3D scene on every 60/120 Hz phone callback.
+  const interval=state.screen==='mission'&&mission&&!mission.paused&&!world?.mobile?0:1000/30;
+  if(now-lastFrame<interval)return;
   const delta=lastFrame?Math.max(0,(now-lastFrame)/1000):0;
   lastFrame=now;frameCount++;if(fromWatchdog)fallbackFrames++;frameDirty=false;
   const opacity=state.bossOpacity(now,prefs.reducedMotion);
@@ -140,9 +143,9 @@ async function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,deb
  try {
   if(areaId==='shiretoko'&&!legacyWorld){
    deploymentStatus('新しい地形・家・山道を読み込んでいます…');
-   const data=await loadAuthoredMapData();
+   const data=await loadAuthoredMapData({mobile:referenceMenus?.touchOnly??false});
    if(ticket!==deploymentId||disposed)return;
-   loadedWorld=await createAuthoredMapWorld(data,prefs.quality);
+   loadedWorld=await createAuthoredMapWorld(data,prefs.quality,{mobile:referenceMenus?.touchOnly??false});
    if(ticket!==deploymentId||disposed){loadedWorld.dispose();return;}
   }
  }catch(error){

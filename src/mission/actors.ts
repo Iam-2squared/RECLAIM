@@ -50,6 +50,9 @@ export type ActorOptions = Readonly<{
   modelUrls?: Partial<Record<ModelId, string>>;
   weaponUrls?: Partial<Record<MissionWeapon, string>>;
   enemyViewDistance?: number;
+  /** Defer unused skins/props and reduce visual animation work on touch devices. */
+  mobile?: boolean;
+  initialWeapon?: MissionWeapon;
 }>;
 
 const finite = (n: number) => Number.isFinite(n);
@@ -102,9 +105,16 @@ export class MotionPlayback {
     this.actual = clip.name;
   }
   private flushDeferred():void {if(this.deferredSeconds>0){this.mixer.update(this.deferredSeconds);this.deferredSeconds=0;}}
-  step(dt: number,visible=true): void {
+  step(dt: number,visible=true,minimumStep=0): void {
     const elapsed=finite(dt)&&dt>0?Math.min(dt,.1):0;
     if(!visible){this.deferredSeconds+=elapsed;return;}
+    // Only the presentation clock is sampled less often; accumulated active
+    // time is retained, so clips keep their original speed and duration.
+    if(finite(minimumStep)&&minimumStep>0){
+      this.deferredSeconds+=elapsed;
+      if(this.deferredSeconds+1e-9<Math.min(.1,minimumStep))return;
+      this.flushDeferred();return;
+    }
     this.flushDeferred();if(elapsed)this.mixer.update(elapsed);
   }
   snapshot() { return { requested: this.requested, clip: this.actual, clips: [...this.clips.values()].map(c => c.name), time: this.action?.time ?? 0 }; }
@@ -218,9 +228,11 @@ export class MissionActors {
   private readonly actors = new Map<ModelId, Actor>();
   private readonly weapons = new Map<MissionWeapon, Weapon>();
   private readonly loadingVariants = new Set<ModelId>();
+  private readonly loadingWeapons = new Set<MissionWeapon>();
   private readonly failed = new Set<string>();
   private readonly enemyRequests = new Map<EnemyKind, EnemyRequest>();
   private readonly enemyUnits = new Map<string, EnemyUnit>();
+  private readonly deferredUnits = new Map<string, {kind:EnemyKind;request:EnemyRequest}>();
   private readonly placeholders = new Map<EnemyKind, Actor>();
   private enemyViewDistance = 180;
   private readonly firstWeaponHolder = new T.Group();
@@ -236,6 +248,7 @@ export class MissionActors {
   private weaponPose: HeldWeaponPose = {};
   constructor(scene: T.Scene, camera: T.Camera, character: PlayerCharacter = 'jonesy', options: ActorOptions = {}) {
     this.scene = scene; this.camera = camera; this.character = character; this.options = options;
+    this.selectedWeapon=options.initialWeapon??'assault';
     if(finite(options.enemyViewDistance??NaN))this.enemyViewDistance=T.MathUtils.clamp(options.enemyViewDistance!,30,250);
     this.firstWeaponHolder.name = 'First person held weapon';
     this.thirdWeaponHolder.name = 'Third person held weapon';
@@ -259,7 +272,7 @@ export class MissionActors {
       }
     }
     this.pending = (async () => {
-      await Promise.all([
+      await Promise.all(this.options.mobile?[this.loadWeapon(this.selectedWeapon)]:[
         this.loadActor(this.character), this.loadActor('humanoid-lv1'), this.loadActor('drone-lv1'),
         ...(['assault', 'sniper', 'knife'] as const).map(kind => this.loadWeapon(kind)),
       ]);
@@ -309,20 +322,23 @@ export class MissionActors {
     this.options.onLoad?.();
   }
   private async loadWeapon(kind: MissionWeapon): Promise<void> {
+    if(this.weapons.has(kind)||this.loadingWeapons.has(kind)||this.disposed||this.failed.has(kind))return;
+    this.loadingWeapons.add(kind);
     let first: T.Group;
     try {
       const encoded = this.embedded?.weapons?.[kind];
       const gltf = await new GLTFLoader().loadAsync(this.options.weaponUrls?.[kind] ?? (encoded ? `data:model/gltf-binary;base64,${encoded}` : `${baseUrl()}mission-weapons/${kind}.glb`));
-      if (this.disposed) { this.discard(gltf.scene); return; }
+      if (this.disposed) { this.discard(gltf.scene); this.loadingWeapons.delete(kind); return; }
       first = new T.Group(); first.add(gltf.scene);
       batchActorMeshes(gltf.scene,gltf.animations);
       first.updateMatrixWorld(true);
       const grip = gltf.scene.getObjectByName('Grip_R');
       if (grip) gltf.scene.position.sub(grip.getWorldPosition(new T.Vector3()));
     } catch {
-      if (this.disposed) return;
+      if (this.disposed) { this.loadingWeapons.delete(kind); return; }
       this.report(kind); first = fallbackWeapon(kind);
     }
+    this.loadingWeapons.delete(kind);
     const third = cloneSkeleton(first) as T.Group;
     suspendHiddenTransforms(first);suspendHiddenTransforms(third);
     // Keep depth testing between the model's own separate mechanical parts.
@@ -340,16 +356,18 @@ export class MissionActors {
     first.visible = third.visible = false;
     this.weapons.set(kind, { first, third, firstTip: first.getObjectByName('Tip_Visual') ?? null, thirdTip: third.getObjectByName('Tip_Visual') ?? null });
     this.setWeapon(this.selectedWeapon, this.weaponPose);
+    if(this.options.mobile)this.options.onLoad?.();
   }
   setPlayer(position: ActorPosition, yaw: number, motion: ActorMotion, dt: number, thirdPerson: boolean): void {
     if (this.disposed || !positionValid(position) || !finite(yaw)) return;
     this.playerPosition.x=position.x;this.playerPosition.y=position.y;this.playerPosition.z=position.z;this.playerYaw = yaw; this.playerMotion = motion; this.thirdPerson = thirdPerson;
+    if(this.options.mobile&&thirdPerson&&!this.actors.has(this.character))void this.loadActor(this.character);
     const actor = this.actors.get(this.character);
     if (actor) {
       actor.root.position.set(position.x, position.y, position.z);
       actor.root.rotation.y = yaw;
       actor.root.visible = thirdPerson;
-      actor.motion.play(motion); actor.motion.step(dt,thirdPerson);
+      if(!this.options.mobile||thirdPerson){actor.motion.play(motion);actor.motion.step(dt,thirdPerson,this.options.mobile?.05:0);}
     }
     this.positionThirdWeapon();
     this.firstWeaponHolder.visible = !thirdPerson && this.weapons.has(this.selectedWeapon);
@@ -361,17 +379,30 @@ export class MissionActors {
     if(!request){request={position:{...position},yaw,motion,level};this.enemyRequests.set(kind,request);}
     else{request.position.x=position.x;request.position.y=position.y;request.position.z=position.z;request.yaw=yaw;request.motion=motion;request.level=level;}
     const id: ModelId = `${kind}-lv${level}`;
-    if (!this.actors.has(id) && level === 5) void this.loadActor(id);
+    const visible=!this.options.mobile||Math.hypot(position.x-this.playerPosition.x,position.z-this.playerPosition.z)<=this.enemyViewDistance;
+    if (!this.actors.has(id) && (this.options.mobile?visible:level===5)) void this.loadActor(id);
     const actor = this.actors.get(id) ?? this.actors.get(`${kind}-lv1`);
-    for (const tier of [1, 5] as const) { const other = this.actors.get(`${kind}-lv${tier}`); if (other) other.root.visible = other === actor; }
+    for (const tier of [1, 5] as const) { const other = this.actors.get(`${kind}-lv${tier}`); if (other) other.root.visible = other === actor&&visible; }
     if (!actor) return;
     actor.root.position.set(position.x, position.y, position.z); actor.root.rotation.y = yaw;
-    actor.motion.play(motion); actor.motion.step(dt);
+    if(visible){actor.motion.play(motion);actor.motion.step(dt,true,this.options.mobile?.05:0);}
   }
   /** Independent authored actors; cloned skeletons share cached geometry/textures. */
   setEnemyUnit(id:string,kind:EnemyKind,position:ActorPosition,yaw:number,motion:ActorMotion,dt:number,level:1|5=1):void {
     if(this.disposed||!id||id.length>128||!positionValid(position)||!finite(yaw)||(kind!=='humanoid'&&kind!=='drone')||(level!==1&&level!==5))return;
-    if(!this.enemyUnits.has(id)&&this.enemyUnits.size>=50)return;
+    if(!this.enemyUnits.has(id)&&!this.deferredUnits.has(id)&&this.enemyUnits.size+this.deferredUnits.size>=50)return;
+    const near=Math.hypot(position.x-this.playerPosition.x,position.z-this.playerPosition.z)<=this.enemyViewDistance;
+    if(this.options.mobile&&!near){
+      const existing=this.enemyUnits.get(id);
+      if(existing){existing.actor.root.visible=false;Object.assign(existing.request.position,position);existing.request.yaw=yaw;existing.request.motion=motion;existing.request.level=level;}
+      else {
+        const deferred=this.deferredUnits.get(id);
+        if(deferred){deferred.kind=kind;Object.assign(deferred.request.position,position);deferred.request.yaw=yaw;deferred.request.motion=motion;deferred.request.level=level;}
+        else this.deferredUnits.set(id,{kind,request:{position:{...position},yaw,motion,level}});
+      }
+      return;
+    }
+    this.deferredUnits.delete(id);
     if(this.status==='idle')void this.load();
     const model:ModelId=`${kind}-lv${level}`,base:ModelId=`${kind}-lv1`;
     if(!this.actors.has(model)&&!this.loadingVariants.has(model))void this.loadActor(model);
@@ -389,19 +420,20 @@ export class MissionActors {
     unit.kind=kind;unit.displayModel=displayModel;unit.request.position.x=position.x;unit.request.position.y=position.y;unit.request.position.z=position.z;unit.request.yaw=yaw;unit.request.motion=motion;unit.request.level=level;
     unit.actor.root.position.set(position.x,position.y,position.z);unit.actor.root.rotation.y=yaw;
     const dx=position.x-this.playerPosition.x,dz=position.z-this.playerPosition.z;unit.actor.root.visible=dx*dx+dz*dz<=this.enemyViewDistance*this.enemyViewDistance;
-    unit.actor.motion.play(motion);if(unit.actor.root.visible)unit.actor.motion.step(dt);
+    unit.actor.motion.play(motion);if(unit.actor.root.visible)unit.actor.motion.step(dt,true,this.options.mobile?.05:0);
   }
   setEnemyViewDistance(metres:number):void {
     if(!finite(metres))return;this.enemyViewDistance=T.MathUtils.clamp(metres,30,250);
     for(const unit of this.enemyUnits.values())unit.actor.root.visible=Math.hypot(unit.request.position.x-this.playerPosition.x,unit.request.position.z-this.playerPosition.z)<=this.enemyViewDistance;
   }
   removeEnemyUnit(id:string):void {
+    this.deferredUnits.delete(id);
     const unit=this.enemyUnits.get(id);if(!unit)return;
     unit.actor.motion.dispose();const skeletons=new Set<T.Skeleton>();
     unit.actor.root.traverse(object=>{const mesh=object as T.SkinnedMesh;if(mesh.isSkinnedMesh)skeletons.add(mesh.skeleton);});
     skeletons.forEach(skeleton=>skeleton.dispose());unit.actor.root.removeFromParent();this.enemyUnits.delete(id);
   }
-  resetEnemyUnits():void {for(const id of [...this.enemyUnits.keys()])this.removeEnemyUnit(id);}
+  resetEnemyUnits():void {for(const id of [...this.enemyUnits.keys()])this.removeEnemyUnit(id);this.deferredUnits.clear();}
   resetEnemies():void {
     this.resetEnemyUnits();this.enemyRequests.clear();
     for(const [id,actor] of this.actors)if(id!==this.character)actor.root.visible=false;
@@ -419,6 +451,7 @@ export class MissionActors {
   setWeapon(kind: MissionWeapon, pose: HeldWeaponPose = {}): void {
     if (this.disposed) return;
     this.selectedWeapon = kind; this.weaponPose = { ...pose };
+    if(this.options.mobile&&!this.weapons.has(kind))void this.loadWeapon(kind);
     if (pose.thirdPerson !== undefined) this.thirdPerson = pose.thirdPerson;
     const aim = unit(pose.aim), reload = unit(pose.reload), swing = unit(pose.swing);
     const reloadArc = Math.sin(reload * Math.PI), slash = swing;
@@ -460,6 +493,7 @@ export class MissionActors {
       enemies: [...this.enemyRequests].map(([kind, r]) => ({ kind, level: r.level, motion: r.motion,
         loaded: this.actors.has(`${kind}-lv${r.level}`), fallback: this.actors.get(`${kind}-lv${r.level}`)?.fallback ?? false })),
       enemyUnitCount:this.enemyUnits.size,enemyUnitLimit:50,enemyViewDistance:this.enemyViewDistance,
+      mobile:this.options.mobile??false,deferredEnemyUnitCount:this.deferredUnits.size,animationRate:this.options.mobile?20:null,
       enemyUnitResources:{geometries:unitGeometries.size,materials:unitMaterials.size,textures:unitTextures.size,skeletons:unitSkeletons.size},
       enemyUnits:[...this.enemyUnits].map(([id,unit])=>({id,kind:unit.kind,level:unit.request.level,model:unit.model,displayModel:unit.displayModel,visible:unit.actor.root.visible,loaded:this.actors.has(unit.model),fallback:unit.actor.fallback,position:{...unit.request.position},motion:unit.actor.motion.snapshot()})),
     };
@@ -476,6 +510,6 @@ export class MissionActors {
     skeletons.forEach(skeleton=>skeleton.dispose());
     geometries.forEach(value => value.dispose()); materials.forEach(value => value.dispose()); textures.forEach(value => value.dispose());
     this.firstWeaponHolder.removeFromParent(); this.thirdWeaponHolder.removeFromParent();
-    this.owned.clear(); this.actors.clear(); this.weapons.clear(); this.loadingVariants.clear(); this.enemyRequests.clear();this.placeholders.clear();
+    this.owned.clear(); this.actors.clear(); this.weapons.clear(); this.loadingVariants.clear();this.loadingWeapons.clear(); this.enemyRequests.clear();this.placeholders.clear();
   }
 }

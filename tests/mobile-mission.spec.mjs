@@ -69,6 +69,9 @@ async function start(page, browserName, viewport) {
   expect(response?.ok()).toBe(true);
   await expect(page.locator('body')).toHaveAttribute('data-ready', 'true');
   await page.locator('#home-button').tap();
+  await expect.poll(async () => (await state(page)).lobby.status, { timeout: 30000 }).toBe('ready');
+  expect((await state(page)).lobby.modelCount).toBe(1);
+  expect((await state(page)).lobby.models).toHaveLength(1);
   await page.locator('#start-button').tap();
   // Opening the briefing must preserve the existing campaign until launch.
   expect((await state(page)).campaign.checkpoint).toBeNull();
@@ -118,7 +121,7 @@ async function reachableControls(page) {
       const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
       return { id: node.id, x: r.x, y: r.y, width: r.width, height: r.height, reachable: node === hit || node.contains(hit) };
     }));
-  expect(layout.length).toBeGreaterThanOrEqual(10);
+  expect(layout.map(control => control.id).sort(), 'normal shooter HUD keeps only the six essential touch targets').toEqual(['touch-move', 'touch-fire', 'touch-aim', 'touch-jump', 'touch-weapon', 'touch-pause'].sort());
   const { width, height, scrollWidth } = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth }));
   expect(scrollWidth).toBeLessThanOrEqual(width + 1);
   for (const r of layout) {
@@ -148,9 +151,17 @@ async function reachableControls(page) {
 for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) {
   test(`touch mission ${viewport.width}x${viewport.height}: story, multi-touch combat and clean resume`, async ({ page, browserName }, info) => {
     await page.setViewportSize(viewport);
-    const errors = [];
+    const errors = [], homeRequests = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('request', request => { if (/\/home-models\/.*\.glb(?:\?.*)?$/.test(request.url())) homeRequests.push(request.url()); });
     await start(page, browserName, viewport);
+    expect(homeRequests).toHaveLength(1);
+    await expect(page.locator('#lobby-stage canvas')).toHaveCount(0);
+    const inactiveLobby = (await state(page)).lobby;
+    expect(inactiveLobby.active).toBe(false);
+    expect(inactiveLobby.modelCount).toBe(0);
+    expect(inactiveLobby.resources.geometries).toBe(0);
+    expect(inactiveLobby.resources.textures).toBe(0);
     await reachableControls(page);
     const input = await fingers(page, browserName);
     try {
@@ -171,9 +182,12 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await input.down(6, '#touch-aim');
       await input.up(6);
       expect((await mission(page)).weapon.aiming).toBe(false);
-      await input.down(6, '#touch-sprint');
-      await input.up(6);
-      await expect(page.locator('#touch-sprint')).toHaveAttribute('aria-pressed', 'true');
+      // Pushing beyond the stick's outer ring runs without a separate button.
+      const stick = await page.locator('#touch-move').boundingBox();
+      await input.move(1, 0, -stick.height * .3);
+      await expect.poll(async () => (await mission(page)).touch.sprint).toBe(true);
+      await input.move(1, 0, stick.height * .3);
+      await expect.poll(async () => (await mission(page)).touch.sprint).toBe(false);
       const lookBefore = (await mission(page)).player;
       await input.down(2, '#touch-look');
       await input.move(2, 48, -16);
@@ -208,21 +222,39 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await expect.poll(() => page.evaluate(() => window.__mobileJump.landed), { timeout: 10000 }).toBe(true);
       await page.evaluate(() => { window.__mobileJump.active = false; });
 
-      await page.locator('#touch-secondary').tap();
+      // One compact weapon/ammo button replaces three always-visible slots.
+      await page.locator('#touch-weapon').tap();
       await expect.poll(async () => (await mission(page)).weapon.kind).toBe('sniper');
+      await expect.poll(async () => (await mission(page)).actors.weapons.includes('sniper'), { timeout: 20000 }).toBe(true);
       await page.locator('#touch-aim').tap();
       await expect(page.locator('#mission-scope')).toBeVisible();
       await page.locator('#touch-aim').tap();
       await expect(page.locator('#mission-scope')).toBeHidden();
-      await page.locator('#touch-view').tap();
+      const equipment = async selector => {
+        await input.down(8, '#touch-weapon');
+        await expect(page.locator('#touch-equipment-panel')).toBeVisible();
+        await input.up(8);
+        await page.locator(selector).tap();
+        await expect(page.locator('#touch-equipment-panel')).toBeHidden();
+      };
+      await equipment('#touch-view');
       expect((await mission(page)).thirdPerson).toBe(true);
-      await page.locator('#touch-view').tap();
-      await page.locator('#touch-knife').tap();
+      await expect.poll(async () => { const actors = (await mission(page)).actors; return actors.models.includes(actors.character); }, { timeout: 20000 }).toBe(true);
+      await equipment('#touch-view');
+      await equipment('#touch-knife');
       expect((await mission(page)).weapon.kind).toBe('knife');
-      await page.locator('#touch-primary').tap();
+      await equipment('#touch-primary');
       expect((await mission(page)).weapon.kind).toBe('assault');
-      await page.locator('#touch-reload').tap();
+      await equipment('#touch-reload');
       await expect.poll(async () => (await mission(page)).weapon.reloading).toBe(true);
+      await expect.poll(async () => (await mission(page)).weapon.ammo, { timeout: 20000 }).toBe(24);
+      // Empty magazines reload automatically so the normal HUD needs no extra
+      // reload button. Actual rounds/shots must be spent before it starts.
+      const autoReloadBefore = await mission(page);
+      await input.down(3, '#touch-fire');
+      await expect.poll(async () => (await mission(page)).weapon.reloading, { timeout: 20000 }).toBe(true);
+      await input.up(3);
+      expect((await mission(page)).shots).toBeGreaterThanOrEqual(autoReloadBefore.shots + 24);
       await expect.poll(async () => (await mission(page)).weapon.ammo, { timeout: 20000 }).toBe(24);
 
       // OS interruption cancels both walking and firing, even with independent
@@ -263,6 +295,9 @@ for (const viewport of [{ width: 390, height: 844 }, { width: 844, height: 390 }
       await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
       expect(await mission(page)).toBeNull();
       await expect(page.locator('#mission-touch-controls')).toHaveCount(0);
+      await expect.poll(async () => (await state(page)).lobby.modelCount).toBe(1);
+      await expect(page.locator('#lobby-stage canvas')).toHaveCount(1);
+      expect(homeRequests, 'returning HOME reuses its decoded survivor instead of downloading it again').toHaveLength(1);
       await page.locator('#start-button').tap();
       await page.locator('#mission-resume').tap();
       await page.locator('#mission-lock').tap();
