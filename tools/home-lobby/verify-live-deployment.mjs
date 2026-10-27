@@ -39,8 +39,9 @@ try{
  });
  assert.ok(waiting.open&&waiting.photoEmbedded,'Deployment waiting dialog lacks the map photo.');report.waiting=waiting;
  await page.waitForFunction(()=>window.__RECLAIM__.snapshot().screen==='mission'&&window.__RECLAIM__.snapshot().mission?.world?.source==='authored-map',null,{timeout:180000});
- await page.waitForFunction(()=>window.__RECLAIM__.missionSnapshot()?.actors?.status==='ready',null,{timeout:120000});
+ await page.waitForFunction(()=>window.__RECLAIM__.missionSnapshot()?.actors?.status==='ready'&&window.__RECLAIM__.missionSnapshot()?.bossActors?.status==='ready',null,{timeout:120000});
  const spawned=await state();report.spawned=spawned.mission;
+ assert.equal(spawned.mission.sites.bossArena.bossPlaced,true);assert.equal(spawned.mission.bosses.bosses.length,2);assert.deepEqual(spawned.mission.bosses.bosses.map(b=>b.hp),[2000,1500]);assert.ok(spawned.mission.bossActors.bosses.every(b=>b.loaded&&b.clips.length===6));assert.equal(await page.locator('#mission-boss-health [role="progressbar"]').count(),2);
  assert.ok(spawned.mission.player.x<-150&&spawned.mission.player.y>75);assert.equal(spawned.mission.world.atmosphere,'purple_storm');
  assert.equal(spawned.mission.world.authoredTerrainMeshes,12);assert.ok(spawned.mission.world.authoredStructureMeshes>=57);
  assert.equal(spawned.mission.horde.spawned,0);assert.equal(spawned.mission.horde.units.length,0);assert.equal(spawned.mission.encounter.enemyBars,0);assert.equal(spawned.mission.encounter.deviceBars,4);assert.equal(spawned.mission.encounter.markers,1);

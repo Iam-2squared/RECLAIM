@@ -1,0 +1,16 @@
+.mission-boss-health{position:absolute;left:clamp(20px,3vw,56px);top:290px;width:276px;max-width:42vw;pointer-events:none;font-family:Arial,"Noto Sans JP",sans-serif;color:#f8eee4;z-index:0;filter:drop-shadow(0 2px 5px #030a0d75)}
+.mission-boss-health[hidden]{display:none}
+.boss-health-heading{margin:0 0 9px 2px;font-size:10px;font-weight:700;letter-spacing:.18em;color:#dbc5b4}
+.boss-health-rows{display:grid;gap:9px}
+.boss-health-row{padding:11px 12px 12px;background:linear-gradient(90deg,#1d252ce8,#18212bd4);border-left:3px solid #f09368;box-shadow:inset 0 0 0 1px #ded8bf17}
+.boss-health-label{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px;white-space:nowrap}
+.boss-health-label strong{font-size:15px;font-weight:700;letter-spacing:.08em}
+.boss-health-numbers{font-size:11px;font-variant-numeric:tabular-nums;color:#d7c6bb}
+.boss-health-track{height:8px;overflow:hidden;background:#0a111bcc;border:1px solid #bfa28a52;transform:skewX(-8deg)}
+.boss-health-fill{height:100%;width:100%;background:linear-gradient(90deg,#d76d44,#ffa977);transition:width .12s linear;transform-origin:left}
+.boss-health-row[data-kind="owl"]{border-left-color:#e8d07e}.boss-health-row[data-kind="owl"] .boss-health-fill{background:linear-gradient(90deg,#ac964e,#f4df91)}
+.boss-health-row[data-defeated="true"]{border-left-color:#7b9391;opacity:.68}.boss-health-row[data-defeated="true"] .boss-health-numbers{color:#a4d4c1}
+.mission-boss-health[data-compact="true"] .boss-health-heading{display:none}.mission-boss-health[data-compact="true"] .boss-health-row{padding:7px 10px 8px}.mission-boss-health[data-compact="true"] .boss-health-label{margin-bottom:5px}.mission-boss-health[data-compact="true"] .boss-health-rows{gap:6px}
+@media(max-height:720px){.mission-boss-health{width:248px}.boss-health-row{padding:8px 10px 9px}.boss-health-label strong{font-size:13px}.boss-health-label{margin-bottom:6px}.boss-health-heading{margin-bottom:6px}}
+@media(max-width:700px){.mission-boss-health{left:12px;width:222px;max-width:52vw}.boss-health-heading{font-size:9px;margin-bottom:6px}.boss-health-row{padding:8px 9px 9px}.boss-health-label{gap:5px;margin-bottom:6px}.boss-health-label strong{font-size:13px}.boss-health-numbers{font-size:9px}.boss-health-track{height:7px}.boss-health-rows{gap:7px}}
+@media(prefers-reduced-motion:reduce){.boss-health-fill{transition:none}}

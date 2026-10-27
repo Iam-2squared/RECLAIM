@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { collectMissionAssets } from './mission-asset-package.mjs';
 import { collectAuthoredMapAssets } from './authored-map-package.mjs';
+import { collectBossAssets } from './boss-asset-package.mjs';
 const root=resolve(import.meta.dirname,'..'),dist=resolve(root,'dist');
 let html=await readFile(resolve(dist,'index.html'),'utf8');
 const script=html.match(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/);
@@ -37,6 +38,9 @@ html=html.replace('<script type="module">',()=>`${modelData}\n<script type="modu
 const missionAssets=await collectMissionAssets(dist,{includeDevModels:false});
 const missionData=`<script type="application/json" id="reclaim-mission-assets">${JSON.stringify(missionAssets.payload).replaceAll('<','\\u003c')}</script>`;
 html=html.replace('<script type="module">',()=>`${missionData}\n<script type="module">`);
+const bossAssets=await collectBossAssets(dist);
+const bossData=`<script type="application/json" id="reclaim-boss-assets">${JSON.stringify(bossAssets.payload).replaceAll('<','\\u003c')}</script>`;
+html=html.replace('<script type="module">',()=>`${bossData}\n<script type="module">`);
 const authoredMap=await collectAuthoredMapAssets(dist);
 const mapData=`<script type="application/json" id="reclaim-authored-map">${JSON.stringify(authoredMap.payload).replaceAll('<','\\u003c')}</script>`;
 html=html.replace('<script type="module">',()=>`${mapData}\n<script type="module">`);
@@ -49,6 +53,7 @@ if(!/^[a-f0-9]{40}$/.test(sourceCommit))throw new Error('Expected a full source 
 html=html.replace('</head>',()=>`<meta name="reclaim-source-commit" content="${sourceCommit}">\n<meta name="reclaim-working-tree" content="${workingTree}">\n<!-- Three.js MIT license\n${license.replaceAll('--','—')}-->\n</head>`);
 html=html.replace('</head>',()=>`<script type="application/json" id="reclaim-home-model-manifest">${JSON.stringify({sourceCommit,models:packagedModels}).replaceAll('<','\\u003c')}</script>\n</head>`);
 html=html.replace('</head>',()=>`<script type="application/json" id="reclaim-mission-asset-manifest">${JSON.stringify({sourceCommit,...missionAssets.records}).replaceAll('<','\\u003c')}</script>\n</head>`);
+html=html.replace('</head>',()=>`<script type="application/json" id="reclaim-boss-asset-manifest">${JSON.stringify({sourceCommit,models:bossAssets.records}).replaceAll('<','\\u003c')}</script>\n</head>`);
 html=html.replace('</head>',()=>`<script type="application/json" id="reclaim-authored-map-manifest">${JSON.stringify({sourceCommit,...authoredMap.record}).replaceAll('<','\\u003c')}</script>\n</head>`);
 await mkdir(resolve(root,'release'),{recursive:true});
 await writeFile(resolve(root,'release/RECLAIM_World_Preview.html'),html);

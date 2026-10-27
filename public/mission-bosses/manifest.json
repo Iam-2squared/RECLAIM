@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "models": [
+    {
+      "id": "boar",
+      "name": "錆猪",
+      "file": "boar.glb",
+      "bytes": 11458328,
+      "sha256": "998e649102150bf23047cc741ee718f3df0c8a0d687205095f2c9ca1031c8818",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Chase",
+        "Attack",
+        "Hit",
+        "Death"
+      ],
+      "source": "motion/characters/錆猪/錆猪_animated.glb",
+      "front": "+Z",
+      "units": "metres"
+    },
+    {
+      "id": "owl",
+      "name": "哨戒梟",
+      "file": "owl.glb",
+      "bytes": 10472164,
+      "sha256": "c6e81ec23f7cb7585eb24214cc2f9f1fab94f1f7d4976311bd4d839681b8aa82",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Chase",
+        "Attack",
+        "Hit",
+        "Death"
+      ],
+      "source": "motion/characters/哨戒梟/哨戒梟_animated.glb",
+      "front": "+Z",
+      "units": "metres"
+    }
+  ]
+}
