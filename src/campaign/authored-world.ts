@@ -1,5 +1,6 @@
 import { CAMPAIGN_KEY, CampaignStore, type AreaCampaignRule, type CampaignStorage } from './index.ts';
 import { AUTHORED_MAP_META as map } from '../world/authored-map-meta.ts';
+import { SAPPORO_MAP_META as sapporo } from '../world/sapporo-map-meta.ts';
 
 export const AUTHORED_CAMPAIGN_KEY=`reclaim.campaign.${map.worldId}.v1`;
 export const AUTHORED_CAMPAIGN_RULE:AreaCampaignRule=Object.freeze({
@@ -8,11 +9,13 @@ export const AUTHORED_CAMPAIGN_RULE:AreaCampaignRule=Object.freeze({
  opening:{cabin:map.cabin,radio:map.radio,door:map.door,leaveRadius:18},
 });
 
+export const SAPPORO_CAMPAIGN_RULE:AreaCampaignRule=Object.freeze({bounds:sapporo.bounds,spawn:sapporo.spawn,exit:sapporo.exit,checkpoints:sapporo.checkpoints,minimumTravel:1000,minY:-20,maxY:250});
+
 /** A new coordinate system gets its own save. Earlier map saves remain intact. */
 export function authoredCampaignStore(storage:CampaignStorage|null):CampaignStore {
  const scoped=storage?{
   getItem:(key:string)=>storage.getItem(key===CAMPAIGN_KEY?AUTHORED_CAMPAIGN_KEY:key),
   setItem:(key:string,value:string)=>storage.setItem(key===CAMPAIGN_KEY?AUTHORED_CAMPAIGN_KEY:key,value),
  }:null;
- return new CampaignStore(scoped,{shiretoko:AUTHORED_CAMPAIGN_RULE});
+ return new CampaignStore(scoped,{shiretoko:AUTHORED_CAMPAIGN_RULE,sapporo:SAPPORO_CAMPAIGN_RULE});
 }

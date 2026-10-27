@@ -111,7 +111,7 @@ function freezeCampaign(value: Campaign): Campaign {
 }
 
 export function unlockedAreaIds(campaign: Campaign): readonly AreaId[] {
-  return AREA_ORDER.slice(0, campaign.completedAreaIds.length + 1);
+  const ordered=AREA_ORDER.slice(0,campaign.completedAreaIds.length+1);return ordered.includes('sapporo')?ordered:[...ordered,'sapporo'];
 }
 export function isAreaUnlocked(campaign: Campaign, id: AreaId): boolean { return unlockedAreaIds(campaign).includes(id); }
 
@@ -144,7 +144,7 @@ export function parseCampaign(raw: string | null, rules: CampaignRules = CAMPAIG
       }
     }
     const completedAreaIds = passages.map(p => p.areaId);
-    const unlocked = AREA_ORDER.slice(0, completedAreaIds.length + 1);
+    const ordered=AREA_ORDER.slice(0,completedAreaIds.length+1);const unlocked:AreaId[]=ordered.includes('sapporo')?ordered:[...ordered,'sapporo'];
     const checkpoint = parseCheckpoint(v.checkpoint, unlocked, rules);
     let traversal: TraversalState | null = null;
     if (record(v.traversal) && areaId(v.traversal.areaId) && unlocked.includes(v.traversal.areaId)) {
@@ -171,15 +171,15 @@ export function visibleRoute(campaign: Campaign): readonly VisibleRouteEntry[] {
     return {
       id: revealed ? id : `locked-${String(index + 1).padStart(2, '0')}`, number: index + 1,
       name: revealed ? name : '???', displayName: revealed ? name : '???',
-      description: revealed ? (id === 'shiretoko' ? '木造の家から始まる、北の森の探索。' : '都市縁辺の環境プロトタイプ。プレイ可能な範囲はここまで。') : '???',
-      x, y, revealed, unlocked: revealed, status: revealed ? (id === 'shiretoko' ? 'playable' : 'prototype') : 'unknown',
+      description: revealed ? (id === 'shiretoko' ? '木造の家から始まる、北の森の探索。' : '青い誘導ラインをたどる4フェーズの市街戦。テレビ塔から札幌駅へ。') : '???',
+      x, y, revealed, unlocked: revealed, status: revealed ? 'playable' : 'unknown',
     };
   });
 }
 
 export type VisibleAreaEntry = Readonly<{ id: AreaId; name: string; displayName: string; status: 'playable' | 'prototype'; provisional: true }>;
 export function visibleAreas(campaign: Campaign): readonly VisibleAreaEntry[] {
-  return unlockedAreaIds(campaign).map(id => ({ id, name: AREA_NAMES[id], displayName: AREA_NAMES[id], status: id === 'shiretoko' ? 'playable' : 'prototype', provisional: true }));
+  return unlockedAreaIds(campaign).map(id => ({ id, name: AREA_NAMES[id], displayName: AREA_NAMES[id], status: id === 'shiretoko'||id==='sapporo' ? 'playable' : 'prototype', provisional: true }));
 }
 
 export class CampaignStore {

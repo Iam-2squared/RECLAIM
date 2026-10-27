@@ -1,0 +1,137 @@
+{
+  "version": "sapporo-abandoned-v02",
+  "source": "日本各地/札幌/札幌_3D/札幌_街全体.blend + 札幌_街全体.glb",
+  "sourceModelModified": false,
+  "sourceGlbBytes": 172719600,
+  "sourceGlbSha256": "c9aed837b1ed23f4d94faad964fbfdd2e5d3d20fe37ef56556695ac87b17559b",
+  "sourceManifestSha256": "15eb512bcde19af560471a76c9c9c62ed2181446a8dc724c3055508b0d5cbacd",
+  "runtimeFile": "city.glb.gz",
+  "runtimeBytes": 26027283,
+  "runtimeSha256": "fb55a89001ff2bda1b02b5eb3deeed385401e6002b844fcbba0855965a66034c",
+  "decodedGlbBytes": 83514972,
+  "decodedGlbSha256": "70139a11c04460a345c76eecbf15a9b420a6355553eedd85229e1b35bae1d89f",
+  "compression": "lossless EXT_meshopt_compression + gzip; every decoded buffer verified byte-for-byte",
+  "meshoptViews": 667,
+  "physicsFile": "physics.json",
+  "physicsSha256": "9ceb4c61e0a77fbe264f5882fee49f656de5a10e6ec200e3e9534d81a9509dad",
+  "floorTriangles": 1822,
+  "waterTriangles": 39,
+  "colliders": 2173,
+  "geometry": {
+    "objects": 223,
+    "vertices": 3293493,
+    "polygons": 1513775
+  },
+  "anchors": {
+    "station": {
+      "label": "札幌駅",
+      "pixel": [
+        650,
+        247
+      ],
+      "position": [
+        55.02392344497608,
+        0,
+        -909.0909090909091
+      ],
+      "eye": [
+        -34.97607655502392,
+        100,
+        -734.0909090909091
+      ],
+      "target": [
+        80.02392344497608,
+        70,
+        -924.0909090909091
+      ],
+      "height": 173
+    },
+    "clock": {
+      "label": "時計台",
+      "pixel": [
+        711,
+        536
+      ],
+      "position": [
+        200.95693779904306,
+        0,
+        -217.70334928229664
+      ],
+      "eye": [
+        153.95693779904306,
+        4.5,
+        -213.70334928229664
+      ],
+      "target": [
+        197.95693779904306,
+        10,
+        -217.70334928229664
+      ],
+      "height": 19.825
+    },
+    "tv": {
+      "label": "テレビ塔",
+      "pixel": [
+        772,
+        683
+      ],
+      "position": [
+        346.8899521531101,
+        0,
+        133.9712918660287
+      ],
+      "eye": [
+        164.88995215311007,
+        8,
+        145.9712918660287
+      ],
+      "target": [
+        346.8899521531101,
+        68,
+        133.9712918660287
+      ],
+      "height": 147.2
+    },
+    "fountain": {
+      "label": "大通公園",
+      "pixel": [
+        471,
+        704
+      ],
+      "position": [
+        -373.2057416267943,
+        0,
+        184.21052631578948
+      ]
+    },
+    "susukino": {
+      "label": "すすきの",
+      "pixel": [
+        694,
+        957
+      ],
+      "position": [
+        160.28708133971293,
+        0,
+        789.4736842105264
+      ],
+      "eye": [
+        97.79711634180015,
+        2.3,
+        893.4736842105264
+      ],
+      "target": [
+        97.79711634180015,
+        13,
+        759.4736842105264
+      ],
+      "height": 48,
+      "street_position": [
+        97.79711634180015,
+        0,
+        789.4736842105264
+      ]
+    }
+  },
+  "photoFile": "deployment.webp"
+}

@@ -12,6 +12,7 @@ import { Mission } from './mission/runtime';
 import { authoredCampaignStore } from './campaign/authored-world';
 import { loadAuthoredMapData } from './world/authored-map-data';
 import { createAuthoredMapWorld } from './world/authored-map-world';
+import { loadSapporoMapWorld } from './world/sapporo-map-world';
 import type { MissionWorld } from './mission/world';
 
 function element<T extends HTMLElement>(id:string){const el=document.getElementById(id);if(!el)throw new Error(`Missing UI element: ${id}`);return el as T;}
@@ -31,12 +32,13 @@ let worldInitialized=false;
 const legacyWorld=import.meta.env.DEV&&(new URLSearchParams(location.search).get('legacy-world')==='1'||new URLSearchParams(location.search).get('combat-preview')==='1');
 let campaign:CampaignStore;try{campaign=legacyWorld?new CampaignStore(localStorage):authoredCampaignStore(localStorage);}catch{campaign=legacyWorld?new CampaignStore(null):authoredCampaignStore(null);}
 let deploymentId=0,deploymentActive=false;
-function deploymentStatus(message:string|null){
+function deploymentStatus(message:string|null,areaId:AreaId='shiretoko'){
  document.getElementById('deployment-loading')?.remove();
  if(message===null)return;
  const panel=document.createElement('dialog');panel.id='deployment-loading';panel.className='deployment-loading';panel.setAttribute('aria-labelledby','deployment-title');panel.setAttribute('aria-describedby','deployment-message');
- panel.style.setProperty('--deployment-image',`url("${deploymentPhoto}")`);
+ let photo=deploymentPhoto;if(areaId==='sapporo'){photo=new URL(import.meta.env.BASE_URL+'sapporo-map/deployment.webp',document.baseURI).href;const embedded=document.getElementById('reclaim-sapporo-map');if(embedded){try{photo=JSON.parse(embedded.textContent??'{}').photoDataUrl??photo;}catch{}}}panel.style.setProperty('--deployment-image',`url("${photo}")`);
  panel.innerHTML='<section><span>DEPLOY / SHIRETOKO</span><h2 id="deployment-title">知床へ出撃</h2><p id="deployment-message" role="status"></p><small class="deployment-note">準備が整うと、始まりの家から探索が始まります。</small><button type="button">HOMEに戻る</button></section>';
+ if(areaId==='sapporo'){panel.querySelector('section>span')!.textContent='DEPLOY / SAPPORO';panel.querySelector('h2')!.textContent='札幌へ出撃';panel.querySelector('small')!.textContent='青いラインに沿って市街を進み、タワーと駅へ向かいます。';}
  panel.querySelector('p')!.textContent=message;panel.querySelector('button')!.addEventListener('click',()=>switchScreen('home'));
  panel.addEventListener('cancel',event=>{event.preventDefault();switchScreen('home');});document.body.append(panel);panel.showModal();
 }
@@ -123,7 +125,7 @@ function switchScreen(target:'title'|'home'){
  referenceMenus?.refresh();
  if(referenceMenus?.mobile)window.scrollTo({top:0,left:0,behavior:'instant'});
  invalidateRender();
- if(target==='home'){element<HTMLButtonElement>('start-button').focus({preventScroll:true});announce('ホーム。外観と装備を準備し、知床の探索へ出撃できます。オンライン未接続です。');}
+ if(target==='home'){element<HTMLButtonElement>('start-button').focus({preventScroll:true});announce('ホーム。外観と装備を準備し、知床の探索と札幌の市街戦へ出撃できます。');}
  else{homeButton.focus({preventScroll:true});announce('タイトル画面に戻りました。');}
 }
 
@@ -139,7 +141,8 @@ async function startMission(areaId:AreaId,resume:MissionCheckpoint|null=null,deb
  if(!debug&&!isAreaUnlocked(campaign.value,areaId))return;
  const ticket=++deploymentId;deploymentActive=true;let loadedWorld:MissionWorld|undefined;
  try {
-  if(areaId==='shiretoko'&&!legacyWorld){
+  if(areaId==='sapporo'&&!legacyWorld){deploymentStatus('札幌の街・道路・戦闘エリアを読み込んでいます…',areaId);loadedWorld=await loadSapporoMapWorld(prefs.quality);if(ticket!==deploymentId||disposed){loadedWorld?.dispose();return;}}
+  else if(areaId==='shiretoko'&&!legacyWorld){
    deploymentStatus('新しい地形・家・山道を読み込んでいます…');
    const data=await loadAuthoredMapData();
    if(ticket!==deploymentId||disposed)return;

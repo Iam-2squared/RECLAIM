@@ -3,7 +3,7 @@ import type { ActorPosition, EnemyKind } from './actors.ts';
 
 export type MissionMarker=ActorPosition|Readonly<{id?:string;position:ActorPosition;radius?:number;height?:number;visible?:boolean}>;
 export type SpawnDeviceVisual=Readonly<{id:string;kind:EnemyKind;position:ActorPosition;destroyed?:boolean;radius?:number;hp?:number;maxHp?:number}>;
-export type EncounterPresentationOptions=Readonly<{reducedMotion?:boolean;viewDistance?:number}>;
+export type EncounterPresentationOptions=Readonly<{reducedMotion?:boolean;viewDistance?:number;enemyCapacity?:number}>;
 type Bar={root:T.Group;fill:T.Mesh;position:T.Vector3;alive:boolean};
 type Damage={root:T.Group;glyphs:T.Mesh[];material:T.MeshBasicMaterial;origin:T.Vector3;age:number;active:boolean;serial:number};
 type Device={root:T.Group;kind:EnemyKind;energy:T.Object3D[];destroyed:boolean};
@@ -46,7 +46,7 @@ export class EncounterPresentation {
   private readonly bars=new Map<string,Bar>();
   private readonly deviceBars=new Map<string,Bar>();
   private readonly barPool:Bar[]=[];
-  private barsCreated=0;
+  private barsCreated=0;private readonly enemyCapacity:number;
   private readonly damage:Damage[]=[];
   private damageCursor=0;private damageSerial=0;
   private readonly markers:T.Group[]=[];
@@ -66,7 +66,7 @@ export class EncounterPresentation {
   private readonly markerColumn=this.material({color:0x89eaff,transparent:true,opacity:.055,depthWrite:false,side:T.DoubleSide});
 
   constructor(scene:T.Scene,camera:T.Camera,options:EncounterPresentationOptions={}){
-    this.scene=scene;this.camera=camera;
+    this.scene=scene;this.camera=camera;this.enemyCapacity=Math.max(1,Math.min(100,Math.floor(options.enemyCapacity??MAX_ENEMIES)));
     this.reduced=!!options.reducedMotion;if(Number.isFinite(options.viewDistance))this.distance=T.MathUtils.clamp(options.viewDistance!,30,250);
     for(const geometry of [this.plane,this.box,this.cylinder,this.ring,this.column,this.torus])this.geometries.add(geometry);
     for(let digit=0;digit<GLYPHS.length;digit++){
@@ -78,14 +78,14 @@ export class EncounterPresentation {
   private material(parameters:T.MeshBasicMaterialParameters):T.MeshBasicMaterial {const material=new T.MeshBasicMaterial(parameters);this.materials.add(material);return material;}
   private solid(parameters:T.MeshStandardMaterialParameters):T.MeshStandardMaterial {const material=new T.MeshStandardMaterial(parameters);this.materials.add(material);return material;}
   private bar():Bar|null {
-    const existing=this.barPool.pop();if(existing)return existing;if(this.barsCreated>=MAX_ENEMIES+MAX_DEVICES)return null;
+    const existing=this.barPool.pop();if(existing)return existing;if(this.barsCreated>=this.enemyCapacity+MAX_DEVICES)return null;
     this.barsCreated++;const root=new T.Group(),back=new T.Mesh(this.plane,this.dark),fill=new T.Mesh(this.plane,this.green);
     root.name='Encounter health bar';back.scale.set(1.12,.13,1);fill.scale.set(1.02,.075,1);fill.position.z=.004;root.add(back,fill);root.renderOrder=30;back.renderOrder=30;fill.renderOrder=31;
     return{root,fill,position:new T.Vector3(),alive:true};
   }
   private health(collection:Map<string,Bar>,id:string,position:ActorPosition,hp:number,max:number,offset:number,device:boolean):void {
     if(this.disposed||!id||id.length>128||!valid(position)||![hp,max].every(Number.isFinite)||max<=0)return;
-    if(!collection.has(id)&&collection.size>=(device?MAX_DEVICES:MAX_ENEMIES))return;
+    if(!collection.has(id)&&collection.size>=(device?MAX_DEVICES:this.enemyCapacity))return;
     let bar=collection.get(id);if(!bar){bar=this.bar()??undefined;if(!bar)return;collection.set(id,bar);this.scene.add(bar.root);}
     const ratio=T.MathUtils.clamp(hp/max,0,1);bar.alive=hp>0;bar.position.set(position.x,position.y+offset,position.z);bar.root.position.copy(bar.position);bar.root.visible=bar.alive;
     const width=device?1.55:1.02;bar.root.children[0].scale.x=width+.10;bar.fill.scale.x=width*ratio;bar.fill.position.x=-width*(1-ratio)/2;
@@ -171,6 +171,6 @@ export class EncounterPresentation {
     for(const device of this.devices.values())device.root.removeFromParent();this.devices.clear();for(const marker of this.markers)marker.visible=false;this.markerCount=0;
     for(const entry of this.damage){entry.active=false;entry.root.visible=false;}this.damageCursor=0;
   }
-  snapshot(){return{enemyBars:this.bars.size,visibleEnemyBars:[...this.bars.values()].filter(bar=>bar.root.visible).length,deviceBars:this.deviceBars.size,devices:[...this.devices].map(([id,device])=>({id,kind:device.kind,destroyed:device.destroyed})),activeDamage:this.damage.filter(entry=>entry.active).length,damageCapacity:this.damage.length,healthBarCapacity:this.barsCreated,markers:this.markers.filter(marker=>marker.visible).length,limits:{enemies:MAX_ENEMIES,devices:MAX_DEVICES,damage:MAX_DAMAGE,markers:MAX_MARKERS},resources:{geometries:this.geometries.size,materials:this.materials.size,textures:this.disposed?0:1},disposed:this.disposed};}
+  snapshot(){return{enemyBars:this.bars.size,visibleEnemyBars:[...this.bars.values()].filter(bar=>bar.root.visible).length,deviceBars:this.deviceBars.size,devices:[...this.devices].map(([id,device])=>({id,kind:device.kind,destroyed:device.destroyed})),activeDamage:this.damage.filter(entry=>entry.active).length,damageCapacity:this.damage.length,healthBarCapacity:this.barsCreated,markers:this.markers.filter(marker=>marker.visible).length,limits:{enemies:this.enemyCapacity,devices:MAX_DEVICES,damage:MAX_DAMAGE,markers:MAX_MARKERS},resources:{geometries:this.geometries.size,materials:this.materials.size,textures:this.disposed?0:1},disposed:this.disposed};}
   dispose():void {if(this.disposed)return;this.reset();this.disposed=true;for(const entry of this.damage)entry.root.removeFromParent();for(const marker of this.markers)marker.removeFromParent();for(const device of this.devicePool)device.root.removeFromParent();for(const geometry of this.geometries)geometry.dispose();for(const material of this.materials)material.dispose();this.atlas.dispose();this.geometries.clear();this.materials.clear();this.damage.length=0;this.markers.length=0;this.barPool.length=0;this.devicePool.length=0;}
 }

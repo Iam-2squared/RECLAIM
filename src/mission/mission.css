@@ -13,3 +13,5 @@ body[data-screen="mission"] #scene{z-index:0;pointer-events:auto}body[data-scree
 .deployment-loading h2{font-size:27px;margin:16px 0}
 .deployment-loading p{font-size:14px;line-height:1.8}
 .deployment-loading button{width:100%;min-height:44px;margin-top:14px;padding:10px;border:1px solid #8caac068;background:#0a2541;color:#e8f0f8}
+
+.mission-phase{color:#79dcff;font-size:12px;font-weight:800;letter-spacing:.06em;margin:7px 0 0;text-shadow:0 1px 3px #00121f;}

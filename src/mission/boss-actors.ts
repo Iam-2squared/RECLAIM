@@ -3,16 +3,18 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { MotionPlayback, type ActorMotion, type ActorPosition } from './actors.ts';
 
-export type BossModel = 'boar' | 'owl';
+export type BossModel = 'boar' | 'owl' | 'spider' | 'snowblower';
 export type BossActorOptions = Readonly<{
   modelUrls?: Partial<Record<BossModel, string>>;
+  modelIds?: readonly BossModel[];
   onLoad?: () => void;
   onError?: (message: string) => void;
   viewDistance?: number;
 }>;
 export type EmbeddedBossAssets = Partial<Record<BossModel, string>>;
-const IDS = ['boar', 'owl'] as const;
-const NAMES = { boar: '錆猪', owl: '哨戒梟' };
+const IDS:readonly BossModel[]=['boar','owl','spider','snowblower'];
+const SHIRETOKO_IDS:readonly BossModel[]=['boar','owl'];
+const NAMES:Record<BossModel,string>={boar:'錆猪',owl:'哨戒梟',spider:'電纏蜘蛛',snowblower:'氷路開拓機'};
 const CLIPS = ['Idle', 'Walk', 'Chase', 'Attack', 'Hit', 'Death'];
 const finitePosition = (p: ActorPosition) => [p.x, p.y, p.z].every(Number.isFinite);
 
@@ -74,7 +76,7 @@ export class BossActors {
     this.status = 'loading';
     try { this.embedded = parseEmbeddedBossAssets(typeof document === 'undefined' ? null : document.getElementById('reclaim-boss-assets')?.textContent ?? null); }
     catch { this.report('embedded'); }
-    this.pending = Promise.all(IDS.map(id => this.loadModel(id))).then(() => {
+    this.pending = Promise.all((this.options.modelIds??SHIRETOKO_IDS).map(id => this.loadModel(id))).then(() => {
       if (this.disposed) return;
       this.status = this.failed.size ? 'degraded' : 'ready';
       for (const [kind, request] of this.requests) this.setBoss(request.id, kind, request.position, request.yaw, request.motion, 0);
@@ -90,7 +92,7 @@ export class BossActors {
   private async loadModel(id: BossModel): Promise<void> {
     let decoded: T.Group | null = null;
     try {
-      const encoded = this.embedded[id], url = this.options.modelUrls?.[id] ?? (encoded ? `data:model/gltf-binary;base64,${encoded}` : `${import.meta.env?.BASE_URL ?? '/'}mission-bosses/${id}.glb`);
+      const encoded = this.embedded[id], url = this.options.modelUrls?.[id] ?? (encoded ? `data:model/gltf-binary;base64,${encoded}` : `${import.meta.env?.BASE_URL ?? '/'}${id==='spider'||id==='snowblower'?'sapporo-bosses':'mission-bosses'}/${id}.glb`);
       const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
       decoded = gltf.scene;
       if (this.disposed) { disposeVisual(decoded); return; }

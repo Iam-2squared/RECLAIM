@@ -50,6 +50,8 @@ export type ActorOptions = Readonly<{
   modelUrls?: Partial<Record<ModelId, string>>;
   weaponUrls?: Partial<Record<MissionWeapon, string>>;
   enemyViewDistance?: number;
+  enemyUnitLimit?: number;
+  lazyEnemyUnits?: boolean;
 }>;
 
 const finite = (n: number) => Number.isFinite(n);
@@ -371,7 +373,8 @@ export class MissionActors {
   /** Independent authored actors; cloned skeletons share cached geometry/textures. */
   setEnemyUnit(id:string,kind:EnemyKind,position:ActorPosition,yaw:number,motion:ActorMotion,dt:number,level:1|5=1):void {
     if(this.disposed||!id||id.length>128||!positionValid(position)||!finite(yaw)||(kind!=='humanoid'&&kind!=='drone')||(level!==1&&level!==5))return;
-    if(!this.enemyUnits.has(id)&&this.enemyUnits.size>=50)return;
+    if(this.options.lazyEnemyUnits){const distance=Math.hypot(position.x-this.playerPosition.x,position.z-this.playerPosition.z),exists=this.enemyUnits.has(id);if(distance>this.enemyViewDistance+(exists?60:0)){if(exists)this.removeEnemyUnit(id);return;}}
+    if(!this.enemyUnits.has(id)&&this.enemyUnits.size>=Math.max(1,Math.min(100,this.options.enemyUnitLimit??50)))return;
     if(this.status==='idle')void this.load();
     const model:ModelId=`${kind}-lv${level}`,base:ModelId=`${kind}-lv1`;
     if(!this.actors.has(model)&&!this.loadingVariants.has(model))void this.loadActor(model);
@@ -459,7 +462,7 @@ export class MissionActors {
       weaponGeometry, embedded: this.embedded !== null && Boolean(this.embedded.models || this.embedded.weapons),
       enemies: [...this.enemyRequests].map(([kind, r]) => ({ kind, level: r.level, motion: r.motion,
         loaded: this.actors.has(`${kind}-lv${r.level}`), fallback: this.actors.get(`${kind}-lv${r.level}`)?.fallback ?? false })),
-      enemyUnitCount:this.enemyUnits.size,enemyUnitLimit:50,enemyViewDistance:this.enemyViewDistance,
+      enemyUnitCount:this.enemyUnits.size,enemyUnitLimit:Math.max(1,Math.min(100,this.options.enemyUnitLimit??50)),enemyViewDistance:this.enemyViewDistance,
       enemyUnitResources:{geometries:unitGeometries.size,materials:unitMaterials.size,textures:unitTextures.size,skeletons:unitSkeletons.size},
       enemyUnits:[...this.enemyUnits].map(([id,unit])=>({id,kind:unit.kind,level:unit.request.level,model:unit.model,displayModel:unit.displayModel,visible:unit.actor.root.visible,loaded:this.actors.has(unit.model),fallback:unit.actor.fallback,position:{...unit.request.position},motion:unit.actor.motion.snapshot()})),
     };

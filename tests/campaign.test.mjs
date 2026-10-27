@@ -47,14 +47,15 @@ function reachSapporo(store) {
   }
 }
 
-test('campaign initial normal UI exposes only Shiretoko and no future place or Tokyo plot labels', () => {
+test('campaign UI exposes the two authored playable maps without future place or Tokyo plot labels', () => {
   const initial = campaignDefaults(), route = visibleRoute(initial);
   assert.equal(route.length, 18);
   assert.equal(route[0].name, '知床');
-  for (const row of route.slice(1)) { assert.equal(row.name, '???'); assert.equal(row.description, '???'); assert.equal(row.revealed, false); }
+  assert.equal(route[1].name,'札幌');assert.equal(route[1].status,'playable');
+  for (const row of route.slice(2)) { assert.equal(row.name, '???'); assert.equal(row.description, '???'); assert.equal(row.revealed, false); }
   const exposed = JSON.stringify([route, visibleAreas(initial)]);
-  for (const hidden of ['札幌', '函館', '石狩', '日高', '撤退', '再突入', 'tokyo-first', 'tokyo-return', 'hakodate']) assert.equal(exposed.includes(hidden), false);
-  assert.deepEqual(unlockedAreaIds(initial), ['shiretoko']);
+  for (const hidden of ['函館', '石狩', '日高', '撤退', '再突入', 'tokyo-first', 'tokyo-return', 'hakodate']) assert.equal(exposed.includes(hidden), false);
+  assert.deepEqual(unlockedAreaIds(initial), ['shiretoko','sapporo']);
 });
 
 test('campaign presentation preserves exactly the canonical 18 stops without inserting subareas', () => {
@@ -71,9 +72,9 @@ test('corrupt, unknown, legacy and hostile saves default safely and cannot read 
 });
 
 test('injected unlock/completed arrays without genuine ordered receipts do not confer progress', () => {
-  const parsed = parseCampaign(JSON.stringify({ version: 1, introStep: 4, droneDefeated: true, completedAreaIds: ['shiretoko', 'ishikari-mountains', 'hidaka-mountains', 'sapporo'], unlockedAreaIds: ['hakodate'], checkpoint: { areaId: 'sapporo', x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, traversal: { areaId: 'sapporo', distance: 900, lastPosition: p(), passedCheckpointIds: [] } }));
+  const parsed = parseCampaign(JSON.stringify({ version: 1, introStep: 4, droneDefeated: true, completedAreaIds: ['shiretoko', 'ishikari-mountains', 'hidaka-mountains', 'sapporo'], unlockedAreaIds: ['hakodate'], checkpoint: { areaId: 'hidaka-mountains', x: 0, y: 0, z: 0, yaw: 0, pitch: 0 }, traversal: { areaId: 'hidaka-mountains', distance: 900, lastPosition: p(), passedCheckpointIds: [] } }));
   assert.deepEqual(parsed.completedAreaIds, []);
-  assert.deepEqual(unlockedAreaIds(parsed), ['shiretoko']);
+  assert.deepEqual(unlockedAreaIds(parsed), ['shiretoko','sapporo']);
   assert.equal(parsed.checkpoint, null); assert.equal(parsed.traversal, null);
 });
 
@@ -177,7 +178,7 @@ test('menus, unknown objectives and exit coordinates alone cannot complete Shire
   for (const event of ['map-open', 'next-area', 'clear', 'unlock-all']) assert.equal(store.record({ type: event, areaId: 'shiretoko' }), false);
   walkRoute(store, 'shiretoko');
   assert.equal(exit(store, 'shiretoko'), false);
-  assert.deepEqual(unlockedAreaIds(store.value), ['shiretoko']);
+  assert.deepEqual(unlockedAreaIds(store.value), ['shiretoko','sapporo']);
 });
 
 test('drone defeat requires the real scout id, stopped HP, at least one hit and completed introduction', () => {
@@ -204,14 +205,14 @@ test('genuine drone defeat still cannot skip the actual trail checkpoint on the 
   assert.equal(exit(store, 'shiretoko'), true);
 });
 
-test('actual ordered passage reveals exactly one new subarea per exit and Sapporo after Hidaka only', () => {
+test('ordered passage still requires each mountain receipt while Sapporo is independently playable', () => {
   const store = new CampaignStore(); beginShiretoko(store); defeatDrone(store);
   for (const [index, id] of ['shiretoko', 'ishikari-mountains', 'hidaka-mountains'].entries()) {
     walkRoute(store, id); assert.equal(exit(store, id), true);
     assert.equal(store.value.completedAreaIds.length, index + 1);
-    assert.equal(visibleAreas(store.value).length, index + 2);
-    assert.equal(isAreaUnlocked(store.value, 'sapporo'), index === 2);
-    assert.equal(visibleRoute(store.value)[1].name, index === 2 ? '札幌' : '???');
+    assert.equal(visibleAreas(store.value).length, Math.min(4,index + 3));
+    assert.equal(isAreaUnlocked(store.value, 'sapporo'), true);
+    assert.equal(visibleRoute(store.value)[1].name, '札幌');
     assert.equal(exit(store, id), false);
   }
   assert.equal(visibleRoute(store.value).filter(r => r.revealed).length, 2);
@@ -250,7 +251,7 @@ test('fresh mission session resets same-area traversal/checkpoint and safely acc
   assert.equal(position(store, 'shiretoko', p()), true);
   assert.equal(store.value.traversal.distance, 0);
   assert.deepEqual(store.value.completedAreaIds, []);
-  assert.equal(store.beginSession('sapporo', false), false);
+  assert.equal(store.beginSession('sapporo', false), true);
 });
 
 test('same-store reopened resume preserves the exact reached checkpoint and permits new bounded movement', () => {
@@ -288,7 +289,7 @@ test('corrupt passage receipts restore only the valid prefix and never grant hid
   saved.traversal = { areaId: 'hidaka-mountains', distance: 100, lastPosition: p(0, 0), passedCheckpointIds: [] };
   const restored = parseCampaign(JSON.stringify(saved));
   assert.deepEqual(restored.completedAreaIds, ['shiretoko']);
-  assert.deepEqual(unlockedAreaIds(restored), ['shiretoko', 'ishikari-mountains']);
+  assert.deepEqual(unlockedAreaIds(restored), ['shiretoko', 'ishikari-mountains','sapporo']);
   assert.equal(restored.checkpoint, null); assert.equal(restored.traversal, null);
   saved.passages[0].passedCheckpointIds = [];
   assert.deepEqual(parseCampaign(JSON.stringify(saved)).completedAreaIds, []);
@@ -312,7 +313,7 @@ test('storage denial preserves session play and reports read/write persistence s
   assert.equal(store.saveStatus, 'storage-denied'); assert.equal(store.lastPersistenceError, 'read');
   beginShiretoko(store); assert.equal(defeatDrone(store), true); walkRoute(store, 'shiretoko'); assert.equal(exit(store, 'shiretoko'), true);
   assert.equal(store.saveStatus, 'storage-denied'); assert.equal(store.lastPersistenceError, 'write');
-  assert.equal(store.storageAvailable, false); assert.equal(visibleAreas(store.value).length, 2);
+  assert.equal(store.storageAvailable, false); assert.equal(visibleAreas(store.value).length, 3);
   const memory = new CampaignStore(); beginShiretoko(memory);
   assert.equal(memory.saveStatus, 'memory-only'); assert.equal(memory.storageAvailable, false);
 });

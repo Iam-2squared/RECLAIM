@@ -1,11 +1,11 @@
 import * as T from 'three';
 
 export type BossHealthState=Readonly<{
-  id:string;name:string;kind:'boar'|'owl';
+  id:string;name:string;kind:'boar'|'owl'|'spider'|'snowblower';
   position:Readonly<{x:number;y:number;z:number}>;
   hp:number;maxHp:number;barHeight?:number;
 }>;
-export type BossHealthOptions=Readonly<{viewDistance?:number}>;
+export type BossHealthOptions=Readonly<{viewDistance?:number;label?:string;heading?:string}>;
 type BossBar={root:T.Group;fill:T.Mesh;alive:boolean;row:HTMLElement|null;name:HTMLElement|null;numbers:HTMLElement|null;track:HTMLElement|null;domFill:HTMLElement|null;signature:string};
 const CAPACITY=2;
 const valid=(boss:BossHealthState)=>!!boss.id&&!!boss.name&&[boss.position.x,boss.position.y,boss.position.z,boss.hp,boss.maxHp].every(Number.isFinite)&&boss.maxHp>0;
@@ -41,8 +41,8 @@ export class BossHealthPresentation {
     this.rows=this.panel?document.createElement('div'):null;
     if(this.panel&&this.rows){
       this.panel.id='mission-boss-health';this.panel.className='mission-boss-health';
-      this.panel.setAttribute('aria-label','知床のボス体力');this.panel.hidden=true;
-      const heading=document.createElement('p');heading.className='boss-health-heading';heading.textContent='山麓のボス';
+      this.panel.setAttribute('aria-label',options.label??'知床のボス体力');this.panel.hidden=true;
+      const heading=document.createElement('p');heading.className='boss-health-heading';heading.textContent=options.heading??'山麓のボス';
       this.rows.className='boss-health-rows';this.panel.append(heading,this.rows);this.host!.insertBefore(this.panel,this.host!.querySelector('.mission-overlay'));
     }
     this.observer=this.host&&typeof ResizeObserver!=='undefined'?new ResizeObserver(()=>this.layout()):null;
@@ -96,7 +96,7 @@ export class BossHealthPresentation {
       const hp=T.MathUtils.clamp(boss.hp,0,boss.maxHp),ratio=hp/boss.maxHp,height=Number.isFinite(boss.barHeight)?T.MathUtils.clamp(boss.barHeight!,1,15):boss.kind==='boar'?4.6:5.3;
       bar.alive=hp>0;bar.root.position.set(boss.position.x,boss.position.y+height,boss.position.z);bar.root.quaternion.copy(this.cameraRotation);
       this.sphere.center.copy(bar.root.position);bar.root.visible=bar.alive&&this.cameraPosition.distanceToSquared(bar.root.position)<=this.distance*this.distance&&this.frustum.intersectsSphere(this.sphere);
-      bar.fill.scale.x=3.08*ratio;bar.fill.position.x=-3.08*(1-ratio)/2;bar.fill.material=boss.kind==='owl'?this.owlFill:this.boarFill;
+      bar.fill.scale.x=3.08*ratio;bar.fill.position.x=-3.08*(1-ratio)/2;bar.fill.material=boss.kind==='owl'||boss.kind==='spider'?this.owlFill:this.boarFill;
       const signature=`${boss.name}:${boss.kind}:${Math.ceil(hp)}:${boss.maxHp}`;
       if(signature!==bar.signature){
         bar.signature=signature;

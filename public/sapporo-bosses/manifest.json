@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "city": "札幌",
+  "models": [
+    {
+      "id": "spider",
+      "name": "電纏蜘蛛",
+      "rank": "小ボス",
+      "phase": 3,
+      "file": "spider.glb",
+      "bytes": 5974412,
+      "sha256": "e14f1b504c582ef4076d8ddd21ae36e64da3ff1f275e4101c3f0aa07c5b11ecb",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Chase",
+        "Attack",
+        "Hit",
+        "Death"
+      ],
+      "source": "motion/characters/電纏蜘蛛/電纏蜘蛛_animated.glb",
+      "animatedBlender": "motion/characters/電纏蜘蛛/電纏蜘蛛_animated.blend",
+      "originalBlender": "character/ボス/札幌/電纏蜘蛛/電纏蜘蛛.blend",
+      "front": "+Z",
+      "units": "metres"
+    },
+    {
+      "id": "snowblower",
+      "name": "氷路開拓機",
+      "rank": "中ボス",
+      "phase": 4,
+      "file": "snowblower.glb",
+      "bytes": 6865584,
+      "sha256": "a6f6e52b4de7a737b63560051712d7a1e7297fd5132b8335a714eb9c720c1cb5",
+      "clips": [
+        "Idle",
+        "Walk",
+        "Chase",
+        "Attack",
+        "Hit",
+        "Death"
+      ],
+      "source": "motion/characters/氷路開拓機/氷路開拓機_animated.glb",
+      "animatedBlender": "motion/characters/氷路開拓機/氷路開拓機_animated.blend",
+      "originalBlender": "character/ボス/札幌/氷路開拓機/氷路開拓機.blend",
+      "front": "+Z",
+      "units": "metres"
+    }
+  ]
+}
