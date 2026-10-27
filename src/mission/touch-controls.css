@@ -30,7 +30,7 @@ body[data-screen="mission"][data-mission-input="touch"] #scene canvas{touch-acti
 #touch-weapon-name{font-size:9px;line-height:1;color:#cdd8ca;font-weight:400}
 #touch-ammo{font:600 13px/1 Arial,sans-serif;letter-spacing:.02em}
 .touch-weapon-more{margin-left:auto;align-self:flex-start;font-size:9px;letter-spacing:1px;color:#d4dec9;pointer-events:none}
-.touch-top{top:var(--touch-top);right:var(--touch-right);width:44px;height:44px}
+.touch-top{top:calc(var(--touch-top) + 52px);right:var(--touch-right);width:44px;height:44px}
 #touch-pause{width:44px;height:44px;border-color:#eef1e354;background:#14241c85}
 #touch-pause svg{width:22px;height:22px;stroke-width:2.2}
 #touch-interact{position:fixed;left:50%;top:calc(50% - 64px);transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:5px;min-width:92px;border-radius:22px;background:#544c2cbf}
